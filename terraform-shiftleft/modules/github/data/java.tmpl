@@ -44,10 +44,9 @@ jobs:
           sudo apt update -y
           sudo apt-get install sbt -y
           sbt package
-          TARGET_DIR=target/scala-2.11/
           BUILT=1
         fi
-        if [ "$BUILT" = "1" ]; then
+        if [ "$BUILT" = "1" ] && [ -d "$TARGET_DIR" ]; then
           jar cvf app.jar -C $TARGET_DIR .
           ${GITHUB_WORKSPACE}/sl analyze --wait --app ${GITHUB_REPOSITORY//\//-} --tag branch=${{ github.head_ref || steps.extract_branch.outputs.branch }} --java --cpg app.jar
         else
