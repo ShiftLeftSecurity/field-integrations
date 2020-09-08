@@ -1,0 +1,29 @@
+---
+# This workflow integrates ShiftLeft NG SAST with GitHub
+# Visit https://docs.shiftleft.io for help
+name: ShiftLeft
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  NextGen-Static-Analysis:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 3.1.101
+    - name: Download ShiftLeft cli
+      run: |
+        Invoke-WebRequest -Uri 'https://cdn.shiftleft.io/download/sl-latest-windows-x64.zip' -OutFile sl.zip
+        Expand-Archive -Path sl.zip -DestinationPath .
+    - name: Build console app
+      run: dotnet build ${GITHUB_REPOSITORY//\//-}
+    - name: Analyze with NG SAST
+      run: .\sl analyze --no-diagnostic --force --app ${GITHUB_REPOSITORY//\//-} --tag branch=$Env:GITHUB_REF --csharp --dotnet-core --cpg ${GITHUB_REPOSITORY//\//-}/${GITHUB_REPOSITORY//\//-}.csproj
+      env:
+        SHIFTLEFT_ACCESS_TOKEN: ${{ secrets.SHIFTLEFT_ACCESS_TOKEN }}

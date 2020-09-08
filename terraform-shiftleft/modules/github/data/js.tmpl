@@ -1,0 +1,29 @@
+---
+# This workflow integrates ShiftLeft NG SAST with GitHub
+# Visit https://docs.shiftleft.io for help
+name: ShiftLeft
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  NextGen-Static-Analysis:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup Java JDK
+      uses: actions/setup-java@v1.3.0
+      with:
+        java-version: 1.8
+    - name: Download ShiftLeft cli
+      run: |
+        curl https://cdn.shiftleft.io/download/sl > ${GITHUB_WORKSPACE}/sl && chmod a+rx ${GITHUB_WORKSPACE}/sl
+    - name: Extract branch name
+      shell: bash
+      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+      id: extract_branch
+    - name: Build and Analyze
+      run: ${GITHUB_WORKSPACE}/sl analyze --wait --app ${GITHUB_REPOSITORY//\//-} --tag branch=${{ github.head_ref || steps.extract_branch.outputs.branch }} --js --cpg .
+      env:
+        SHIFTLEFT_ACCESS_TOKEN: ${{ secrets.SHIFTLEFT_ACCESS_TOKEN }}
