@@ -13,7 +13,7 @@ import config
 
 
 def get_findings_url(app_name):
-    return f"https://www.shiftleft.io/api/v4/orgs/{config.SHIFTLEFT_ORG_ID}/apps/{app_name}/findings?per_page=249"
+    return f"https://www.shiftleft.io/api/v4/orgs/{config.SHIFTLEFT_ORG_ID}/apps/{app_name}/findings?per_page=249&type=vuln"
 
 
 def get_all_findings(app_name, report_file, format):
@@ -38,9 +38,10 @@ def get_all_findings(app_name, report_file, format):
                 projectSpId = f'sl/{config.SHIFTLEFT_ORG_ID}/{scan.get("app")}'
                 findings = response.get("findings")
                 counts = response.get("counts")
-                link = f"https://www.shiftleft.io/findingsSummary/{app_name}?apps={app_name}&isApp=1"
-                # print(f"Total issues found: {total_count}")
                 findings_list += findings
+                print(
+                    f"Findings retrieved so far: {len(findings_list)} / {total_count}"
+                )
                 if raw_response.get("next_page"):
                     findings_url = raw_response.get("next_page")
                 else:
@@ -55,6 +56,7 @@ def get_all_findings(app_name, report_file, format):
 
 def export_report(app_name, report_file, format):
     findings = get_all_findings(app_name, report_file, format)
+    file_category_set = set()
     with open(report_file, mode="w") as rp:
         if format == "xml" or report_file.endswith(".xml"):
             xml_data = json2xml.Json2xml(findings).to_xml()
@@ -62,15 +64,27 @@ def export_report(app_name, report_file, format):
             print(f"Findings report successfully exported to {report_file}")
         elif format == "sl":
             for af in findings:
+                details = af.get("details")
                 title = af.get("title")
-                filename = title.split(" in ")[-1].replace("`", "").split(".")[0]
+                # filename could be found either in file_locations or fileName
+                filename = ""
+                if details and details.get("file_locations"):
+                    file_locations = details.get("file_locations")
+                    if len(file_locations):
+                        filename = file_locations[0].split(":")[0].split("/")[-1]
+                        filename = filename.replace(".java", "")
+                # If there is no file_locations try to extract the name from the title
+                if not filename:
+                    filename = title.split(" in ")[-1].replace("`", "").split(".")[0]
                 if filename.startswith("BenchmarkTest"):
                     filename = filename.replace("BenchmarkTest", "")
                 else:
-                    print(f"Unable to extract filename from title {title}")
+                    print(
+                        f"Unable to extract filename from file_locations or title {title}"
+                    )
                 tags = af.get("tags")
                 cwe_id = ""
-                category = af.get("description")
+                category = af.get("title")
                 for tag in tags:
                     if tag["key"] == "category":
                         category = tag["value"]
@@ -80,9 +94,10 @@ def export_report(app_name, report_file, format):
                     category = "Broken Authentication"
                 if config.sl_owasp_category.get(category):
                     category = config.sl_owasp_category.get(category)
-                    rp.write(f"{filename},{category}\n")
-                else:
-                    print(filename, tags)
+                file_category = f"{filename},{category}"
+                if " " not in category and file_category not in file_category_set:
+                    rp.write(file_category + "\n")
+                    file_category_set.add(file_category)
             print(f"Findings report successfully exported to {report_file}")
         else:
             json.dump(findings, rp, indent=config.json_indent)
@@ -138,7 +153,7 @@ if __name__ == "__main__":
         report_file = report_file.replace(".json", ".xml")
     elif format == "sl":
         print(
-            "WARNING: This is work-in-progress and is not ready for official benchmarking purposes yet!!!"
+            "WARNING: This functionality is a work-in-progress and is not ready for official benchmarking purposes yet!!!"
         )
         print(
             "Please contact ShiftLeft if you are interested in an official benchmark script"

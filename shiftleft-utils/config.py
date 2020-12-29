@@ -21,13 +21,16 @@ sl_owasp_category = {
     "SQL Injection": "sqli",
     "LDAP Injection": "ldapi",
     "XPath Injection": "xpathi",
+    "Weak Random": "weakrand",
+    "Session Injection": "trustbound",
     "Cookie Injection": "securecookie",
     "Weak Hash": "hash",
+    "hash": "hash",
     "Open Redirect": "pathtraver",
     "XSS": "xss",
     "Remote Code Execution": "cmdi",
-    "Sensitive Data Leak": "trustbound",
     "Insecure Cookie": "securecookie",
     "Directory Traversal": "pathtraver",
     "Broken Authentication": "crypto",
+    "Weak symmetric encryption algorithm": "crypto"
 }
