@@ -158,7 +158,8 @@ if __name__ == "__main__":
         print(
             "Please contact ShiftLeft if you are interested in an official benchmark script"
         )
-        report_file = "Benchmark_1.2-ShiftLeft.sl"
+        if not report_file:
+            report_file = "Benchmark_1.2-ShiftLeft.sl"
     export_report(app_name, report_file, format)
     end_time = time.monotonic_ns()
     total_time_sec = round((end_time - start_time) / 1000000000, 2)
