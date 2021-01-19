@@ -9,7 +9,7 @@ Pre-requisites:
 - Okta Admin Role
 - ShiftLeft Admin Role
 - Network access to ShiftLeft API servers
-- environment variables (get values from **Avatar** (upper-right) > **Account Settings**):
+- Environment variables (get values from **Avatar** (upper-right) > **Account Settings**):
   - `SHIFTLEFT_ORG_ID`
   - `SHIFTLEFT_ACCESS_TOKEN` (not API token)
 
@@ -23,17 +23,17 @@ Pre-requisites:
    ```shell
    $ BASE_URL = "https://www.shiftleft.io/api/v4/orgs/${SHIFTLEFT_ORG_ID}"
    $ POST_BODY = '{ \
-   >   "name":"saml_config", \
-   >   "allow_implicit_invites" : true, \
-   >   "allow_idp_initiated_logins" : true \
-   > }'
+       "name": "saml_config", \
+       "allow_implicit_invites": true, \
+       "allow_idp_initiated_logins": true \
+     }'
    $ curl -XPOST -d ${POST_BODY} \
-   >   -H "Content-Type: application/json" \
-   >   -H "Authorization: Bearer ${SHIFTLEFT_ACCESS_TOKEN}" \
-   >   "${BASE_URL}/saml_configs"
+       -H "Content-Type: application/json" \
+       -H "Authorization: Bearer ${SHIFTLEFT_ACCESS_TOKEN}" \
+       "${BASE_URL}/saml_configs"
    ```
    **_NOTE: Currently only one SAML configuration can be created per
-   organization.  Subsequent calls to `saml_configs` will fail._**
+   organization.  Subsequent posts to `saml_configs` will fail._**
 
    Copy the value for `<RELAY_STATE>` from the response and enter it in Okta:
 
