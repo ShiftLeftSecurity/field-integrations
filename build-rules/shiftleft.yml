@@ -1,0 +1,59 @@
+source:
+  branch: main
+build_rules:
+  - id: allow-zero-high-impact
+    finding_types:
+      - vuln
+    severity:
+      - SEVERITY_HIGH_IMPACT
+# The above rule is perhaps the most common in that it
+# is designed to be used with Pull Request and to block
+# new vulns from being introduced that aren't already on
+# the 'main' branch
+# 
+# Below is enchalada with all the options shown
+#
+# ID is the name that will be reflected in the PR comments
+#  - id: build-rule-enchalada
+#      - vuln
+#      - secret
+#      - insight
+# Do you want to block ALL types by severity?
+#    severity:
+#      - SEVERITY_HIGH_IMPACT   # or "critical" 
+#      - SEVERITY_MEDIUM_IMPACT # or "moderate"
+#      - SEVERITY_LOW_IMPACT    # or "info"
+# Do you want to focus on just one or more types?
+#    type:
+#      - Cookie Injection
+#      - Deserialization
+#      - Directory traversal
+#      - File Write
+#      - Insecure Cookie
+#      - LDAP Injection
+#      - Mail Injection
+#      - Mass Assignment
+#      - NoSQL Injection
+#      - Open Redirect
+#      - Remote Code Execution
+#      - Sensitive Data Leak
+#      - Session Injection
+#      - SQL Injection
+#      - TLS checks are disabled
+#      - Usage of insecure API
+#      - Weak Hash
+#      - XML InjectionXPath Injection
+#      - XPath Injection
+#      - XSS
+#      - XXE
+# Focus by OWASP Category?
+#    owasp_category:
+#      - a1-injection
+#      - a2-broken-authentication
+#      - a3-sensitive-data-exposure
+#      - a4-xxe
+#      - a5-broken-access-control
+#      - a6-security-misconfiguration
+#      - a7-cross-site-scripting
+#      - a7-xss
+#      - a8-deserialization
