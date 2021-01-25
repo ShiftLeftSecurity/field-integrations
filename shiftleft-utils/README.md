@@ -23,6 +23,7 @@ Set the ShiftLeft Org Id, access token and api token as following environment va
 | Script    | Purpose                                               |
 | --------- | ----------------------------------------------------- |
 | export.py | Export NG SAST findings report to xml and json format |
+| stats.py  | Display stats for all apps based on last scan         |
 
 ## License
 
