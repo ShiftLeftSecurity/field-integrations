@@ -79,9 +79,17 @@ def export_report(app_name, report_file, format):
                 if filename.startswith("BenchmarkTest"):
                     filename = filename.replace("BenchmarkTest", "")
                 else:
-                    print(
-                        f"Unable to extract filename from file_locations or title {title}"
-                    )
+                    # Try to get the filename from source_method in details
+                    source_method = details.get("source_method")
+                    if source_method and "BenchmarkTest" in source_method:
+                        filename = source_method.split(":")[0].split(".")[4]
+                        filename = filename.replace("BenchmarkTest", "")
+                    else:
+                        print(
+                            f"Unable to extract filename from file_locations or title {title}. Skipping ..."
+                        )
+                        print (af)
+                        continue
                 tags = af.get("tags")
                 cwe_id = ""
                 category = af.get("title")
