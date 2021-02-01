@@ -11,16 +11,19 @@ from json2xml import json2xml
 
 import config
 
+# Authentication headers for all API
+headers = {
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {config.SHIFTLEFT_ACCESS_TOKEN}",
+}
+
 
 def get_findings_url(app_name):
-    return f"https://www.shiftleft.io/api/v4/orgs/{config.SHIFTLEFT_ORG_ID}/apps/{app_name}/findings?per_page=249&type=vuln"
+    return f"https://www.shiftleft.io/api/v4/orgs/{config.SHIFTLEFT_ORG_ID}/apps/{app_name}/findings?per_page=249&type=vuln&include_dataflows=true"
 
 
 def get_all_findings(app_name, report_file, format):
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {config.SHIFTLEFT_ACCESS_TOKEN}",
-    }
+    """Method to retrieve all findings"""
     findings_list = []
     findings_url = get_findings_url(app_name)
     page_available = True
@@ -54,6 +57,22 @@ def get_all_findings(app_name, report_file, format):
     return findings_list
 
 
+def get_dataflow(app_name, finding_id):
+    finding_url = f"https://www.shiftleft.io/api/v4/orgs/{config.SHIFTLEFT_ORG_ID}/apps/{app_name}/findings/{finding_id}?include_dataflows=true"
+    r = requests.get(finding_url, headers=headers)
+    if r.ok:
+        raw_response = r.json()
+        if raw_response and raw_response.get("response"):
+            response = raw_response.get("response")
+            details = response.get("details")
+            dataflow = details.get("dataflow", {}).get("list")
+            return dataflow
+    else:
+        print(f"Unable to retrieve dataflows for {finding_id}")
+        print(r.status_code, r.json())
+        return None
+
+
 def export_report(app_name, report_file, format):
     findings = get_all_findings(app_name, report_file, format)
     file_category_set = set()
@@ -74,14 +93,34 @@ def export_report(app_name, report_file, format):
                         filename = file_locations[0].split(":")[0].split("/")[-1]
                         filename = filename.replace(".java", "")
                 # If there is no file_locations try to extract the name from the title
-                if not filename:
+                if not filename and "BenchmarkTest" in title:
                     filename = title.split(" in ")[-1].replace("`", "").split(".")[0]
                 if filename.startswith("BenchmarkTest"):
                     filename = filename.replace("BenchmarkTest", "")
                 else:
+                    # Try to get the filename from source_method in details
+                    source_method = details.get("source_method")
+                    if source_method and "BenchmarkTest" in source_method:
+                        filename = source_method.split(":")[0].split(".")[4]
+                        filename = filename.replace("BenchmarkTest", "")
+                    else:
+                        print(f'Get dataflow for {af.get("id")}')
+                        # dataflows = get_dataflow(app_name, af.get("id"))
+                        dataflows = details.get("dataflow", {}).get("list")
+                        if dataflows:
+                            for df in dataflows:
+                                location = df.get("location")
+                                if location.get(
+                                    "class_name"
+                                ) and "BenchmarkTest" in location.get("class_name"):
+                                    filename = location.get("class_name").split(".")[-1]
+                                    filename = filename.replace("BenchmarkTest", "")
+                                    break
+                if not filename:
                     print(
-                        f"Unable to extract filename from file_locations or title {title}"
+                        f"Unable to extract filename from file_locations or title {title}. Skipping ..."
                     )
+                    continue
                 tags = af.get("tags")
                 cwe_id = ""
                 category = af.get("title")
