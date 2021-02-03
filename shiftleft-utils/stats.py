@@ -56,6 +56,7 @@ def collect_stats(report_file):
         reportwriter.writerow(
             [
                 "App",
+                "App Group",
                 "Version",
                 "Language",
                 "Expressions Count",
@@ -75,7 +76,13 @@ def collect_stats(report_file):
                     response = raw_response.get("response")
                     total_count = response.get("total_count")
                     scan = response.get("scan")
-
+                    tags = app.get("tags")
+                    app_group = ""
+                    if tags:
+                        for tag in tags:
+                            if tag.get("key") == "group":
+                                app_group = tag.get("value")
+                                break
                     # Other unused properties such as findings or counts
                     spid = scan.get("internal_id")
                     projectSpId = f'sl/{config.SHIFTLEFT_ORG_ID}/{scan.get("app")}'
@@ -104,6 +111,7 @@ def collect_stats(report_file):
                     reportwriter.writerow(
                         [
                             scan.get("app"),
+                            app_group,
                             scan.get("version"),
                             scan.get("language"),
                             scan.get("number_of_expressions"),
