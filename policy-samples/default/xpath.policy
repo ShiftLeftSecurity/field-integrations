@@ -1,0 +1,56 @@
+####
+# XPATHi
+####
+
+CONCLUSION xpath-injection-attacker-controlled = FLOW DATA (attacker-controlled AND NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped) -> IO (xpath)
+WHEN CONCLUSION xpath-injection-attacker-controlled => EMIT {
+  title: "XPath Injection: Attacker-controlled data used in XPath query {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Attacker controlled data is used in an XPath query without undergoing sanitization or validation. An attacker could read sensitive data or bypass authentication.
+
+
+## Countermeasures
+
+This vulnerability can be prevented by using parameterized queries or input sanitization and validation on the data before using it in XPATH query.
+
+## Additional information
+
+**[CWE-91](https://cwe.mitre.org/data/definitions/91.html)**
+
+**[CWE-643](https://cwe.mitre.org/data/definitions/643.html)**
+
+**[OWASP-A1](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection)**",
+  category: "a1-injection",
+  score: "9.0",
+  vulnerability_description: "XPath Injection",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_link: "https://cwe.mitre.org/data/definitions/643.html",
+  cwe_link: "https://cwe.mitre.org/data/definitions/91.html"
+}
+
+CONCLUSION xpath-injection-http = FLOW IO (http OR $http) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped) -> IO (xpath)
+WHEN CONCLUSION xpath-injection-http => EMIT {
+  title: "XPath Injection: HTTP data used in XPath query {{via `$paramname`}} {{in `$methodname`}}",
+  description: "HTTP data is used in an XPath query without undergoing sanitization or validation. An attacker could read sensitive data or bypass authentication.
+
+
+## Countermeasures
+
+This vulnerability can be prevented by using parameterized queries or input sanitization and validation on the data before using it in XPATH query.
+
+## Additional information
+
+**[CWE-91](https://cwe.mitre.org/data/definitions/91.html)**
+
+**[CWE-643](https://cwe.mitre.org/data/definitions/643.html)**
+
+**[OWASP-A1](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection)**",
+  category: "a1-injection",
+  score: "9.0",
+  vulnerability_description: "XPath Injection",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_link: "https://cwe.mitre.org/data/definitions/643.html",
+  cwe_link: "https://cwe.mitre.org/data/definitions/91.html"
+}
+

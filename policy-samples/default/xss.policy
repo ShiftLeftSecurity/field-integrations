@@ -1,0 +1,238 @@
+####
+# XSS
+####
+
+CONCLUSION template-injection = FLOW IO (database) -> DATA (mustacheTemplate)
+WHEN CONCLUSION template-injection => EMIT {
+     title: "Template Injection: Template injection {{via `$paramname`}} {{in `$methodname`}}",
+     description : "A string is passed from the database to the mustache template engine without undergoing escaping or validation. Unless the string is validated upon insertion into the database, this results in a cross-site scripting vulnerability.
+
+
+## Countermeasures
+
+This vulnerability can be prevented by using input sanitization/validation techniques (e.g., whitelisting) on the database data before using it in the mustacheTemplate.
+
+## Additional information
+
+**[CWE-79](https://cwe.mitre.org/data/definitions/79.html)**
+
+**[OWASP-A7](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS))**",
+     category: "a7-XSS",
+     score: "8.0",
+     vulnerability_description: "Template Injection",
+     owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
+     link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
+     cwe_link: "https://cwe.mitre.org/data/definitions/79.html"
+}
+
+CONCLUSION http-to-velocityTemplate = FLOW IO (http OR $http) -> DATA (velocityTemplate)
+WHEN CONCLUSION http-to-template => EMIT {
+     title: "Template Injection: Template name injection {{via `$paramname`}} {{in `$methodname`}}",
+     category: "a7-XSS",
+     description: "HTTP data is evaluated in the context of a velocity template, without prior sanitazatoin. This may result in a XSS attack.
+
+## Countermeasures
+
+This vulnerability can be prevented by using input sanitization/validation techniques (e.g., whitelisting) on data before providing them to a velocity evaluation.
+
+## Additional information
+
+**[CWE-79](https://cwe.mitre.org/data/definitions/79.html)**
+
+**[OWASP-A7](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS))**",
+     score: "5.0",
+     vulnerability_description: "Template Injection",
+     owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
+     link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
+     cwe_link: "https://cwe.mitre.org/data/definitions/79.html"
+}
+
+
+CONCLUSION template-name-injection = FLOW IO (database) -> DATA (mustacheTemplateName)
+WHEN CONCLUSION template-name-injection => EMIT {
+     title: "Template Injection: Template name injection {{via `$paramname`}} {{in `$methodname`}}",
+     category: "a7-XSS",
+     description: "The name of a mustache template is potentially attacker-controlled. This may result in a XSS attack.
+
+## Countermeasures
+
+This vulnerability can be prevented by using input sanitization/validation techniques (e.g., whitelisting) on the name of the mustache template.
+
+## Additional information
+
+**[CWE-79](https://cwe.mitre.org/data/definitions/79.html)**
+
+**[OWASP-A7](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS))**",
+     score: "8.0",
+     vulnerability_description: "Template Injection",
+     owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
+     link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
+     cwe_link: "https://cwe.mitre.org/data/definitions/79.html"
+}
+
+
+CONCLUSION xss-to-header = FLOW IO (http OR $http) -> IO (httpHeader)
+WHEN CONCLUSION xss-to-header => EMIT {
+     title: "XSS: HTTP data to header {{via `$paramname`}} {{in `$methodname`}}",
+     category: "a7-XSS",
+     description: "Data from HTTP request parameters is stored in HTTP headers. Unless the string is validated, this may result in a XSS attack.
+
+
+## Countermeasures
+
+This vulnerability can be prevented by using input sanitization/validation techniques (e.g., whitelisting) on the HTTP data before using it inside another HTTP header.
+
+## Additional information
+
+**[CWE-79](https://cwe.mitre.org/data/definitions/79.html)**
+
+**[OWASP-A7](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS))**",
+     score: "8.0",
+     vulnerability_description: "XSS",
+     owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
+     link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
+     cwe_link: "https://cwe.mitre.org/data/definitions/79.html"
+}
+
+# `htmlTemplate` only defined in go, at the moment; this is tagged as part of HtmlTemplateCastTaggingPass
+CONCLUSION xss-to-html-template = FLOW IO (http) -> DATA (unsafe-html-template-cast) -> IO (htmlTemplate)
+WHEN CONCLUSION xss-to-html-template => EMIT {
+     title: "XSS: HTTP data to HTML {{via `$paramname`}} {{in `$methodname`}}",
+     category: "a7-XSS",
+     description: "Data from HTTP request parameters is used in HTML rendering. Unless the string is validated, this may result in a XSS attack.
+
+
+## Countermeasures
+
+This vulnerability can be prevented by using input sanitization/validation techniques (e.g., whitelisting) on the HTTP data before using it inside another HTTP header.
+
+## Additional information
+
+**[CWE-79](https://cwe.mitre.org/data/definitions/79.html)**
+
+**[OWASP-A7](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS))**",
+     score: "8.0",
+     vulnerability_description: "XSS",
+     owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
+     link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
+     cwe_link: "https://cwe.mitre.org/data/definitions/79.html"
+}
+
+
+CONCLUSION xss-to-html = FLOW IO (http) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT encoded) -> IO (html AND NOT session)
+WHEN CONCLUSION xss-to-html => EMIT {
+     title: "XSS: HTTP data to HTML {{via `$paramname`}} {{in `$methodname`}}",
+     category: "a7-XSS",
+     description: "Data from HTTP request parameters is used in HTML or session information. Unless the string is validated, this may result in a XSS attack.
+
+
+## Countermeasures
+
+This vulnerability can be prevented by using input sanitization/validation techniques (e.g., whitelisting) on the HTTP data before using it inside another HTTP header.
+
+## Additional information
+
+**[CWE-79](https://cwe.mitre.org/data/definitions/79.html)**
+
+**[OWASP-A7](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS))**",
+     score: "8.0",
+     vulnerability_description: "XSS",
+     owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
+     link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
+     cwe_link: "https://cwe.mitre.org/data/definitions/79.html"
+}
+
+
+CONCLUSION xss-to-print = FLOW IO (http AND NOT session) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT encoded) -> IO (print AND $http AND NOT session)
+WHEN CONCLUSION xss-to-print => EMIT {
+     title: "XSS: HTTP data to HTML {{via `$paramname`}} {{in `$methodname`}}",
+     category: "a7-XSS",
+     description: "Data from HTTP request parameters is used in HTML. Unless the string is validated, this may result in a XSS attack.
+
+
+## Countermeasures
+
+This vulnerability can be prevented by using input sanitization/validation techniques (e.g., whitelisting) on the HTTP data before displaying it.
+
+## Additional information
+
+**[CWE-79](https://cwe.mitre.org/data/definitions/79.html)**
+
+**[OWASP-A7](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS))**",
+     score: "8.0",
+     vulnerability_description: "XSS",
+     owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
+     link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
+     cwe_link: "https://cwe.mitre.org/data/definitions/79.html"
+}
+
+CONCLUSION xss-file-to-html = FLOW IO (reader) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT encoded) -> IO (html AND NOT session)
+WHEN CONCLUSION xss-file-to-html => EMIT {
+     title: "XSS: Data from file to HTML {{via `$paramname`}} {{in `$methodname`}}",
+     category: "a7-XSS",
+     description: "Data from file is used in HTML. Unless the string is validated, this may result in a XSS attack.
+
+
+## Countermeasures
+
+This vulnerability can be prevented by using input sanitization/validation techniques (e.g., whitelisting) on the HTTP data before displaying it.
+
+## Additional information
+
+**[CWE-79](https://cwe.mitre.org/data/definitions/79.html)**
+
+**[OWASP-A7](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS))**",
+     score: "8.0",
+     vulnerability_description: "XSS",
+     owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
+     link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
+     cwe_link: "https://cwe.mitre.org/data/definitions/79.html"
+}
+
+IO playHttp = METHOD -f r".*\.ok:play\.mvc\.Result\(.*" { PAR -i 1 "SINK" }
+CONCLUSION xss-play = FLOW IO (http) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT encoded) -> IO (playHttp)
+WHEN CONCLUSION xss-play => EMIT {
+     title: "XSS: HTTP data to HTML {{via `$paramname`}} {{in `$methodname`}}",
+     category: "a7-XSS",
+     description: "Data from HTTP request parameters is used in HTML. Unless the string is validated, this may result in a XSS attack.
+
+
+## Countermeasures
+
+This vulnerability can be prevented by using input sanitization/validation techniques (e.g., whitelisting) on the HTTP data before displaying it.
+
+## Additional information
+
+**[CWE-79](https://cwe.mitre.org/data/definitions/79.html)**
+
+**[OWASP-A7](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS))**",
+     score: "8.0",
+     vulnerability_description: "XSS",
+     owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
+     link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
+     cwe_link: "https://cwe.mitre.org/data/definitions/79.html"
+}
+
+
+CONCLUSION http-to-jsp = FLOW IO (http) -> IO (jsp)
+WHEN CONCLUSION http-to-jsp => EMIT {
+     title: "XSS: HTTP data to HTML {{via `$paramname`}} {{in `$methodname`}}",
+     category: "a7-XSS",
+     description: "Data from HTTP request parameters is used in HTML. Unless the string is validated, this may result in a XSS attack.
+
+
+## Countermeasures
+
+This vulnerability can be prevented by using input sanitization/validation techniques (e.g., whitelisting) on the HTTP data before displaying it.
+
+## Additional information
+
+**[CWE-79](https://cwe.mitre.org/data/definitions/79.html)**
+
+**[OWASP-A7](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS))**",
+     score: "8.0",
+     vulnerability_description: "XSS",
+     owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
+     link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
+     cwe_link: "https://cwe.mitre.org/data/definitions/79.html"
+}

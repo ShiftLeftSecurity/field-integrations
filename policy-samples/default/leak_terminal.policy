@@ -1,0 +1,51 @@
+####
+# Data to console
+####
+
+CONCLUSION file-to-print = FLOW IO (file OR ($file AND read)) -> DATA (NOT encrypted AND NOT hashed ) -> IO (print)
+WHEN CONCLUSION file-to-print => EMIT {
+  title: "Sensitive Data Leak: File name/content leaked to console {{via `$paramname`}} {{in `$methodname`}}",
+  description: "File names or content are printed on console in this flow. This could result in printing decrypted file content to a console, where it can be viewed by unauthorized third party with access to it, such as system administrators. Many web applications and APIs do not protect sensitive data, such as financial and healthcare. Attackers may steal or modify such weakly protected data to conduct credit card fraud, identity theft, or other crimes.
+
+
+## Countermeasures
+
+This vulnerability can be prevented by not printing out data related to the file or by encrypting it in advance.
+
+## Additional information
+
+**[CWE-200](https://cwe.mitre.org/data/definitions/200.html)**
+
+**[OWASP-A3](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure)**",
+  category: "a3-sensitive-data-exposure",
+  score: "3.0",
+  vulnerability_description: "Sensitive Data Leak",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
+  cwe_link: "https://cwe.mitre.org/data/definitions/200.html"
+}
+
+# catch all unescaped and unhashed data leakage
+CONCLUSION sensitive-to-print = FLOW DATA (( internal-keys OR authentication OR certificates OR medical OR pii OR payment-data) AND NOT encrypted AND NOT hashed AND NOT encoded) -> IO (print)
+WHEN CONCLUSION sensitive-to-print => EMIT {
+  title: "Sensitive Data Leak: Security-sensitive data leaked to console {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Sensitive data is printed on console in this flow.
+  It can be viewed by unauthorized third party with access to it, such as system administrators. Many web applications and APIs do not protect sensitive data, such as financial and healthcare. Attackers may steal or modify such weakly protected data to conduct credit card fraud, identity theft, or other crimes.
+
+
+## Countermeasures
+
+This vulnerability can be prevented by not printing sensitive data out or by encrypting it in advance.
+
+## Additional information
+
+**[CWE-200](https://cwe.mitre.org/data/definitions/200.html)**
+
+**[OWASP-A3](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure)**",
+  category: "a3-sensitive-data-exposure",
+  score: "8.0",
+  vulnerability_description: "Sensitive Data Leak",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
+  cwe_link: "https://cwe.mitre.org/data/definitions/200.html"
+}

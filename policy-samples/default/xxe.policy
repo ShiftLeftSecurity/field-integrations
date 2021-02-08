@@ -1,0 +1,26 @@
+####
+# XXE
+####
+
+CONCLUSION xxe-injection = FLOW IO (http OR $http) ->  IO (xml AND NOT marshal)
+WHEN CONCLUSION xxe-injection => EMIT {
+  title: "XXE: HTTP data to XML {{via `$paramname`}} {{in `$methodname`}}",
+  description: "This flow indicates an XXE attack. An attacker could read arbitrary files, if the features are not disabled.
+
+
+## Countermeasures
+
+This vulnerability can be prevented by disabling XML External Entity for server-side XML parser altogether. You can find more information in the [OWASP (XXE) Prevention Cheat Sheet](https://www.owasp.org/index.php/XML_External_Entity_(XXE)_Prevention_Cheat_Sheet).
+
+## Additional information
+
+- **[CWE-611](https://cwe.mitre.org/data/definitions/611.html)**
+
+- **[OWASP-A4](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A4-XML_External_Entities_(XXE))**",
+  category: "A4-XXE",
+  score: "9.0",
+  vulnerability_description: "XXE",
+  cwe_link: "https://cwe.mitre.org/data/definitions/611.html",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A4-XML_External_Entities_(XXE)",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A4-XML_External_Entities_(XXE)"
+}

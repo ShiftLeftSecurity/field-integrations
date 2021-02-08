@@ -1,0 +1,91 @@
+####
+# Remote code Execution
+####
+
+CONCLUSION command-injection-http = FLOW IO (http) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped) -> IO (execute)
+WHEN CONCLUSION command-injection-http => EMIT {
+  title: "Remote Code Execution: Command Injection through HTTP {{via `$paramname`}} {{in `$methodname`}}",
+  description: "HTTP data is used in a shell command without undergoing escaping or validation. This could allow an attacker to execute code on the server. Injection flaws occur when untrusted data is sent to an interpreter as part of a command or query. By injecting hostile data, an attacker may trick the interpreter into executing unintended commands or accessing data without authorization which can result in data loss, corruption, or disclosure to unauthorized parties, loss of accountability, denial of access or even a complete host takeover.
+
+
+## Countermeasures
+
+This vulnerability can be prevented by using parameterized queries or by validating HTTP data (preferably on server-side by means of common input sanitation libraries or whitelisting) before using it.
+
+## Additional information
+
+**[CWE-77](https://cwe.mitre.org/data/definitions/77.html)**
+
+**[CWE-78](https://cwe.mitre.org/data/definitions/78.html)**
+
+**[CWE-917](https://cwe.mitre.org/data/definitions/917.html)**
+
+**[OWASP-A1](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection)**",
+  category: "a1-injection",
+  score: "9.0",
+  vulnerability_description: "Remote Code Execution",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_link: "https://cwe.mitre.org/data/definitions/77.html",
+  cwe_link: "https://cwe.mitre.org/data/definitions/78.html",
+  cwe_link: "https://cwe.mitre.org/data/definitions/917.html"
+}
+
+
+CONCLUSION command-injection-cloud = FLOW IO (cloud) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped) -> IO (execute)
+WHEN CONCLUSION command-injection-cloud => EMIT {
+  title: "Remote Code Execution: Command Injection through cloud data {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Cloud data is used in a command without undergoing escaping or validation. This could allow an attacker to execute code on the server. Injection flaws occur when untrusted data is sent to an interpreter as part of a command or query. By injecting hostile data, an attacker may trick the interpreter into executing unintended commands or accessing data without authorization which can result in data loss, corruption, or disclosure to unauthorized parties, loss of accountability, denial of access or even a complete host takeover.
+
+
+## Countermeasures
+
+This vulnerability can be prevented by using parameterized queries or by validating cloud data (preferably on server-side by means of common input sanitation libraries or whitelisting) before using it.
+
+## Additional information
+
+**[CWE-77](https://cwe.mitre.org/data/definitions/77.html)**
+
+**[CWE-78](https://cwe.mitre.org/data/definitions/78.html)**
+
+**[CWE-917](https://cwe.mitre.org/data/definitions/917.html)**
+
+**[OWASP-A1](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection)**",
+  category: "a1-injection",
+  score: "9.0",
+  vulnerability_description: "Remote Code Execution",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_link: "https://cwe.mitre.org/data/definitions/77.html",
+  cwe_link: "https://cwe.mitre.org/data/definitions/78.html",
+  cwe_link: "https://cwe.mitre.org/data/definitions/917.html"
+}
+
+CONCLUSION command-injection-attacker-controlled = FLOW DATA (attacker-controlled AND NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped) -> IO (execute)
+WHEN CONCLUSION command-injection-attacker-controlled => EMIT {
+  title: "Remote Code Execution: Command Injection through attacker-controlled data {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Attacker controlled data is used in a shell command without undergoing escaping or validation. This could allow an attacker to execute code on the server. Injection flaws occur when untrusted data is sent to an interpreter as part of a command or query. By injecting hostile data, an attacker may trick the interpreter into executing unintended commands or accessing data without authorization which can result in data loss, corruption, or disclosure to unauthorized parties, loss of accountability, denial of access or even a complete host takeover.
+
+
+## Countermeasures
+
+This vulnerability can be prevented by using parameterized queries or by validating HTTP data (preferably on server-side by means of common input sanitation libraries or whitelisting) before using it.
+
+## Additional information
+
+**[CWE-77](https://cwe.mitre.org/data/definitions/77.html)**
+
+**[CWE-78](https://cwe.mitre.org/data/definitions/78.html)**
+
+**[CWE-917](https://cwe.mitre.org/data/definitions/917.html)**
+
+**[OWASP-A1](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection)**",
+  category: "a1-injection",
+  score: "9.0",
+  vulnerability_description: "Remote Code Execution",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_link: "https://cwe.mitre.org/data/definitions/77.html",
+  cwe_link: "https://cwe.mitre.org/data/definitions/78.html",
+  cwe_link: "https://cwe.mitre.org/data/definitions/917.html"
+}

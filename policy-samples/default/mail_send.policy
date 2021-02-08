@@ -1,0 +1,29 @@
+####
+# Data to mail
+####
+
+CONCLUSION mail-injection = FLOW IO (http) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded) -> IO (mail)
+WHEN CONCLUSION mail-injection => EMIT {
+  title: "Mail Injection: HTTP data is used in E-mails {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Data from HTTP requests is not escaped, hashed or encoded and used in a method that sends Emails. An attacker could inject header information using this method to send out harmful Emails.
+
+
+## Countermeasures
+
+This vulnerability can be prevented by sanitizing and validating the HTTP data before using them.
+
+## Additional information
+
+**[CWE-93](https://cwe.mitre.org/data/definitions/93.html)**
+
+**[CWE-159](https://cwe.mitre.org/data/definitions/159.html)**
+
+**[OWASP-A1](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection)**",
+  category: "a1-injection",
+  score: "6.0",
+  vulnerability_description: "Mail Injection",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_link: "https://cwe.mitre.org/data/definitions/159.html",
+  cwe_link: "https://cwe.mitre.org/data/definitions/93.html"
+}
