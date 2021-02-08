@@ -1,0 +1,118 @@
+####
+# Data to HTTP
+####
+
+CONCLUSION sensitive-to-http = FLOW DATA (tokens OR  authentication OR certificates OR internal-keys OR medical OR pii OR payment-data) -> IO (http OR $http)
+WHEN CONCLUSION sensitive-to-http => EMIT {
+  title: "Sensitive Data Leak: Sensitive data contained in HTTP request/response {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Sensitive data included in HTTP request/response. This could result in sensitive data exposure.  Many web applications and APIs do not protect sensitive data, such as financial and healthcare. Attackers may steal or modify such weakly protected data to conduct credit card fraud, identity theft, or other crimes.
+
+
+## Countermeasures
+
+ This vulnerability can be prevented by ensuring that sensitive data is encrypted/hashed with strong up-to-date standard algorithms.
+
+## Additional information
+
+**[CWE-200](https://cwe.mitre.org/data/definitions/200.html)**
+
+**[OWASP-A3](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure)**",
+  category: "a3-sensitive-data-exposure",
+  score: "2.5",
+  vulnerability_description: "Sensitive Data Leak",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
+  cwe_link: "https://cwe.mitre.org/data/definitions/200.html"
+}
+
+CONCLUSION cache-to-http = FLOW IO (cache) -> IO (http OR $http)
+WHEN CONCLUSION cache-to-http => EMIT {
+  title: "Sensitive Data Leak: Data from cache to HTTP {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Data from cache is used in HTTP request/response.
+
+
+## Countermeasures
+
+ This vulnerability can be prevented by ensuring that the data is encrypted/hashed with strong up-to-date standard algorithms.
+
+## Additional information
+
+**[CWE-200](https://cwe.mitre.org/data/definitions/200.html)**
+
+**[OWASP-A3](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure)**",
+  category: "a3-sensitive-data-exposure",
+  score: "3.0",
+  vulnerability_description: "Sensitive Data Leak",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
+  cwe_link: "https://cwe.mitre.org/data/definitions/200.html"
+}
+
+CONCLUSION env-data-leak-to-net = FLOW IO (environment) -> IO (http OR $http)
+WHEN CONCLUSION env-data-leak-to-net => EMIT {
+  title: "Sensitive Data Leak: Environment data leak to HTTP {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Environment data leak detected as part of this flow. Environmental data is sent out through a HTTP request. This is a potential data leakage. Many web applications and APIs do not protect sensitive data, such as financial and healthcare. Attackers may steal or modify such weakly protected data to conduct credit card fraud, identity theft, or other crimes.
+
+
+## Countermeasures
+
+This vulnerability can be prevented by ensuring that the environmental data is encrypted/hashed with strong up-to-date standard algorithms.
+
+## Additional information
+
+**[CWE-200](https://cwe.mitre.org/data/definitions/200.html)**
+
+**[OWASP-A3](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure)**",
+  category: "a3-sensitive-data-exposure",
+  score: "3.0",
+  vulnerability_description: "Sensitive Data Leak",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
+  cwe_link: "https://cwe.mitre.org/data/definitions/200.html"
+}
+
+# open redirect was a10 in OWASP 2013 https://www.owasp.org/index.php/Top_10_2013-A10-Unvalidated_Redirects_and_Forwards
+CONCLUSION open-redirect = FLOW IO (http OR $http) -> DATA (NOT escaped) -> IO ((http OR $http) AND redirect)
+WHEN CONCLUSION open-redirect => EMIT {
+  title: "Open Redirect: HTTP Request parameters are used in HTTP redirects {{via `$paramname`}} {{in `$methodname`}}",
+  description: "HTTP Request parameters are not escaped and used in a HTTP redirect. This indicates an open redirect which can be exploited by an attacker to launch phishing attacks and/or steal sensitive data.
+
+## Countermeasures
+
+ This vulnerability can be prevented by ensuring that users cannot arbitrarily control where your page redirects them to.
+
+## Additional information
+
+**[CWE-601](https://cwe.mitre.org/data/definitions/601.html)**
+
+**[OWASP-A1](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection)**",
+  category: "a1-injection",
+  score: "3.0",
+  vulnerability_description: "Open Redirect",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_link: "https://cwe.mitre.org/data/definitions/601.html"
+}
+
+CONCLUSION attacker-to-http = FLOW IO (http OR $http) -> DATA (attacker-controlled AND NOT encrypted AND NOT hashed AND NOT escaped) -> IO ($url AND http)
+WHEN CONCLUSION attacker-to-http => EMIT {
+  title: "Directory Traversal: HTTP data as URL {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Data from HTTP methods is not escaped, hashed or encoded and used as an HTTP URL in this flow. This indicates a directory traversal or an arbitrary file write. Injection flaws occur when untrusted data is sent to an interpreter as part of a command or query. By injecting hostile data, an attacker may trick the interpreter into executing unintended commands or accessing data without authorization which can result in data loss, corruption, or disclosure to unauthorized parties, loss of accountability, denial of access or even a complete host takeover.
+
+
+## Countermeasures
+
+ This vulnerability can be prevented by ensuring that sensitive data is encrypted/hashed with strong up-to-date standard algorithms.
+
+## Additional information
+
+**[CWE-200](https://cwe.mitre.org/data/definitions/200.html)**
+
+**[OWASP-A3](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure)**",
+  category: "a5-broken-access-control",
+  score: "8.0",
+  vulnerability_description: "Directory Traversal",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A5-Broken_Access_Control",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A5-Broken_Access_Control",
+  cwe_link: "https://cwe.mitre.org/data/definitions/22.html"
+}

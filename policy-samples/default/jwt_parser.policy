@@ -1,0 +1,21 @@
+CONCLUSION jwt-token-to-parse = FLOW DATA (tokens) -> DATA (NOT encrypted AND NOT hashed) -> IO (parser)
+WHEN CONCLUSION jwt-token-to-parse => EMIT {
+  title: "Insecure JWT Algorithm: Unsafe parsing of JWT token {{via `$paramname`}} {{in `$methodname`}}",
+  description: "When `alg:none` is used, it becomes possible to skip signature check which may lead to authentication bypass.
+  
+## Countermeasures
+
+This vulnerability can be prevented by using `parseClaimsJws` method instead of `parse` method
+
+## Additional information
+
+**[CWE-347](https://cwe.mitre.org/data/definitions/347.html)**
+**[OWASP-A6](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A6-Security_Misconfiguration.html)**",
+  category: "a6-security-misconfiguration",
+  score: "5.0",
+  vulnerability_description: "Insecure JWT Algorithm",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A6-Security_Misconfiguration.html",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A6-Security_Misconfiguration.html",
+  cwe_link: "https://cwe.mitre.org/data/definitions/347.html"
+}
+

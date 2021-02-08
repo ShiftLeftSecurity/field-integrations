@@ -1,0 +1,97 @@
+################################################################################
+
+CONCLUSION attacker-controlled-to-cookie = FLOW DATA (attacker-controlled AND NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped) -> IO (cookie)
+WHEN CONCLUSION attacker-controlled-to-cookie  => EMIT {
+  title: "Unvalidated Input Used In Cookie {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Unvalidated input is used as data for an HTTP cookie. By sending carefully-crafted requests,
+an attacker could potentially access sensitive information or impersonate users.
+
+## Countermeasures
+
+To prevent this vulnerability, validate input before storing it inside the cookie.
+
+## Additional information
+
+**[CWE-565](https://cwe.mitre.org/data/definitions/565.html)**
+
+**[CWE-784](https://cwe.mitre.org/data/definitions/784.html)**
+
+**[OWASP-A1](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection)**",
+  category: "a1-injection",
+  score: "3.0",
+  vulnerability_description: "Unvalidated Input Used In Cookie",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_link: "https://cwe.mitre.org/data/definitions/565.html",
+  cwe_link: "https://cwe.mitre.org/data/definitions/784.html"
+}
+
+################################################################################
+
+CONCLUSION http-to-cookie = FLOW IO (($http OR http) AND NOT session) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped) -> IO (cookie)
+WHEN CONCLUSION http-to-cookie => EMIT {
+  title: "Unvalidated Input Used In Cookie {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Unvalidated input is used as data for an HTTP cookie. By sending carefully-crafted requests,
+an attacker could potentially access sensitive information or impersonate users.
+
+## Countermeasures
+
+To prevent this vulnerability, validate the input before storing it inside the cookie.
+
+## Additional information
+
+**[CWE-565](https://cwe.mitre.org/data/definitions/565.html)**
+
+**[CWE-784](https://cwe.mitre.org/data/definitions/784.html)**
+
+**[OWASP-A1](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection)**",
+  category: "a1-injection",
+  score: "3.0",
+  vulnerability_description: "Unvalidated Input Used In Cookie",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_link: "https://cwe.mitre.org/data/definitions/565.html",
+  cwe_link: "https://cwe.mitre.org/data/definitions/784.html"
+}
+
+################################################################################
+
+CONCLUSION insecure-cookie = FLOW DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped AND 0) -> IO (securecookie)
+WHEN CONCLUSION insecure-cookie => EMIT {
+  title: "Sensitive Data Leak: Cookies are used without `secure` attribute set via {{for `$paramname`}} {{in `$methodname`}}",
+  description: "Cookies are used without having the `secure` attribute set, thus an attacker may be able to access confidential data stored inside cookies.
+
+## Countermeasures
+
+This vulnerability can be prevented by validating data before storing it inside cookies or by making sure that cookies are only transmitted through secure channels (e.g., HTTPS).
+**[CWE-614](https://cwe.mitre.org/data/definitions/614.html)**",
+  category: "a6-misconfiguration",
+  score: "3.0",
+  vulnerability_description: "Insecure Cookie",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A6-Security_Misconfiguration",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A6-Security_Misconfiguration",
+  cwe_link: "https://cwe.mitre.org/data/definitions/1004.html"
+}
+
+CONCLUSION httponly-cookie = FLOW DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped AND 0) -> IO (httpOnly)
+WHEN CONCLUSION httponly-cookie => EMIT {
+  title: "Insecure Cookie: Cookies are used without `HTTPOnly` flag set {{for `$paramname`}} {{in `$methodname`}}",
+  description: "The `HttpOnly` flag is missing, thus client side scripts may be able to access data stored in cookies.
+
+
+## Countermeasures
+
+To prevent this vulnerability, set the `HttpOnly` attribute on the cookie.
+
+## Additional information
+
+**[CWE-1004](https://cwe.mitre.org/data/definitions/1004.html)**
+
+**[OWASP-A6](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A6-Security_Misconfiguration)**",
+  category: "a6-misconfiguration",
+  score: "3.0",
+  vulnerability_description: "Insecure Cookie",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A6-Security_Misconfiguration",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A6-Security_Misconfiguration",
+  cwe_link: "https://cwe.mitre.org/data/definitions/1004.html"
+}

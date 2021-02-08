@@ -8,6 +8,7 @@ This repo contains a number of scripts to help with integration and deployment o
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | terraform-shiftleft | Terraform modules for rolling out ShiftLeft NextGen to an organization's GitHub, GitLab, Bitbucket and Azure DevOps repositories |
 | shiftleft-utils | Some utils script such as findings export script |
+| policy-samples | Sample policies with some exercises for advanced users |
 
 ## License
 

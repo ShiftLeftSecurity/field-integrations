@@ -1,0 +1,50 @@
+####
+# Data to session
+####
+
+CONCLUSION session-injection-attacker-controlled = FLOW DATA (attacker-controlled AND NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped) -> IO ((http OR $http) AND session)
+WHEN CONCLUSION session-injection-attacker-controlled => EMIT {
+  title: "Session Injection: Attacker-controlled data to session attribute {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Attacker controlled data is used as session attribute without undergoing escaping or validation. Injection flaws, such as SQL, NoSQL, OS, and LDAP injection, occur when untrusted data is sent to an interpreter as part of a command or query. By injecting hostile data, an attacker may trick the interpreter into executing unintended commands or accessing data without authorization which can result in data loss, corruption, or disclosure to unauthorized parties, loss of accountability, denial of access or even a complete host takeover.
+
+
+## Countermeasures
+
+This vulnerability can be prevented by sanitizing and validating the attacker-controlled data before storing it as session attribute.
+
+## Additional information
+
+**[CWE-384](https://cwe.mitre.org/data/definitions/384.html)**
+
+**[OWASP-A2](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A2-Broken_Authentication)**",
+  category: "a2-broken-authentication",
+  score: "5.0",
+  vulnerability_description: "Session Injection",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A2-Broken_Authentication",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A2-Broken_Authentication",
+  cwe_link: "https://cwe.mitre.org/data/definitions/384.html"
+}
+
+CONCLUSION session-injection-http = FLOW IO (http OR $http) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped) -> IO ((http OR $http) AND session)
+WHEN CONCLUSION session-injection-http => EMIT {
+  title: "Session Injection: HTTP data to session attribute {{via `$paramname`}} {{in `$methodname`}}",
+  description: "HTTP data is used as session attribute without undergoing escaping or validation. Injection flaws occur when untrusted data is sent to an interpreter as part of a command or query. By injecting hostile data, an attacker may trick the interpreter into executing unintended commands or accessing data without authorization which can result in data loss, corruption, or disclosure to unauthorized parties, loss of accountability, denial of access or even a complete host takeover.
+
+
+## Countermeasures
+
+This vulnerability can be prevented by sanitizing and validating the HTTP data before storing it as session attribute.
+
+## Additional information
+
+**[CWE-384](https://cwe.mitre.org/data/definitions/384.html)**
+
+**[OWASP-A2](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A2-Broken_Authentication)**",
+  category: "a2-broken-authentication",
+  score: "5.0",
+  vulnerability_description: "Session Injection",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A2-Broken_Authentication",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A2-Broken_Authentication",
+  cwe_link: "https://cwe.mitre.org/data/definitions/384.html"
+}
+

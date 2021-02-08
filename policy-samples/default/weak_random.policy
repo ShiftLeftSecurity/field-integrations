@@ -1,0 +1,26 @@
+####
+# Weak random generators
+####
+
+CONCLUSION weak-random = FLOW IO (random AND (NOT $secureRandom)) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped) -> IO (((http OR $http) AND session) OR cookie)
+WHEN CONCLUSION weak-random => EMIT {
+  title: "Weak Random: Weakly protected session data {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Session data is not protected due to the use of a weak random generator potentially enabling an attacker to steal and decrypt your session data.
+
+
+## Countermeasures
+
+This vulnerability can be prevented by utilizing APIs from cryptographic libraries generating unpredictable random numbers.
+
+## Additional information
+
+**[CWE-338](https://cwe.mitre.org/data/definitions/338.html)**
+
+**[OWASP-A6](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection)**",
+  category: "a6-misconfiguration",
+  score: "5.0",
+  vulnerability_description: "Weak Random",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_link: "https://cwe.mitre.org/data/definitions/338.html"
+}

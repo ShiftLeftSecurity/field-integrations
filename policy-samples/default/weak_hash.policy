@@ -1,0 +1,49 @@
+####
+# Weak hash functions
+####
+
+CONCLUSION weak-hash = FLOW DATA (MD5 OR SHA1) -> IO (digest)
+WHEN CONCLUSION weak-hash => EMIT {
+  title: "Weak Hash: Usage of weak hashing function {{for `$paramname`}} {{in `$methodname`}}",
+  description: "Weak hashing algorithms, such as MD5, should not be used on passwords or sensitive information. An attacker can recover information, hashed with weak algorithm and thus increase the impact of a data breach.
+
+
+## Countermeasures
+
+This vulnerability can be prevented by using a strong up-to-date hashing algorithm.
+
+## Additional information
+
+**[CWE-916](https://cwe.mitre.org/data/definitions/916.html)**
+
+**[OWASP-A6](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection)**",
+  category: "a6-misconfiguration",
+  score: "3.0",
+  vulnerability_description: "Weak Hash",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_link: "https://cwe.mitre.org/data/definitions/916.html"
+}
+
+CONCLUSION weak-hash-sink = FLOW IO (http OR file) -> IO (md5 OR sha1)
+WHEN CONCLUSION weak-hash-sink => EMIT {
+  title: "Weak Hash: Usage of weak hashing function {{for `$paramname`}} {{in `$methodname`}}",
+  description: "Weak hashing algorithms, such as MD5, should not be used on passwords or sensitive information. An attacker can recover information, hashed with weak algorithm and thus increase the impact of a data breach.
+
+
+## Countermeasures
+
+This vulnerability can be prevented by using a strong up-to-date hashing algorithm.
+
+## Additional information
+
+**[CWE-916](https://cwe.mitre.org/data/definitions/916.html)**
+
+**[OWASP-A6](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection)**",
+  category: "a6-misconfiguration",
+  score: "3.0",
+  vulnerability_description: "Weak Hash",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_link: "https://cwe.mitre.org/data/definitions/916.html"
+}
