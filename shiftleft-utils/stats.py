@@ -51,7 +51,7 @@ def collect_stats(report_file):
     print(f"Found {len(apps_list)} apps in this organization")
     with open(report_file, "w", newline="") as csvfile:
         reportwriter = csv.writer(
-            csvfile, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL
+            csvfile, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL
         )
         reportwriter.writerow(
             [
