@@ -20,7 +20,7 @@ headers = {
 
 def get_findings_url(app_name):
     """Return the findings url for the given app name"""
-    return f"https://www.shiftleft.io/api/v4/orgs/{config.SHIFTLEFT_ORG_ID}/apps/{app_name}/findings?per_page=249&type=secret&type=vuln&type=extscan&only_counts=true"
+    return f"https://www.shiftleft.io/api/v4/orgs/{config.SHIFTLEFT_ORG_ID}/apps/{app_name}/findings?per_page=249&type=secret&type=vuln&type=extscan"
 
 
 def get_all_apps():
@@ -51,7 +51,7 @@ def collect_stats(report_file):
     print(f"Found {len(apps_list)} apps in this organization")
     with open(report_file, "w", newline="") as csvfile:
         reportwriter = csv.writer(
-            csvfile, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL
+            csvfile, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL
         )
         reportwriter.writerow(
             [
@@ -60,10 +60,13 @@ def collect_stats(report_file):
                 "Version",
                 "Language",
                 "Expressions Count",
-                "Critical",
-                "Moderate",
-                "Info",
-                "Secrets",
+                "Critical Count",
+                "Moderate Count",
+                "Info Count",
+                "Secrets Count",
+                "Source Methods",
+                "Sink Methods",
+                "File Locations",
             ]
         )
         for app in apps_list:
@@ -76,6 +79,9 @@ def collect_stats(report_file):
                     response = raw_response.get("response")
                     total_count = response.get("total_count")
                     scan = response.get("scan")
+                    # Scan will be None if there are any issues/errors
+                    if not scan:
+                        continue
                     tags = app.get("tags")
                     app_group = ""
                     if tags:
@@ -87,6 +93,8 @@ def collect_stats(report_file):
                     spid = scan.get("internal_id")
                     projectSpId = f'sl/{config.SHIFTLEFT_ORG_ID}/{scan.get("app")}'
                     counts = response.get("counts", [])
+                    findings = response.get("findings", [])
+
                     vuln_counts = [
                         c
                         for c in counts
@@ -97,6 +105,18 @@ def collect_stats(report_file):
                     moderate_count = 0
                     info_count = 0
                     secrets_count = 0
+                    sources_list = set()
+                    sinks_list = set()
+                    files_loc_list = set()
+                    # Find the source and sink
+                    for afinding in findings:
+                        details = afinding.get("details", {})
+                        if details.get("source_method"):
+                            sources_list.add(details.get("source_method"))
+                        if details.get("sink_method"):
+                            sinks_list.add(details.get("sink_method"))
+                        if details.get("file_locations"):
+                            files_loc_list.update(details.get("file_locations"))
                     # Find the counts
                     for vc in vuln_counts:
                         if vc["finding_type"] == "vuln" and vc["key"] == "severity":
@@ -119,6 +139,9 @@ def collect_stats(report_file):
                             moderate_count,
                             info_count,
                             secrets_count,
+                            "\\n".join(sources_list),
+                            "\\n".join(sinks_list),
+                            "\\n".join(files_loc_list),
                         ]
                     )
             else:
