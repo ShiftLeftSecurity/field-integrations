@@ -3,6 +3,7 @@
 import argparse
 import csv
 import json
+import jwt
 import os
 import sys
 import time
@@ -19,15 +20,14 @@ headers = {
     "Authorization": f"Bearer {config.SHIFTLEFT_ACCESS_TOKEN}",
 }
 
+def get_findings_url(org_id, app_name):
+    return f"https://www.shiftleft.io/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=secret&type=vuln&type=extscan&include_dataflows=true"
 
-def get_findings_url(app_name):
-    return f"https://www.shiftleft.io/api/v4/orgs/{config.SHIFTLEFT_ORG_ID}/apps/{app_name}/findings?per_page=249&type=secret&type=vuln&type=extscan&include_dataflows=true"
 
-
-def get_all_apps():
+def get_all_apps(org_id):
     """Return all the apps for the given organization"""
     list_apps_url = (
-        f"https://www.shiftleft.io/api/v4/orgs/{config.SHIFTLEFT_ORG_ID}/apps"
+        f"https://www.shiftleft.io/api/v4/orgs/{org_id}/apps"
     )
     r = requests.get(list_apps_url, headers=headers)
     if r.ok:
@@ -37,16 +37,16 @@ def get_all_apps():
             return apps_list
     else:
         print(
-            f"Unable to retrieve apps list for the organization {config.SHIFTLEFT_ORG_ID}"
+            f"Unable to retrieve apps list for the organization {org_id}"
         )
         print(r.status_code, r.json())
     return None
 
 
-def get_all_findings(app_name, report_file, format):
+def get_all_findings(org_id, app_name, report_file, format):
     """Method to retrieve all findings"""
     findings_list = []
-    findings_url = get_findings_url(app_name)
+    findings_url = get_findings_url(org_id, app_name)
     page_available = True
     while page_available:
         # print (findings_url)
@@ -62,7 +62,7 @@ def get_all_findings(app_name, report_file, format):
                     continue
                 scan_id = scan.get("id")
                 spid = scan.get("internal_id")
-                projectSpId = f'sl/{config.SHIFTLEFT_ORG_ID}/{scan.get("app")}'
+                projectSpId = f'sl/{org_id}/{scan.get("app")}'
                 findings = response.get("findings")
                 if not findings:
                     page_available = False
@@ -79,8 +79,8 @@ def get_all_findings(app_name, report_file, format):
     return findings_list
 
 
-def get_dataflow(app_name, finding_id):
-    finding_url = f"https://www.shiftleft.io/api/v4/orgs/{config.SHIFTLEFT_ORG_ID}/apps/{app_name}/findings/{finding_id}?include_dataflows=true"
+def get_dataflow(org_id, app_name, finding_id):
+    finding_url = f"https://www.shiftleft.io/api/v4/orgs/{org_id}/apps/{app_name}/findings/{finding_id}?include_dataflows=true"
     r = requests.get(finding_url, headers=headers)
     if r.ok:
         raw_response = r.json()
@@ -175,9 +175,9 @@ def export_csv(app_list, findings_dict, report_file):
                     )
 
 
-def export_report(app_list, report_file, format):
+def export_report(org_id, app_list, report_file, format):
     if not app_list:
-        app_list = get_all_apps()
+        app_list = get_all_apps(org_id)
     findings_dict = {}
     with Progress(
         transient=True,
@@ -192,7 +192,7 @@ def export_report(app_list, report_file, format):
             app_id = app.get("id")
             app_name = app.get("name")
             progress.update(task, description=f"Processing [bold]{app_name}[/bold]")
-            findings = get_all_findings(app_id, report_file, format)
+            findings = get_all_findings(org_id, app_id, report_file, format)
             file_category_set = set()
             if format == "xml" or report_file.endswith(".xml"):
                 app_report_file = report_file.replace(".xml", "-" + app_id + ".xml")
@@ -319,12 +319,30 @@ def build_args():
     )
     return parser.parse_args()
 
+def extract_org_id(token):
+    """
+    Parses SHIFTLEFT_ACCESS_TOKEN to retrieve organization ID
+    """
+    try:
+        decoded = jwt.decode(token, options={"verify_signature": False})
+        orgID = decoded.get('orgID')
+        if orgID:
+            return orgID
+    except:
+        print("Unable to parse the environment variable SHIFTLEFT_ACCESS_TOKEN")
+    return None
+
 
 if __name__ == "__main__":
-    if not config.SHIFTLEFT_ORG_ID or not config.SHIFTLEFT_ACCESS_TOKEN:
+    if not config.SHIFTLEFT_ACCESS_TOKEN:
         print(
-            "Set the environment variables SHIFTLEFT_ORG_ID and SHIFTLEFT_ACCESS_TOKEN before running this script"
+            "Set the environment variable SHIFTLEFT_ACCESS_TOKEN before running this script"
         )
+        sys.exit(1)
+
+    org_id = extract_org_id(config.SHIFTLEFT_ACCESS_TOKEN)
+    if not org_id:
+        print("Ensure the environment varibale SHIFTLEFT_ACCESS_TOKEN is copied exactly as-is from the website")
         sys.exit(1)
 
     print(config.ngsast_logo)
@@ -348,6 +366,6 @@ if __name__ == "__main__":
             sys.exit(1)
         if not report_file:
             report_file = "Benchmark_1.2-ShiftLeft.sl"
-    export_report(app_list, report_file, format)
+    export_report(org_id, app_list, report_file, format)
     end_time = time.monotonic_ns()
     total_time_sec = round((end_time - start_time) / 1000000000, 2)
