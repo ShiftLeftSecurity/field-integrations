@@ -1,3 +1,4 @@
 requests
 json2xml
 rich
+pyjwt
