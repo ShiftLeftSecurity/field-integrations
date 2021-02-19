@@ -330,7 +330,7 @@ def extract_org_id(token):
             return orgID
     except:
         print("Unable to parse the environment variable SHIFTLEFT_ACCESS_TOKEN")
-    return None
+    return os.getenv("SHIFTLEFT_ORG_ID")
 
 
 if __name__ == "__main__":
