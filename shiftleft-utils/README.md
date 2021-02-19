@@ -13,9 +13,8 @@ cd shiftleft-utils
 pip install -r requirements.txt
 ```
 
-Set the ShiftLeft Org Id, access token and api token as following environment variables.
+Set the access token and api token as following environment variable.
 
-- SHIFTLEFT_ORG_ID
 - SHIFTLEFT_ACCESS_TOKEN
 
 ## Description of scripts
