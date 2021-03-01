@@ -324,7 +324,7 @@ def extract_org_id(token):
     Parses SHIFTLEFT_ACCESS_TOKEN to retrieve organization ID
     """
     try:
-        decoded = jwt.decode(token, options={"verify_signature": False})
+        decoded = jwt.decode(token, options={"verify_signature": False, "verify_aud": False})
         orgID = decoded.get('orgID')
         if orgID:
             return orgID
