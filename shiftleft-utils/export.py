@@ -225,6 +225,9 @@ def export_report(org_id, app_list, report_file, format):
                     app_sarif_file,
                     None,
                 )
+                progress.console.print(
+                    f"SARIF file successfully exported to {app_sarif_file}"
+                )
                 os.remove(app_json_file)
             elif format == "sl":
                 with open(report_file, mode="w") as rp:
