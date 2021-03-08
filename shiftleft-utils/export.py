@@ -3,16 +3,17 @@
 import argparse
 import csv
 import json
-import jwt
 import os
 import sys
 import time
 
+import joern2sarif.lib.convert as convertLib
+import jwt
 import requests
 from json2xml import json2xml
+from rich.progress import Progress
 
 import config
-from rich.progress import Progress
 
 # Authentication headers for all API
 headers = {
@@ -20,15 +21,14 @@ headers = {
     "Authorization": f"Bearer {config.SHIFTLEFT_ACCESS_TOKEN}",
 }
 
+
 def get_findings_url(org_id, app_name):
     return f"https://www.shiftleft.io/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=secret&type=vuln&type=extscan&include_dataflows=true"
 
 
 def get_all_apps(org_id):
     """Return all the apps for the given organization"""
-    list_apps_url = (
-        f"https://www.shiftleft.io/api/v4/orgs/{org_id}/apps"
-    )
+    list_apps_url = f"https://www.shiftleft.io/api/v4/orgs/{org_id}/apps"
     r = requests.get(list_apps_url, headers=headers)
     if r.ok:
         raw_response = r.json()
@@ -36,9 +36,7 @@ def get_all_apps(org_id):
             apps_list = raw_response.get("response")
             return apps_list
     else:
-        print(
-            f"Unable to retrieve apps list for the organization {org_id}"
-        )
+        print(f"Unable to retrieve apps list for the organization {org_id}")
         print(r.status_code, r.json())
     return None
 
@@ -179,6 +177,11 @@ def export_report(org_id, app_list, report_file, format):
     if not app_list:
         app_list = get_all_apps(org_id)
     findings_dict = {}
+    work_dir = os.getcwd()
+    for e in ["GITHUB_WORKSPACE", "WORKSPACE"]:
+        if os.getenv(e):
+            work_dir = os.getenv(e)
+            break
     with Progress(
         transient=True,
         redirect_stderr=False,
@@ -203,6 +206,29 @@ def export_report(org_id, app_list, report_file, format):
                         progress.console.print(
                             f"Findings report successfully exported to {app_report_file}"
                         )
+            elif format == "sarif":
+                app_sarif_file = report_file.replace(".sarif", "-" + app_id + ".sarif")
+                app_json_file = app_sarif_file.replace(".sarif", ".json")
+                with open(app_json_file, mode="w") as rp:
+                    json.dump(
+                        {app_name: findings},
+                        rp,
+                        ensure_ascii=True,
+                        indent=None,
+                    )
+                    rp.flush()
+                convertLib.convert_file(
+                    "ng-sast",
+                    os.getenv("TOOL_ARGS", ""),
+                    work_dir,
+                    app_json_file,
+                    app_sarif_file,
+                    None,
+                )
+                progress.console.print(
+                    f"SARIF file successfully exported to {app_sarif_file}"
+                )
+                os.remove(app_json_file)
             elif format == "sl":
                 with open(report_file, mode="w") as rp:
                     for af in findings:
@@ -283,7 +309,7 @@ def export_report(org_id, app_list, report_file, format):
             progress.advance(task)
     if format == "json":
         with open(report_file, mode="w") as rp:
-            json.dump(findings_dict, rp, indent=config.json_indent)
+            json.dump(findings_dict, rp, ensure_ascii=True, indent=config.json_indent)
             print(f"JSON report successfully exported to {report_file}")
     if format == "csv":
         export_csv(app_list, findings_dict, report_file)
@@ -315,9 +341,10 @@ def build_args():
         dest="format",
         help="Report format",
         default="json",
-        choices=["json", "xml", "csv", "sl"],
+        choices=["json", "xml", "csv", "sl", "sarif"],
     )
     return parser.parse_args()
+
 
 def extract_org_id(token):
     """
@@ -342,7 +369,9 @@ if __name__ == "__main__":
 
     org_id = extract_org_id(config.SHIFTLEFT_ACCESS_TOKEN)
     if not org_id:
-        print("Ensure the environment varibale SHIFTLEFT_ACCESS_TOKEN is copied exactly as-is from the website")
+        print(
+            "Ensure the environment varibale SHIFTLEFT_ACCESS_TOKEN is copied exactly as-is from the website"
+        )
         sys.exit(1)
 
     print(config.ngsast_logo)
@@ -356,6 +385,8 @@ if __name__ == "__main__":
     # Fix file extensions for xml format
     if format == "xml":
         report_file = report_file.replace(".json", ".xml")
+    if format == "sarif":
+        report_file = report_file.replace(".json", ".sarif")
     if format == "csv":
         report_file = report_file.replace(".json", ".csv")
     elif format == "sl":
