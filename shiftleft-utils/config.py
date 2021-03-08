@@ -31,5 +31,5 @@ sl_owasp_category = {
     "Insecure Cookie": "securecookie",
     "Directory Traversal": "pathtraver",
     "Broken Authentication": "crypto",
-    "Weak symmetric encryption algorithm": "crypto"
+    "Weak symmetric encryption algorithm": "crypto",
 }

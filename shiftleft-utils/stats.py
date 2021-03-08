@@ -11,7 +11,6 @@ import requests
 
 import config
 
-
 headers = {
     "Content-Type": "application/json",
     "Authorization": f"Bearer {config.SHIFTLEFT_ACCESS_TOKEN}",
