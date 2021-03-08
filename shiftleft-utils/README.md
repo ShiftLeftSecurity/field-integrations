@@ -19,10 +19,11 @@ export SHIFTLEFT_ACCESS_TOKEN=long token from shiftleft
 
 ## Description of scripts
 
-| Script    | Purpose                                                      |
-| --------- | ------------------------------------------------------------ |
-| export.py | Export NG SAST findings report to xml, json and SARIF format |
-| stats.py  | Display stats for all apps based on last scan                |
+| Script       | Purpose                                                      |
+| ------------ | ------------------------------------------------------------ |
+| export.py    | Export NG SAST findings report to xml, json and SARIF format |
+| stats.py     | Display stats for all apps based on last scan                |
+| policygen.py | Generate policy file to suppress findings                    |
 
 ### Sample usages
 
