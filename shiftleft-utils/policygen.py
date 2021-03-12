@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import sys
+from collections import defaultdict
 
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -27,6 +28,7 @@ IMPORT io.shiftleft/defaultdict
 # Policy file for ShiftLeft NG SAST
 # All findings containing the tag CHECK would get suppressed.
 ###############################################################################
+
 """
 
 CHECK_METHOD_TEMPLATE = """TAG "CHECK" METHOD -f "%(method_name)s"
@@ -37,15 +39,20 @@ def start_analysis(org_id, app_name, version):
     """Method to analyze all the findings to identify sources, sinks, methods and file locations"""
     findings = get_all_findings(org_id, app_name, version)
     sources_list = set()
+    sources_dict = defaultdict(set)
     methods_list = set()
-    sinks_list = set()
+    sinks_dict = defaultdict(set)
     files_loc_list = set()
+    sinks_list = set()
     # Find the source and sink
     for afinding in findings:
+        category = afinding.get("category")
         details = afinding.get("details", {})
         if details.get("source_method"):
+            sources_dict[category].add(details.get("source_method"))
             sources_list.add(details.get("source_method"))
         if details.get("sink_method"):
+            sinks_dict[category].add(details.get("sink_method"))
             sinks_list.add(details.get("sink_method"))
         if details.get("file_locations"):
             files_loc_list.update(details.get("file_locations"))
@@ -60,14 +67,14 @@ def start_analysis(org_id, app_name, version):
             method_name = location.get("method_name")
             if method_name not in sinks_list and method_name not in sources_list:
                 methods_list.add(method_name)
-    return sources_list, sinks_list, methods_list, files_loc_list
+    return sources_dict, sinks_dict, methods_list, files_loc_list
 
 
 def create_policy(
     org_id,
     app_name,
-    sources_list,
-    sinks_list,
+    sources_dict,
+    sinks_dict,
     methods_list,
     files_loc_list,
     policy_file,
@@ -80,8 +87,13 @@ def create_policy(
         fp.write("#" * 79 + "\n")
         fp.write("# Sink methods #\n")
         fp.write("#" * 79 + "\n")
-        for sink in sinks_list:
-            fp.write(CHECK_METHOD_TEMPLATE % dict(method_name=sink))
+        for category, sinks_list in sinks_dict.items():
+            fp.write("\n")
+            fp.write("#" * 79 + "\n")
+            fp.write(f"# Category {category} #\n")
+            fp.write("#" * 79 + "\n")
+            for sink in sinks_list:
+                fp.write(CHECK_METHOD_TEMPLATE % dict(method_name=sink))
         fp.write("#" * 79 + "\n\n")
         fp.write("#" * 79 + "\n")
         fp.write("# All methods (Uncomment as needed) #\n")
@@ -108,7 +120,7 @@ sl policy assignment set --project {app_name} {org_id}/apprules:latest
     console.print(f"Then perform sl analyze as normal\n")
     console.print(
         Panel(
-            f"Using this file as is would suppress all findings for {app_name}!",
+            f"Using this file as-is would suppress all findings for {app_name}!",
             title="NOTE",
             expand=False,
         )
@@ -160,14 +172,14 @@ if __name__ == "__main__":
 
     print(config.ngsast_logo)
     args = build_args()
-    sources_list, sinks_list, methods_list, files_loc_list = start_analysis(
+    sources_dict, sinks_dict, methods_list, files_loc_list = start_analysis(
         org_id, args.app_name, args.version
     )
     create_policy(
         org_id,
         args.app_name,
-        sources_list,
-        sinks_list,
+        sources_dict,
+        sinks_dict,
         methods_list,
         files_loc_list,
         args.policy_file,
