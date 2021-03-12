@@ -40,10 +40,12 @@ def start_analysis(org_id, app_name, version):
     findings = get_all_findings(org_id, app_name, version)
     sources_list = set()
     sources_dict = defaultdict(set)
+    vars_dict = defaultdict(set)
     methods_list = set()
     sinks_dict = defaultdict(set)
     files_loc_list = set()
     sinks_list = set()
+    category_route_dict = defaultdict(dict)
     # Find the source and sink
     for afinding in findings:
         category = afinding.get("category")
@@ -60,14 +62,40 @@ def start_analysis(org_id, app_name, version):
         if details.get("dataflow"):
             dfobj = details.get("dataflow")
         dataflows = dfobj.get("list", [])
-        for df in dataflows:
+        for i, df in enumerate(dataflows):
+            if i == 0:
+                variableInfo = df.get("variable_info", {}).get("Variable", {})
+                method_tags = df.get("method_tags", [])
+                mtags = [
+                    mt["value"]
+                    for mt in method_tags
+                    if mt["key"] == "EXPOSED_METHOD_ROUTE" or mt["key"] == 30
+                ]
+                route_value = mtags[0] if mtags else None
+                if variableInfo:
+                    parameter = variableInfo.get("Parameter")
+                    local = variableInfo.get("Local")
+                    if parameter and parameter.get("symbol"):
+                        symbol = parameter.get("symbol")
+                        vars_dict[category].add(symbol)
+                        if route_value:
+                            category_route_dict[category][symbol] = route_value
+                    if local and local.get("symbol"):
+                        vars_dict[category].add(local.get("symbol"))
             location = df.get("location", {})
             if location.get("file_name") == "N/A" or not location.get("line_number"):
                 continue
             method_name = location.get("method_name")
             if method_name not in sinks_list and method_name not in sources_list:
                 methods_list.add(method_name)
-    return sources_dict, sinks_dict, methods_list, files_loc_list
+    return (
+        sources_dict,
+        sinks_dict,
+        methods_list,
+        files_loc_list,
+        vars_dict,
+        category_route_dict,
+    )
 
 
 def create_policy(
@@ -120,7 +148,7 @@ sl policy assignment set --project {app_name} {org_id}/apprules:latest
     console.print(f"Then perform sl analyze as normal\n")
     console.print(
         Panel(
-            f"Using this file as-is would suppress all findings for {app_name}!",
+            f"Using this policy file as-is would suppress all findings for {app_name}!",
             title="NOTE",
             expand=False,
         )
@@ -153,7 +181,25 @@ def build_args():
         help="Policy filename to generate",
         default="ngsast.policy",
     )
+    parser.add_argument(
+        "--vars-file",
+        dest="vars_file",
+        help="Variables filename",
+        default="category_vars.txt",
+    )
+    parser.add_argument(
+        "--cat-routes-file",
+        dest="routes_file",
+        help="Category routes filename",
+        default="category_routes.txt",
+    )
     return parser.parse_args()
+
+
+def set_default(obj):
+    if isinstance(obj, set):
+        return list(obj)
+    return obj
 
 
 if __name__ == "__main__":
@@ -172,9 +218,24 @@ if __name__ == "__main__":
 
     print(config.ngsast_logo)
     args = build_args()
-    sources_dict, sinks_dict, methods_list, files_loc_list = start_analysis(
-        org_id, args.app_name, args.version
-    )
+    (
+        sources_dict,
+        sinks_dict,
+        methods_list,
+        files_loc_list,
+        vars_dict,
+        category_route_dict,
+    ) = start_analysis(org_id, args.app_name, args.version)
+    if vars_dict:
+        with open(args.vars_file, mode="w") as vfp:
+            json.dump(vars_dict, vfp, indent=2, default=set_default)
+            console.print(f"Stored category variables in [bold]{args.vars_file}[/bold]")
+    if category_route_dict:
+        with open(args.routes_file, mode="w") as rfp:
+            json.dump(category_route_dict, rfp, indent=2, default=set_default)
+            console.print(
+                f"Stored category http routes in [bold]{args.routes_file}[/bold]"
+            )
     create_policy(
         org_id,
         args.app_name,
