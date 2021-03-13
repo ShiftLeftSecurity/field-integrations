@@ -140,3 +140,7 @@ AppDir/
 appimage-builder-cache/
 *.AppImage
 *.AppImage.zsync
+
+category_routes.txt
+category_vars.txt
+ngsast.policy
