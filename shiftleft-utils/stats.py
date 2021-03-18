@@ -8,8 +8,10 @@ import sys
 import time
 
 import requests
+from rich.progress import Progress
 
 import config
+from common import extract_org_id, get_all_apps, get_findings_url
 
 headers = {
     "Content-Type": "application/json",
@@ -17,33 +19,9 @@ headers = {
 }
 
 
-def get_findings_url(app_name):
-    """Return the findings url for the given app name"""
-    return f"https://www.shiftleft.io/api/v4/orgs/{config.SHIFTLEFT_ORG_ID}/apps/{app_name}/findings?per_page=249&type=secret&type=vuln&type=extscan"
-
-
-def get_all_apps():
-    """Return all the apps for the given organization"""
-    list_apps_url = (
-        f"https://www.shiftleft.io/api/v4/orgs/{config.SHIFTLEFT_ORG_ID}/apps"
-    )
-    r = requests.get(list_apps_url, headers=headers)
-    if r.ok:
-        raw_response = r.json()
-        if raw_response and raw_response.get("response"):
-            apps_list = raw_response.get("response")
-            return apps_list
-    else:
-        print(
-            f"Unable to retrieve apps list for the organization {config.SHIFTLEFT_ORG_ID}"
-        )
-        print(r.status_code, r.json())
-    return None
-
-
-def collect_stats(report_file):
+def collect_stats(org_id, report_file):
     """Method to collect stats for all apps to a csv"""
-    apps_list = get_all_apps()
+    apps_list = get_all_apps(org_id)
     if not apps_list:
         print("No apps were found in this organization")
         return
@@ -68,84 +46,101 @@ def collect_stats(report_file):
                 "File Locations",
             ]
         )
-        for app in apps_list:
-            findings_url = get_findings_url(app.get("id"))
-            print(f"""Collect stats for {app.get("id")}""")
-            r = requests.get(findings_url, headers=headers)
-            if r.ok:
-                raw_response = r.json()
-                if raw_response and raw_response.get("response"):
-                    response = raw_response.get("response")
-                    total_count = response.get("total_count")
-                    scan = response.get("scan")
-                    # Scan will be None if there are any issues/errors
-                    if not scan:
-                        continue
-                    tags = app.get("tags")
-                    app_group = ""
-                    if tags:
-                        for tag in tags:
-                            if tag.get("key") == "group":
-                                app_group = tag.get("value")
-                                break
-                    # Other unused properties such as findings or counts
-                    spid = scan.get("internal_id")
-                    projectSpId = f'sl/{config.SHIFTLEFT_ORG_ID}/{scan.get("app")}'
-                    counts = response.get("counts", [])
-                    findings = response.get("findings", [])
+        with Progress(
+            transient=True,
+            redirect_stderr=False,
+            redirect_stdout=False,
+            refresh_per_second=1,
+        ) as progress:
+            task = progress.add_task(
+                "[green] Collect stats", total=len(apps_list), start=True
+            )
+            for app in apps_list:
+                app_id = app.get("id")
+                app_name = app.get("name")
+                progress.update(task, description=f"Processing [bold]{app_name}[/bold]")
+                findings_url = get_findings_url(org_id, app_id, None)
+                r = requests.get(findings_url, headers=headers)
+                if r.ok:
+                    raw_response = r.json()
+                    if raw_response and raw_response.get("response"):
+                        response = raw_response.get("response")
+                        total_count = response.get("total_count")
+                        scan = response.get("scan")
+                        # Scan will be None if there are any issues/errors
+                        if not scan:
+                            continue
+                        tags = app.get("tags")
+                        app_group = ""
+                        if tags:
+                            for tag in tags:
+                                if tag.get("key") == "group":
+                                    app_group = tag.get("value")
+                                    break
+                        # Other unused properties such as findings or counts
+                        spid = scan.get("internal_id")
+                        projectSpId = f'sl/{org_id}/{scan.get("app")}'
+                        counts = response.get("counts", [])
+                        findings = response.get("findings", [])
 
-                    vuln_counts = [
-                        c
-                        for c in counts
-                        if c["finding_type"] in ["vuln", "secret"]
-                        and c["key"] in ["severity", "language"]
-                    ]
-                    critical_count = 0
-                    moderate_count = 0
-                    info_count = 0
-                    secrets_count = 0
-                    sources_list = set()
-                    sinks_list = set()
-                    files_loc_list = set()
-                    # Find the source and sink
-                    for afinding in findings:
-                        details = afinding.get("details", {})
-                        if details.get("source_method"):
-                            sources_list.add(details.get("source_method"))
-                        if details.get("sink_method"):
-                            sinks_list.add(details.get("sink_method"))
-                        if details.get("file_locations"):
-                            files_loc_list.update(details.get("file_locations"))
-                    # Find the counts
-                    for vc in vuln_counts:
-                        if vc["finding_type"] == "vuln" and vc["key"] == "severity":
-                            if vc["value"] == "critical":
-                                critical_count = vc["count"]
-                            elif vc["value"] == "moderate":
-                                moderate_count = vc["count"]
-                            elif vc["value"] == "info":
-                                info_count = vc["count"]
-                        if vc["finding_type"] == "secret" and vc["key"] == "language":
-                            secrets_count = vc["count"]
-                    reportwriter.writerow(
-                        [
-                            scan.get("app"),
-                            app_group,
-                            scan.get("version"),
-                            scan.get("language"),
-                            scan.get("number_of_expressions"),
-                            critical_count,
-                            moderate_count,
-                            info_count,
-                            secrets_count,
-                            "\\n".join(sources_list),
-                            "\\n".join(sinks_list),
-                            "\\n".join(files_loc_list),
+                        vuln_counts = [
+                            c
+                            for c in counts
+                            if c["finding_type"] in ["vuln", "secret"]
+                            and c["key"] in ["severity", "language"]
                         ]
+                        critical_count = 0
+                        moderate_count = 0
+                        info_count = 0
+                        secrets_count = 0
+                        sources_list = set()
+                        sinks_list = set()
+                        files_loc_list = set()
+                        # Find the source and sink
+                        for afinding in findings:
+                            details = afinding.get("details", {})
+                            if details.get("source_method"):
+                                sources_list.add(details.get("source_method"))
+                            if details.get("sink_method"):
+                                sinks_list.add(details.get("sink_method"))
+                            if details.get("file_locations"):
+                                files_loc_list.update(details.get("file_locations"))
+                        # Find the counts
+                        for vc in vuln_counts:
+                            if vc["finding_type"] == "vuln" and vc["key"] == "severity":
+                                if vc["value"] == "critical":
+                                    critical_count = vc["count"]
+                                elif vc["value"] == "moderate":
+                                    moderate_count = vc["count"]
+                                elif vc["value"] == "info":
+                                    info_count = vc["count"]
+                            if (
+                                vc["finding_type"] == "secret"
+                                and vc["key"] == "language"
+                            ):
+                                secrets_count = vc["count"]
+                        reportwriter.writerow(
+                            [
+                                scan.get("app"),
+                                app_group,
+                                scan.get("version"),
+                                scan.get("language"),
+                                scan.get("number_of_expressions"),
+                                critical_count,
+                                moderate_count,
+                                info_count,
+                                secrets_count,
+                                "\\n".join(sources_list),
+                                "\\n".join(sinks_list),
+                                "\\n".join(files_loc_list),
+                            ]
+                        )
+                else:
+                    progress.console.print(
+                        f"""Unable to retrieve findings for {app_name}"""
                     )
-            else:
-                print(f"""Unable to retrieve findings for {app.get("name")}""")
-                print(r.status_code, r.json())
+                    progress.console.print(r.status_code, r.json())
+                progress.advance(task)
     print(f"Stats written to {report_file}")
 
 
@@ -165,15 +160,22 @@ def build_args():
 
 
 if __name__ == "__main__":
-    if not config.SHIFTLEFT_ORG_ID or not config.SHIFTLEFT_ACCESS_TOKEN:
+    if not config.SHIFTLEFT_ACCESS_TOKEN:
         print(
-            "Set the environment variables SHIFTLEFT_ORG_ID and SHIFTLEFT_ACCESS_TOKEN before running this script"
+            "Set the environment variable SHIFTLEFT_ACCESS_TOKEN before running this script"
+        )
+        sys.exit(1)
+
+    org_id = extract_org_id(config.SHIFTLEFT_ACCESS_TOKEN)
+    if not org_id:
+        print(
+            "Ensure the environment varibale SHIFTLEFT_ACCESS_TOKEN is copied exactly as-is from the website"
         )
         sys.exit(1)
     print(config.ngsast_logo)
     args = build_args()
     start_time = time.monotonic_ns()
     report_file = args.report_file
-    collect_stats(report_file)
+    collect_stats(org_id, report_file)
     end_time = time.monotonic_ns()
     total_time_sec = round((end_time - start_time) / 1000000000, 2)
