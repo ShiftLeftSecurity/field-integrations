@@ -5,6 +5,7 @@ import jwt
 import requests
 from rich.console import Console
 from rich.logging import RichHandler
+from rich.progress import Progress
 from rich.theme import Theme
 
 import config
@@ -59,37 +60,51 @@ def get_all_apps(org_id):
 
 def get_all_findings(org_id, app_name, version):
     """Method to retrieve all findings"""
-    findings_list = []
-    findings_url = get_findings_url(org_id, app_name, version)
-    page_available = True
-    while page_available:
-        # print (findings_url)
-        r = requests.get(findings_url, headers=headers)
-        if r.ok:
-            raw_response = r.json()
-            if raw_response and raw_response.get("response"):
-                response = raw_response.get("response")
-                total_count = response.get("total_count")
-                scan = response.get("scan")
-                if not scan:
-                    page_available = False
-                    continue
-                scan_id = scan.get("id")
-                spid = scan.get("internal_id")
-                projectSpId = f'sl/{org_id}/{scan.get("app")}'
-                findings = response.get("findings")
-                if not findings:
-                    page_available = False
-                    continue
-                counts = response.get("counts")
-                findings_list += findings
-                if raw_response.get("next_page"):
-                    findings_url = raw_response.get("next_page")
-                else:
-                    page_available = False
-        else:
-            print(f"Unable to retrieve findings for {app_name}")
-            print(r.status_code, r.json())
+    with Progress(
+        transient=True,
+        redirect_stderr=False,
+        redirect_stdout=False,
+        refresh_per_second=1,
+    ) as progress:
+        task = progress.add_task(
+            f"[green] Collecting findings for {app_name}", start=False
+        )
+        findings_list = []
+        findings_url = get_findings_url(org_id, app_name, version)
+        page_available = True
+        while page_available:
+            # print (findings_url)
+            r = requests.get(findings_url, headers=headers)
+            if r.ok:
+                raw_response = r.json()
+                if raw_response and raw_response.get("response"):
+                    response = raw_response.get("response")
+                    total_count = response.get("total_count")
+                    scan = response.get("scan")
+                    if not scan:
+                        page_available = False
+                        continue
+                    scan_id = scan.get("id")
+                    spid = scan.get("internal_id")
+                    projectSpId = f'sl/{org_id}/{scan.get("app")}'
+                    findings = response.get("findings")
+                    if not findings:
+                        page_available = False
+                        continue
+                    counts = response.get("counts")
+                    findings_list += findings
+                    progress.start_task(task)
+                    progress.update(
+                        task, total=total_count, completed=len(findings_list)
+                    )
+                    if raw_response.get("next_page"):
+                        findings_url = raw_response.get("next_page")
+                    else:
+                        page_available = False
+            else:
+                print(f"Unable to retrieve findings for {app_name}")
+                print(r.status_code, r.json())
+        progress.stop()
     return findings_list
 
 

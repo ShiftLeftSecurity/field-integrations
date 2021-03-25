@@ -8,6 +8,7 @@ from collections import defaultdict
 
 from rich.markdown import Markdown
 from rich.panel import Panel
+from rich.progress import Progress
 
 import config
 from common import (
@@ -20,13 +21,13 @@ from common import (
     get_findings_url,
 )
 
-POLICY_TEMPLATE = """
-IMPORT io.shiftleft/default
+POLICY_TEMPLATE = """IMPORT io.shiftleft/default
 IMPORT io.shiftleft/defaultdict
 
 ###############################################################################
 # Policy file for ShiftLeft NG SAST
 # All findings containing the tag CHECK would get suppressed.
+# Refer to https://docs.shiftleft.io/ngsast/policies/custom-policies
 ###############################################################################
 
 """
@@ -46,48 +47,60 @@ def start_analysis(org_id, app_name, version):
     files_loc_list = set()
     sinks_list = set()
     category_route_dict = defaultdict(dict)
-    # Find the source and sink
-    for afinding in findings:
-        category = afinding.get("category")
-        details = afinding.get("details", {})
-        if details.get("source_method"):
-            sources_dict[category].add(details.get("source_method"))
-            sources_list.add(details.get("source_method"))
-        if details.get("sink_method"):
-            sinks_dict[category].add(details.get("sink_method"))
-            sinks_list.add(details.get("sink_method"))
-        if details.get("file_locations"):
-            files_loc_list.update(details.get("file_locations"))
-        dfobj = {}
-        if details.get("dataflow"):
-            dfobj = details.get("dataflow")
-        dataflows = dfobj.get("list", [])
-        for i, df in enumerate(dataflows):
-            if i == 0:
-                variableInfo = df.get("variable_info", {}).get("Variable", {})
-                method_tags = df.get("method_tags", [])
-                mtags = [
-                    mt["value"]
-                    for mt in method_tags
-                    if mt["key"] == "EXPOSED_METHOD_ROUTE" or mt["key"] == 30
-                ]
-                route_value = mtags[0] if mtags else None
-                if variableInfo:
-                    parameter = variableInfo.get("Parameter")
-                    local = variableInfo.get("Local")
-                    if parameter and parameter.get("symbol"):
-                        symbol = parameter.get("symbol")
-                        vars_dict[category].add(symbol)
-                        if route_value:
-                            category_route_dict[category][symbol] = route_value
-                    if local and local.get("symbol"):
-                        vars_dict[category].add(local.get("symbol"))
-            location = df.get("location", {})
-            if location.get("file_name") == "N/A" or not location.get("line_number"):
-                continue
-            method_name = location.get("method_name")
-            if method_name not in sinks_list and method_name not in sources_list:
-                methods_list.add(method_name)
+    with Progress(
+        transient=True,
+        redirect_stderr=False,
+        redirect_stdout=False,
+        refresh_per_second=1,
+    ) as progress:
+        task = progress.add_task(
+            "[green] Computing policy", total=len(findings), start=True
+        )
+        # Find the source and sink
+        for afinding in findings:
+            category = afinding.get("category")
+            details = afinding.get("details", {})
+            if details.get("source_method"):
+                sources_dict[category].add(details.get("source_method"))
+                sources_list.add(details.get("source_method"))
+            if details.get("sink_method"):
+                sinks_dict[category].add(details.get("sink_method"))
+                sinks_list.add(details.get("sink_method"))
+            if details.get("file_locations"):
+                files_loc_list.update(details.get("file_locations"))
+            dfobj = {}
+            if details.get("dataflow"):
+                dfobj = details.get("dataflow")
+            dataflows = dfobj.get("list", [])
+            for i, df in enumerate(dataflows):
+                if i == 0:
+                    variableInfo = df.get("variable_info", {}).get("Variable", {})
+                    method_tags = df.get("method_tags", [])
+                    mtags = [
+                        mt["value"]
+                        for mt in method_tags
+                        if mt["key"] == "EXPOSED_METHOD_ROUTE" or mt["key"] == 30
+                    ]
+                    route_value = mtags[0] if mtags else None
+                    if variableInfo:
+                        parameter = variableInfo.get("Parameter")
+                        local = variableInfo.get("Local")
+                        if parameter and parameter.get("symbol"):
+                            symbol = parameter.get("symbol")
+                            vars_dict[category].add(symbol)
+                            if route_value:
+                                category_route_dict[category][symbol] = route_value
+                        if local and local.get("symbol"):
+                            vars_dict[category].add(local.get("symbol"))
+                location = df.get("location", {})
+                if location.get("file_name") == "N/A" or not location.get(
+                    "line_number"
+                ):
+                    continue
+                method_name = location.get("method_name")
+                if method_name not in sinks_list and method_name not in sources_list:
+                    methods_list.add(method_name)
+            progress.advance(task)
     return (
         sources_dict,
         sinks_dict,
@@ -120,27 +133,31 @@ def create_policy(
             fp.write("#" * 79 + "\n")
             fp.write(f"# Category {category} #\n")
             fp.write("#" * 79 + "\n")
-            for sink in sinks_list:
+            for sink in sorted(sinks_list):
                 fp.write(CHECK_METHOD_TEMPLATE % dict(method_name=sink))
         fp.write("#" * 79 + "\n\n")
         fp.write("#" * 79 + "\n")
         fp.write("# All methods (Uncomment as needed) #\n")
         fp.write("#" * 79 + "\n")
-        for method in methods_list:
+        for method in sorted(methods_list):
             fp.write("# " + CHECK_METHOD_TEMPLATE % dict(method_name=method))
     console.print(
         Panel(
-            f"Sample policy file [bold]{policy_file}[/bold] created successfully.\nTo use this policy perform the below steps as ShiftLeft administrator",
+            f"Sample policy file [bold]{policy_file}[/bold] created successfully.\nEdit this file and include only the required methods.\nThen, to use this policy perform the below steps as a ShiftLeft administrator",
             title="ShiftLeft Policy Generator",
             expand=False,
         )
     )
+    policy_label = app_name.replace("-", "_")
     md = Markdown(
         f"""
 ```
 sl policy validate {policy_file}
-sl policy push apprules {policy_file}
-sl policy assignment set --project {app_name} {org_id}/apprules:latest
+sl policy push {policy_label} {policy_file}
+sl policy assignment set --project {app_name} {org_id}/{policy_label}:latest
+
+# Or to make the policy the default for your organization
+# sl policy assignment set {org_id}/{policy_label}:latest
 ```
 """
     )
