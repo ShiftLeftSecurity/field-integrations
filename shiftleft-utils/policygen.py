@@ -143,7 +143,7 @@ def create_policy(
             fp.write("# " + CHECK_METHOD_TEMPLATE % dict(method_name=method))
     console.print(
         Panel(
-            f"Sample policy file [bold]{policy_file}[/bold] created successfully.\nEdit this file and include only the required methods.\nThen, to use this policy perform the below steps as ShiftLeft administrator",
+            f"Sample policy file [bold]{policy_file}[/bold] created successfully.\nEdit this file and include only the required methods.\nThen, to use this policy perform the below steps as a ShiftLeft administrator",
             title="ShiftLeft Policy Generator",
             expand=False,
         )
