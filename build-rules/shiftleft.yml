@@ -18,6 +18,7 @@ build_rules:
 #      - vuln
 #      - secret
 #      - insight
+#      - extscan (Ruby, Python, Terraform etc)
 # Do you want to block ALL types by severity?
 #    severity:
 #      - SEVERITY_HIGH_IMPACT   # or "critical" 
