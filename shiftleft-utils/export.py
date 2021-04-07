@@ -4,6 +4,7 @@ import argparse
 import csv
 import json
 import os
+import requests
 import sys
 import time
 
@@ -13,9 +14,9 @@ from rich.progress import Progress
 
 import config
 from common import (
+    headers,
     extract_org_id,
     get_all_apps,
-    get_all_findings,
     get_dataflow,
     get_findings_url,
 )
@@ -99,6 +100,42 @@ def export_csv(app_list, findings_dict, report_file):
                             loc,
                         ]
                     )
+
+
+def get_all_findings(org_id, app_name, version):
+    """Method to retrieve all findings"""
+    findings_list = []
+    findings_url = get_findings_url(org_id, app_name, version)
+    page_available = True
+    while page_available:
+        # print (findings_url)
+        r = requests.get(findings_url, headers=headers)
+        if r.ok:
+            raw_response = r.json()
+            if raw_response and raw_response.get("response"):
+                response = raw_response.get("response")
+                total_count = response.get("total_count")
+                scan = response.get("scan")
+                if not scan:
+                    page_available = False
+                    continue
+                scan_id = scan.get("id")
+                spid = scan.get("internal_id")
+                projectSpId = f'sl/{org_id}/{scan.get("app")}'
+                findings = response.get("findings")
+                if not findings:
+                    page_available = False
+                    continue
+                counts = response.get("counts")
+                findings_list += findings
+                if raw_response.get("next_page"):
+                    findings_url = raw_response.get("next_page")
+                else:
+                    page_available = False
+        else:
+            print(f"Unable to retrieve findings for {app_name}")
+            print(r.status_code, r.json())
+    return findings_list
 
 
 def export_report(org_id, app_list, report_file, format):
