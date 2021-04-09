@@ -141,6 +141,7 @@ def get_all_findings(org_id, app_name, version):
 def export_report(org_id, app_list, report_file, format):
     if not app_list:
         app_list = get_all_apps(org_id)
+    # This might increase memory consumption for large organizations
     findings_dict = {}
     work_dir = os.getcwd()
     for e in ["GITHUB_WORKSPACE", "WORKSPACE"]:
@@ -153,8 +154,14 @@ def export_report(org_id, app_list, report_file, format):
         redirect_stdout=False,
         refresh_per_second=1,
     ) as progress:
+        if len(app_list) > 50:
+            progress.console.print(
+                f"Export process would take a while for {len(app_list)} apps.\nUse SARIF or xml format to avoid crashes."
+            )
         task = progress.add_task(
-            "[green] Export Findings", total=len(app_list), start=True
+            f"[green] Export Findings for {len(app_list)} apps",
+            total=len(app_list),
+            start=True,
         )
         for app in app_list:
             app_id = app.get("id")
