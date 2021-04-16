@@ -74,7 +74,11 @@ def start_analysis(org_id, app_name, version):
             dataflows = dfobj.get("list", [])
             for i, df in enumerate(dataflows):
                 if i == 0:
-                    variableInfo = df.get("variable_info", {}).get("Variable", {})
+                    variableInfo = df.get("variable_info", {})
+                    if variableInfo.get("variable"):
+                        variableInfo = variableInfo.get("variable")
+                    if variableInfo.get("Variable"):
+                        variableInfo = variableInfo.get("Variable")
                     method_tags = df.get("method_tags", [])
                     mtags = [
                         mt["value"]
@@ -84,7 +88,11 @@ def start_analysis(org_id, app_name, version):
                     route_value = mtags[0] if mtags else None
                     if variableInfo:
                         parameter = variableInfo.get("Parameter")
+                        if not parameter:
+                            parameter = variableInfo.get("parameter")
                         local = variableInfo.get("Local")
+                        if not local:
+                            local = variableInfo.get("local")
                         if parameter and parameter.get("symbol"):
                             symbol = parameter.get("symbol")
                             vars_dict[category].add(symbol)
