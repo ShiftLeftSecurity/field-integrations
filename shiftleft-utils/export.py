@@ -133,6 +133,7 @@ def get_all_findings(org_id, app_name, version):
                 else:
                     page_available = False
         else:
+            page_available = False
             print(f"Unable to retrieve findings for {app_name}")
             print(r.status_code, r.json())
     return findings_list
