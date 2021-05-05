@@ -3,6 +3,8 @@ import os
 
 import jwt
 import requests
+import urllib.parse
+
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.progress import Progress
@@ -98,10 +100,12 @@ def get_all_findings(org_id, app_name, version):
                         task, total=total_count, completed=len(findings_list)
                     )
                     if raw_response.get("next_page"):
-                        findings_url = raw_response.get("next_page")
+                        parsed = urllib.parse.urlparse(raw_response.get("next_page"))
+                        findings_url = parsed._replace(netloc=config.SHIFTLEFT_API_HOST).geturl()
                     else:
                         page_available = False
             else:
+                page_available = False
                 print(f"Unable to retrieve findings for {app_name}")
                 print(r.status_code, r.json())
         progress.stop()
