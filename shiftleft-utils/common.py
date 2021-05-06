@@ -3,6 +3,8 @@ import os
 
 import jwt
 import requests
+import urllib.parse
+
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.progress import Progress
@@ -40,12 +42,12 @@ headers = {
 
 def get_findings_url(org_id, app_name, version):
     version_suffix = f"&version={version}" if version else ""
-    return f"https://www.shiftleft.io/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=secret&type=vuln&type=extscan&include_dataflows=true{version_suffix}"
+    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=secret&type=vuln&type=extscan&include_dataflows=true{version_suffix}"
 
 
 def get_all_apps(org_id):
     """Return all the apps for the given organization"""
-    list_apps_url = f"https://www.shiftleft.io/api/v4/orgs/{org_id}/apps"
+    list_apps_url = f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps"
     r = requests.get(list_apps_url, headers=headers)
     if r.ok:
         raw_response = r.json()
@@ -98,10 +100,12 @@ def get_all_findings(org_id, app_name, version):
                         task, total=total_count, completed=len(findings_list)
                     )
                     if raw_response.get("next_page"):
-                        findings_url = raw_response.get("next_page")
+                        parsed = urllib.parse.urlparse(raw_response.get("next_page"))
+                        findings_url = parsed._replace(netloc=config.SHIFTLEFT_API_HOST).geturl()
                     else:
                         page_available = False
             else:
+                page_available = False
                 print(f"Unable to retrieve findings for {app_name}")
                 print(r.status_code, r.json())
         progress.stop()
@@ -109,7 +113,7 @@ def get_all_findings(org_id, app_name, version):
 
 
 def get_dataflow(org_id, app_name, finding_id):
-    finding_url = f"https://www.shiftleft.io/api/v4/orgs/{org_id}/apps/{app_name}/findings/{finding_id}?include_dataflows=true"
+    finding_url = f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings/{finding_id}?include_dataflows=true"
     r = requests.get(finding_url, headers=headers)
     if r.ok:
         raw_response = r.json()

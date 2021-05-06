@@ -5,6 +5,7 @@ import csv
 import json
 import os
 import requests
+import urllib.parse
 import sys
 import time
 
@@ -129,10 +130,12 @@ def get_all_findings(org_id, app_name, version):
                 counts = response.get("counts")
                 findings_list += findings
                 if raw_response.get("next_page"):
-                    findings_url = raw_response.get("next_page")
+                    parsed = urllib.parse.urlparse(raw_response.get("next_page"))
+                    findings_url = parsed._replace(netloc=config.SHIFTLEFT_API_HOST).geturl()
                 else:
                     page_available = False
         else:
+            page_available = False
             print(f"Unable to retrieve findings for {app_name}")
             print(r.status_code, r.json())
     return findings_list
