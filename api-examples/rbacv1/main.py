@@ -5,8 +5,11 @@ import urllib
 
 import requests
 
-SHIFTLEFT_ORG_ID = os.getenv("SHIFTLEFT_ORG_ID")
-SHIFTLEFT_ACCESS_TOKEN = os.getenv("SHIFTLEFT_ACCESS_TOKEN")
+try:
+    SHIFTLEFT_ORG_ID = os.environ["SHIFTLEFT_ORG_ID"]
+    SHIFTLEFT_ACCESS_TOKEN = os.environ["SHIFTLEFT_ACCESS_TOKEN"]
+except KeyError:
+    raise SystemExit("Oops! Do not forget to set both SHIFTLEFT_ORG_ID and SHIFTLEFT_ACCESS_TOKEN!")
 
 API_V4_BASE_URL = "https://www.shiftleft.io/api/v4/"
 API_V4_ORG_PATH = "orgs/{organization_id}/"
@@ -17,7 +20,7 @@ class SLAPIError:
     SLAPIError represents API error details returned by SL API v4
     """
 
-    def __init__(self, ok=False, code=0, message="", validation_errors=[]):
+    def __init__(self, ok=False, code=0, message="", validation_errors=()):
         self.ok = ok
         self.code = code
         self.message = message
@@ -39,7 +42,7 @@ class SLAPIError:
 
 def handle_status_code(resp=None):
     """
-    handle_status_code intercepts the response and raises an appropriate error if is not a 200
+    handle_status_code intercepts the response and raises an appropriate error if it's not a 200
 
     :param resp: an http response as returned from requests library
     :return: None in case of success or raises an exception with details otherwise
@@ -57,7 +60,9 @@ class SLResponse:
     Is an implementation of the base 200 response provided by all ShiftLeft API v4 endpoints.
     """
 
-    def __init__(self, ok=True, response={}):
+    def __init__(self, ok=True, response=None):
+        if response is None:
+            response = {}
         self.ok = ok
         self.response = response
 
@@ -81,7 +86,7 @@ class SLUser:
     https://docs.shiftleft.io/api/#operation/ListOrgRBACUsers
     """
 
-    def __init__(self, name="", email="", id_v2="", team_membership=[]):
+    def __init__(self, name="", email="", id_v2="", team_membership=()):
         self.name = name
         self.email = email
         self.id_v2 = id_v2
@@ -89,8 +94,9 @@ class SLUser:
 
     def is_member(self, team=""):
         for tm in self.team_membership:
-            if tm.team_name == tm:
+            if tm.team_name == team:
                 return True
+        return False
 
 
 class SLListUsersResponse:
@@ -99,12 +105,13 @@ class SLListUsersResponse:
     https://docs.shiftleft.io/api/#operation/ListOrgRBACUsers
     """
 
-    def __init__(self, users=[]):
+    def __init__(self, users=()):
         self.users = [SLUser(**u) for u in users]
 
     def id_for_email(self, user_email=""):
+        user_email = user_email.lower()
         for u in self.users:
-            if u.email.lower() == user_email.lower():
+            if u.email.lower() == user_email:
                 return u.id_v2
 
     def user_for_id(self, user_id=""):
@@ -129,7 +136,7 @@ class SLTeams:
     SLTeams represents a group of teams, typically of a same organization.
     """
 
-    def __init__(self, teams=[]):
+    def __init__(self, teams=()):
         self.teams = [SLTeamInfo(**team) for team in teams]
 
     def __contains__(self, item):
@@ -295,8 +302,8 @@ def main():
             if user.team in teams:
                 print("Team {} exists for this organization".format(user.team))
             else:
-                print("Team '{}' does not exist for this organization,"
-                      " we will create it and assign '{}'".format(user.team, user.email))
+                print("Team '{}' does not exist for this organization;"
+                      " creating it and assigning '{}' to it".format(user.team, user.email))
                 teams.append(api_v4.create_team(user.team))
 
             # Assign the user organization wide role.
@@ -315,7 +322,7 @@ def main():
         for user_id, team_role in info:
             u = users.user_for_id(user_id)
             # is_member works because users info was obtained before making any changes so it depicts initial state.
-            action = "Updated team membership of " if u.is_member(team) else "Added membership of "
+            action = "Updated team membership of" if u.is_member(team) else "Added membership of"
             print('* {action} {email} with role {teamrole}.'.format(action=action, email=u.email, teamrole=team_role))
 
 
