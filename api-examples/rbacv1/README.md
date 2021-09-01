@@ -3,7 +3,7 @@
 This example takes a list of users from the csv file and:
 
 * Sets their organization level roles.
-* Creates the theam the need to be assigned to if necessary
+* Creates the team they need to be assigned to if necessary
 * Assigns them to the specified team with the specified role
 
 ### Caveats:
