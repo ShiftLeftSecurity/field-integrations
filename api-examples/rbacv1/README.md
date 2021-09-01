@@ -13,5 +13,5 @@ This example takes a list of users from the csv file and:
 * You will need your ShiftLeft ORG ID and Access Token (personal access token not CI token) exported in your environment as:
   * `SHIFTLEFT_ORG_ID`
   * `SHIFTLEFT_ACCESS_TOKEN` 
-
+respectively.
 
