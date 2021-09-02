@@ -77,7 +77,7 @@ class SLTeamMembership:
     SLTeamMembership contains the membership details for a user in a team.
     """
 
-    def __init__(self, team_name="", team_id="", role="", role_name="", role_aliases=[]) -> None:
+    def __init__(self, team_name="", team_id="", role="", role_name="", role_aliases=[]):
         self.team_name = team_name
         self.team_id = team_id
         self.role = role
