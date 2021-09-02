@@ -1,5 +1,6 @@
 # !/usr/bin/env python3
 import csv
+import json
 import os
 import urllib
 
@@ -51,7 +52,11 @@ def handle_status_code(resp=None):
         return
     if resp.status_code == 200:
         return
-    e = SLAPIError(**resp.json())
+    try:
+        json_decoded_body = resp.json()
+    except json.JSONDecodeError:
+        raise Exception(resp.text)
+    e = SLAPIError(**json_decoded_body)
     raise Exception(e.as_string())
 
 
@@ -160,19 +165,19 @@ class SLAPIClient:
 
     def _do_get(self, api_path):
         u = API_V4_BASE_URL + API_V4_ORG_PATH.format(organization_id=self.__organization_id) + api_path
-        resp = requests.get(u, self.__access_header)
+        resp = requests.get(u, headers=self.__access_header)
         handle_status_code(resp)
         return resp.json().get('response', None)
 
     def _do_post(self, api_path, payload=None):
         u = API_V4_BASE_URL + api_path
-        resp = requests.post(u, self.__access_header, payload)
+        resp = requests.post(u, headers=self.__access_header, data=payload)
         handle_status_code(resp)
         return resp.json().get('response', None)
 
     def _do_put(self, api_path, payload=None):
         u = API_V4_BASE_URL + api_path
-        resp = requests.put(u, self.__access_header, payload)
+        resp = requests.put(u, headers=self.__access_header, data=payload)
         handle_status_code(resp)
         return resp.json().get('response', None)
 
