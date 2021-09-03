@@ -41,6 +41,16 @@ class SLAPIError:
         return "server returned {} code without further information".format(self.code)
 
 
+def handle_success(resp):
+    response = ""
+    try:
+        response = resp.json()["response"]
+    except Exception as e: # json decode
+        print("endpoint had empty status {}".format(resp.url))
+        response = ""
+    return response
+
+
 def handle_status_code(resp=None):
     """
     handle_status_code intercepts the response and raises an appropriate error if it's not a 200
@@ -54,8 +64,8 @@ def handle_status_code(resp=None):
         return
     try:
         json_decoded_body = resp.json()
-    except json.JSONDecodeError:
-        raise Exception(resp.text)
+    except Exception:
+        raise Exception(resp.status_code)
     e = SLAPIError(**json_decoded_body)
     raise Exception(e.as_string())
 
@@ -77,7 +87,7 @@ class SLTeamMembership:
     SLTeamMembership contains the membership details for a user in a team.
     """
 
-    def __init__(self, team_name="", team_id="", role="", role_name="", role_aliases=[]):
+    def __init__(self, team_name="", team_id="", role="", role_name="", role_aliases=[], **kwargs):
         self.team_name = team_name
         self.team_id = team_id
         self.role = role
@@ -131,9 +141,10 @@ class SLTeamInfo:
     https://docs.shiftleft.io/api/#operation/ListTeams
     """
 
-    def __init__(self, team_id="", team_name=""):
+    def __init__(self, team_id="", team_name="", team_version=""):
         self.team_id = team_id
         self.team_name = team_name
+        self.team_version = team_version
 
 
 class SLTeams:
@@ -149,6 +160,11 @@ class SLTeams:
             if tm.team_name == item:
                 return True
 
+    def get_id(self, item):
+        for tm in self.teams:
+            if tm.team_name == item:
+                return tm.team_id
+
     def append(self, team):
         self.teams.append(team)
 
@@ -160,26 +176,26 @@ class SLAPIClient:
     """
 
     def __init__(self, access_token="", organization_id=""):
-        self.__access_header = {'Authorization': 'Bearer {}'.format(access_token)}
+        self.__access_header = {'Authorization': 'Bearer {}'.format(access_token), 'Content-Type': 'application/json'}
         self.__organization_id = organization_id
 
     def _do_get(self, api_path):
         u = API_V4_BASE_URL + API_V4_ORG_PATH.format(organization_id=self.__organization_id) + api_path
         resp = requests.get(u, headers=self.__access_header)
         handle_status_code(resp)
-        return resp.json().get('response', None)
+        return handle_success(resp)
 
     def _do_post(self, api_path, payload=None):
-        u = API_V4_BASE_URL + api_path
-        resp = requests.post(u, headers=self.__access_header, data=payload)
+        u = API_V4_BASE_URL + API_V4_ORG_PATH.format(organization_id=self.__organization_id) + api_path
+        resp = requests.post(u, headers=self.__access_header, data=json.dumps(payload))
         handle_status_code(resp)
-        return resp.json().get('response', None)
+        return handle_success(resp)
 
     def _do_put(self, api_path, payload=None):
-        u = API_V4_BASE_URL + api_path
-        resp = requests.put(u, headers=self.__access_header, data=payload)
+        u = API_V4_BASE_URL + API_V4_ORG_PATH.format(organization_id=self.__organization_id) + api_path
+        resp = requests.put(u, headers=self.__access_header, data=json.dumps(payload))
         handle_status_code(resp)
-        return resp.json().get('response', None)
+        return handle_success(resp)
 
     def list_users(self):
         """
@@ -218,7 +234,7 @@ class SLAPIClient:
     def assign_user_organization_role(self, user_id="", role=""):
         """
         assign_user_organization_role will assign the role passed to the user at an organization level
-
+    
         :param user_id: the id v2 of the user
         :param role: the role id or alias the user will have at an organization level
         :return: a dictionary of the json response from the call.
@@ -226,7 +242,7 @@ class SLAPIClient:
         user_org_role_payload = {"org_role": role}
         self._do_put("rbac/users/{user_id}".format(user_id=user_id), user_org_role_payload)
 
-    def assign_user_team_role(self, user_id="", team="",  role=""):
+    def assign_user_team_role(self, user_id="", team="", role=""):
         """
         assign_user_team_role will assign a single user to a team
         :param user_id: the id v2 of the user to add to the team
@@ -265,15 +281,14 @@ class SLAPIClient:
         :return: a dictionary of the json response from the call.
         """
         add_to_team = []
+        # import pdb; pdb.set_trace()
         for user_id, role in user_role_pairs:
             add_to_team.append({"user_id_v2": user_id,
                                 "team_role": role})
         version = self.current_team_version(team)
         payload = {
             "version": version,
-            "add_team_membership": [
-                add_to_team
-            ]
+            "add_team_membership": add_to_team
         }
         self._do_put("rbac/teams/{team}".format(team=team), payload)
 
@@ -318,7 +333,10 @@ def main():
                                                                                 org_role=user.organization_role))
 
             # Queue the users to add for each team to economize requests
-            add_to_teams[user.team] = (user_id, user.team_role)
+            team_id = teams.get_id(user.team)
+            if user.team not in add_to_teams:
+                add_to_teams[team_id] = []
+            add_to_teams[team_id].append((user_id, user.team_role))
 
     # Process team membership changes
     for team, info in add_to_teams.items():
