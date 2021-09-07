@@ -328,7 +328,7 @@ def main():
             user = CSVUser(**row)
             # Create the team this user should belong to if it doesn't exist
             if user.team in teams:
-                print("Team {} exists for this organization".format(user.team))
+                print("Team {} already exists for this organization".format(user.team))
             else:
                 print("Team '{}' does not exist for this organization;"
                       " creating it and assigning '{}' to it".format(user.team, user.email))
