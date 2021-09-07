@@ -42,12 +42,14 @@ class SLAPIError:
 
 
 def handle_success(resp):
+    """
+    We discovered a few cases where response body can be empty so we handle the case
+    """
     response = ""
     try:
         response = resp.json()["response"]
-    except Exception as e: # json decode
-        print("endpoint had empty status {}".format(resp.url))
-        response = ""
+    except (json.JSONDecodeError, json.decoder.JSONDecodeError):
+        response = resp.text
     return response
 
 
@@ -64,6 +66,8 @@ def handle_status_code(resp=None):
         return
     try:
         json_decoded_body = resp.json()
+    except (json.JSONDecodeError, json.decoder.JSONDecodeError):
+        json_decoded_body = resp.text
     except Exception:
         raise Exception(resp.status_code)
     e = SLAPIError(**json_decoded_body)
@@ -156,12 +160,16 @@ class SLTeams:
         self.teams = [SLTeamInfo(**team) for team in teams]
 
     def __contains__(self, item):
+        print(item)
         for tm in self.teams:
+            print(tm.team_name)
             if tm.team_name == item:
                 return True
 
     def get_id(self, item):
+        print(item)
         for tm in self.teams:
+            print(tm.team_name)
             if tm.team_name == item:
                 return tm.team_id
 
@@ -193,6 +201,7 @@ class SLAPIClient:
 
     def _do_put(self, api_path, payload=None):
         u = API_V4_BASE_URL + API_V4_ORG_PATH.format(organization_id=self.__organization_id) + api_path
+        print(json.dumps(payload))
         resp = requests.put(u, headers=self.__access_header, data=json.dumps(payload))
         handle_status_code(resp)
         return handle_success(resp)
@@ -281,7 +290,6 @@ class SLAPIClient:
         :return: a dictionary of the json response from the call.
         """
         add_to_team = []
-        # import pdb; pdb.set_trace()
         for user_id, role in user_role_pairs:
             add_to_team.append({"user_id_v2": user_id,
                                 "team_role": role})
@@ -346,7 +354,7 @@ def main():
             u = users.user_for_id(user_id)
             # is_member works because users info was obtained before making any changes so it depicts initial state.
             action = "Updated team membership of" if u.is_member(team) else "Added membership of"
-            print('* {action} {email} with role {teamrole}.'.format(action=action, email=u.email, teamrole=team_role))
+            print('* {action} {email} with role {team_role}.'.format(action=action, email=u.email, team_role=team_role))
 
 
 if __name__ == "__main__":
