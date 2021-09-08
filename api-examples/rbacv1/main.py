@@ -155,23 +155,24 @@ class SLTeams:
     """
     SLTeams represents a group of teams, typically of a same organization.
     """
-
+    
     def __init__(self, teams=()):
         self.teams = [SLTeamInfo(**team) for team in teams]
 
     def __contains__(self, item):
-        print(item)
         for tm in self.teams:
-            print(tm.team_name)
             if tm.team_name == item:
                 return True
 
     def get_id(self, item):
-        print(item)
-        for tm in self.teams:
-            print(tm.team_name)
-            if tm.team_name == item:
-                return tm.team_id
+            for tm in self.teams:
+                if tm.team_name == item:
+                    return tm.team_id
+
+    def get_team_name(self, item):
+            for tm in self.teams:
+                if tm.team_id == item:
+                    return tm.team_name
 
     def append(self, team):
         self.teams.append(team)
@@ -201,7 +202,6 @@ class SLAPIClient:
 
     def _do_put(self, api_path, payload=None):
         u = API_V4_BASE_URL + API_V4_ORG_PATH.format(organization_id=self.__organization_id) + api_path
-        print(json.dumps(payload))
         resp = requests.put(u, headers=self.__access_header, data=json.dumps(payload))
         handle_status_code(resp)
         return handle_success(resp)
@@ -251,7 +251,7 @@ class SLAPIClient:
         user_org_role_payload = {"org_role": role}
         self._do_put("rbac/users/{user_id}".format(user_id=user_id), user_org_role_payload)
 
-    def assign_user_team_role(self, user_id="", team="", role=""):
+    def assign_user_team_role(self, user_id="", team="",  role=""):
         """
         assign_user_team_role will assign a single user to a team
         :param user_id: the id v2 of the user to add to the team
@@ -290,6 +290,7 @@ class SLAPIClient:
         :return: a dictionary of the json response from the call.
         """
         add_to_team = []
+        #import pdb; pdb.set_trace()
         for user_id, role in user_role_pairs:
             add_to_team.append({"user_id_v2": user_id,
                                 "team_role": role})
@@ -328,33 +329,34 @@ def main():
             user = CSVUser(**row)
             # Create the team this user should belong to if it doesn't exist
             if user.team in teams:
-                print("Team {} already exists for this organization".format(user.team))
+                print("Team {} exists for this organization.".format(user.team))
             else:
                 print("Team '{}' does not exist for this organization;"
-                      " creating it and assigning '{}' to it".format(user.team, user.email))
+                      " creating it and assigning '{}' to it.".format(user.team, user.email))
                 teams.append(api_v4.create_team(user.team))
 
             # Assign the user organization wide role.
             user_id = users.id_for_email(user.email)
-            api_v4.assign_user_organization_role(user_id, user.organization_role)
-            print("Updated organization role for {email} to {org_role}.".format(email=user.email,
+            if user.organization_role.strip() != '':
+                api_v4.assign_user_organization_role(user_id, user.organization_role)
+                print("Updated organization role for {email} to {org_role}.".format(email=user.email,
                                                                                 org_role=user.organization_role))
 
             # Queue the users to add for each team to economize requests
             team_id = teams.get_id(user.team)
             if user.team not in add_to_teams:
                 add_to_teams[team_id] = []
-            add_to_teams[team_id].append((user_id, user.team_role))
+            add_to_teams[team_id].append ((user_id, user.team_role))
 
     # Process team membership changes
     for team, info in add_to_teams.items():
         api_v4.assign_users_to_teams(team, info)
-        print("Updated team membership for '{}'".format(team))
+        print("Updated team membership for '{}'".format(teams.get_team_name(team)))
         for user_id, team_role in info:
             u = users.user_for_id(user_id)
             # is_member works because users info was obtained before making any changes so it depicts initial state.
             action = "Updated team membership of" if u.is_member(team) else "Added membership of"
-            print('* {action} {email} with role {team_role}.'.format(action=action, email=u.email, team_role=team_role))
+            print('* {action} {email} with role {teamrole}.'.format(action=action, email=u.email, teamrole=team_role))
 
 
 if __name__ == "__main__":
