@@ -251,7 +251,7 @@ class SLAPIClient:
         user_org_role_payload = {"org_role": role}
         self._do_put("rbac/users/{user_id}".format(user_id=user_id), user_org_role_payload)
 
-    def assign_user_team_role(self, user_id="", team="",  role=""):
+    def assign_user_team_role(self, user_id="", team="", role=""):
         """
         assign_user_team_role will assign a single user to a team
         :param user_id: the id v2 of the user to add to the team
