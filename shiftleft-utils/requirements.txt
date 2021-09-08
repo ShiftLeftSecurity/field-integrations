@@ -4,3 +4,4 @@ rich
 pyjwt
 joern2sarif
 config
+common
