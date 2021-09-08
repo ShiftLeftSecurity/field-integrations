@@ -346,7 +346,7 @@ def main():
             team_id = teams.get_id(user.team)
             if user.team not in add_to_teams:
                 add_to_teams[team_id] = []
-            add_to_teams[team_id].append ((user_id, user.team_role))
+            add_to_teams[team_id].append((user_id, user.team_role))
 
     # Process team membership changes
     for team, info in add_to_teams.items():
