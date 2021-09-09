@@ -1,0 +1,28 @@
+_metadata:
+  major_version: 1
+  minor_version: 1
+display_information:
+  name: Ocular Findings
+features:
+  bot_user:
+    display_name: Ocular Findings
+    always_online: false
+oauth_config:
+  scopes:
+    bot:
+      - channels:join
+      - channels:read
+      - chat:write
+      - im:read
+      - im:write
+      - incoming-webhook
+      - users:read
+      - users:write
+      - chat:write.public
+      - files:write
+settings:
+  interactivity:
+    is_enabled: true
+  org_deploy_enabled: false
+  socket_mode_enabled: true
+  token_rotation_enabled: false
