@@ -47,7 +47,7 @@ def handle_success(resp):
     """
     response = ""
     try:
-        response = resp.json()["response"]
+        response = resp.json().get("response", {})
     except (json.JSONDecodeError, json.decoder.JSONDecodeError):
         response = resp.text
     return response
