@@ -42,7 +42,7 @@ headers = {
 
 def get_findings_url(org_id, app_name, version):
     version_suffix = f"&version={version}" if version else ""
-    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=secret&type=vuln&type=extscan&include_dataflows=true{version_suffix}"
+    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=package&type=secret&type=vuln&type=extscan&include_dataflows=true{version_suffix}"
 
 
 def get_all_apps(org_id):
