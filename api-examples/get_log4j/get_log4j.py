@@ -5,11 +5,12 @@ import os
 from pprint import pprint
 from pprint import pformat
 
-try:
-    SHIFTLEFT_ORG_ID = os.environ["SHIFTLEFT_ORG_ID"]
-    SHIFTLEFT_ACCESS_TOKEN = os.environ["SHIFTLEFT_ACCESS_TOKEN"]
-except KeyError:
-    raise SystemExit("Oops! Do not forget to set both SHIFTLEFT_ORG_ID and SHIFTLEFT_ACCESS_TOKEN!")
+SHIFTLEFT_ORG_ID = os.environ.get("SHIFTLEFT_ORG_ID", None)
+SHIFTLEFT_ACCESS_TOKEN = os.environ.get("SHIFTLEFT_ACCESS_TOKEN", None)
+
+if SHIFTLEFT_ORG_ID is None or SHIFTLEFT_ACCESS_TOKEN is None:
+    print("Oops! Do not forget to set both SHIFTLEFT_ORG_ID and SHIFTLEFT_ACCESS_TOKEN!")
+    os.Exit(1)
 
 API_V4_BASE_URL = "https://www.shiftleft.io/api/v4/"
 API_V4_ORG_PATH = "orgs/{organization_id}/"
