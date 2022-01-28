@@ -44,6 +44,7 @@ func main() {
 			log.Fatal(fmt.Errorf("build findings request: %w", err))
 		}
 		req.Header.Add("Authorization", "Bearer "+token)
+		req.Header.Add("X-Shiftleft-Feature-Flag", "sca-all-languages")
 
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
@@ -70,6 +71,7 @@ func main() {
 			log.Fatal(fmt.Errorf("build findings request: %w", err))
 		}
 		req.Header.Add("Authorization", "Bearer "+token)
+		req.Header.Add("X-Shiftleft-Feature-Flag", "sca-all-languages")
 
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
@@ -106,6 +108,7 @@ func main() {
 			log.Fatal(fmt.Errorf("build findings request: %w", err))
 		}
 		req.Header.Add("Authorization", "Bearer "+token)
+		req.Header.Add("X-Shiftleft-Feature-Flag", "sca-all-languages")
 
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
