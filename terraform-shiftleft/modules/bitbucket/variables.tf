@@ -16,7 +16,7 @@ variable "repos" {
 }
 
 variable "sl_org_id" {
-  description = "ShiftLeft Organization Id. Visit https://www.shiftleft.io/user/profile to retrieve this value."
+  description = "ShiftLeft Organization Id. Visit https://app.shiftleft.io/user/profile to retrieve this value."
 }
 
 variable "sl_access_token" {

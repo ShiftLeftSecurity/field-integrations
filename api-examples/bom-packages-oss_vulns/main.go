@@ -37,7 +37,7 @@ func main() {
 
 	packages := map[string]Finding{}
 	// Query packages
-	url := fmt.Sprintf("https://www.shiftleft.io/api/v4/orgs/%s/apps/%s/findings?type=package&per_page=249", orgID, *appID)
+	url := fmt.Sprintf("https://app.shiftleft.io/api/v4/orgs/%s/apps/%s/findings?type=package&per_page=249", orgID, *appID)
 	for url != "" {
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
@@ -64,7 +64,7 @@ func main() {
 	}
 
 	// Query reachable oss vulns
-	url = fmt.Sprintf("https://www.shiftleft.io/api/v4/orgs/%s/apps/%s/findings?type=oss_vuln&per_page=249&finding_tags=reachability=reachable", orgID, *appID)
+	url = fmt.Sprintf("https://app.shiftleft.io/api/v4/orgs/%s/apps/%s/findings?type=oss_vuln&per_page=249&finding_tags=reachability=reachable", orgID, *appID)
 	for url != "" {
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
@@ -101,7 +101,7 @@ func main() {
 	}
 
 	// Query unreachable oss vulns
-	url = fmt.Sprintf("https://www.shiftleft.io/api/v4/orgs/%s/apps/%s/findings?type=oss_vuln&per_page=249&finding_tags=reachability=unreachable", orgID, *appID)
+	url = fmt.Sprintf("https://app.shiftleft.io/api/v4/orgs/%s/apps/%s/findings?type=oss_vuln&per_page=249&finding_tags=reachability=unreachable", orgID, *appID)
 	for url != "" {
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {

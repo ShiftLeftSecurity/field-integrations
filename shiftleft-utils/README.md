@@ -61,7 +61,7 @@ Apache-2.0
 ## Known issues
 
 ```bash
-urllib3.exceptions.LocationParseError: Failed to parse: https://www.shiftleft.io/api/v4/orgs/
+urllib3.exceptions.LocationParseError: Failed to parse: https://app.shiftleft.io/api/v4/orgs/
 ```
 
 To fix this error upgrade urllib3 package
