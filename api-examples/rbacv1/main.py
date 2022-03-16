@@ -12,7 +12,7 @@ try:
 except KeyError:
     raise SystemExit("Oops! Do not forget to set both SHIFTLEFT_ORG_ID and SHIFTLEFT_ACCESS_TOKEN!")
 
-API_V4_BASE_URL = "https://www.shiftleft.io/api/v4/"
+API_V4_BASE_URL = "https://app.shiftleft.io/api/v4/"
 API_V4_ORG_PATH = "orgs/{organization_id}/"
 
 

@@ -2,7 +2,7 @@ import os
 
 SHIFTLEFT_ACCESS_TOKEN = os.getenv("SHIFTLEFT_ACCESS_TOKEN")
 SHIFTLEFT_APP = os.getenv("SHIFTLEFT_APP")
-SHIFTLEFT_API_HOST = os.getenv("SHIFTLEFT_API_HOST") or "www.shiftleft.io"
+SHIFTLEFT_API_HOST = os.getenv("SHIFTLEFT_API_HOST") or "app.shiftleft.io"
 
 # Indentation for json. Set to None to disable indendation
 json_indent = 2
