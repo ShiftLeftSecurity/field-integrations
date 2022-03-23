@@ -2,6 +2,14 @@
 # Invoke maven and specify the target director here
 # For javascript, we look for package.json
 TARGET_DIR=target
+POM_COUNT=$(find . -maxdepth 1 -type f -name "pom.xml" -not -path '*/\.git/*' | wc -l | tr -d " ")
+GRADLE_COUNT=$(find . -maxdepth 1 -type f -name "build.gradle" -not -path '*/\.git/*' | wc -l | tr -d " ")
+if [ "$GRADLE_COUNT" != "0" ]; then
+  gradle jar
+  #./gradlew jar
+  TARGET_DIR=build
+  BUILT=1
+fi
 if [ -d "$TARGET_DIR" ]; then
     jar cvf app.jar -C $TARGET_DIR .
     sl analyze --wait --app "$CI_PROJECT_NAME" --version-id "$CI_COMMIT_SHA" --tag branch="$CI_COMMIT_REF_NAME" --java app.jar
