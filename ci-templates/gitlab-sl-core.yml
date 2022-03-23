@@ -1,0 +1,16 @@
+variables:
+  SHIFTLEFT_ACCESS_TOKEN: $SHIFTLEFT_ACCESS_TOKEN
+  MR_TOKEN: $MR_TOKEN
+
+shiftleft:
+  stage: test
+  image:
+    name: shiftleft/core:latest
+  script:
+    - |
+      if [ -e sl-analysis.sh ]; then
+        sh sl-analysis.sh
+      fi
+  rules:
+    - when: always
+
