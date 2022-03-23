@@ -3,7 +3,7 @@ variables:
   MR_TOKEN: $MR_TOKEN
 
 shiftleft:
-  stage: package
+  stage: functional-test
   image:
     name: shiftleft/core:latest
   script:
