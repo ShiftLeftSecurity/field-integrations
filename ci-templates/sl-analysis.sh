@@ -15,6 +15,8 @@ if [ -d "$TARGET_DIR" ]; then
     sl analyze --wait --app "$CI_PROJECT_NAME" --version-id "$CI_COMMIT_SHA" --tag branch="$CI_COMMIT_REF_NAME" --java app.jar
 elif [ -e "package.json" ]; then
     sl analyze --wait --app "$CI_PROJECT_NAME" --version-id "$CI_COMMIT_SHA" --tag branch="$CI_COMMIT_REF_NAME" --js .
+elif [ -d "terraform" ]; then
+    sl analyze --wait --app "$CI_PROJECT_NAME" --version-id "$CI_COMMIT_SHA" --tag branch="$CI_COMMIT_REF_NAME" --terraform .    
 fi
 # Check if this is running in a merge request
 if [ -n "$CI_MERGE_REQUEST_IID" ] && [ -n "$MR_TOKEN" ]; then
