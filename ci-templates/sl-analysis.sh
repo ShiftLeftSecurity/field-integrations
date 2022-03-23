@@ -4,7 +4,10 @@
 TARGET_DIR=target
 POM_COUNT=$(find . -maxdepth 1 -type f -name "pom.xml" -not -path '*/\.git/*' | wc -l | tr -d " ")
 GRADLE_COUNT=$(find . -maxdepth 1 -type f -name "build.gradle" -not -path '*/\.git/*' | wc -l | tr -d " ")
-if [ "$GRADLE_COUNT" != "0" ]; then
+if [ "$POM_COUNT" != "0" ]; then
+  mvn compile package -Dmaven.test.skip=true
+  BUILT=1
+elif [ "$GRADLE_COUNT" != "0" ]; then
   gradle jar
   #./gradlew jar
   TARGET_DIR=build
