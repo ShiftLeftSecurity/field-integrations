@@ -42,7 +42,6 @@ def _delete_project(cookie, resource_url):
     print(F"Will initiate deletion of {resource_url}")
     headers = CaseInsensitiveDict()
     headers["Cookie"] = cookie
-    print(headers)
     res = requests.delete(url=resource_url,
                           headers=headers)
     print(F"got response {res.text}")
@@ -51,7 +50,8 @@ def _delete_project(cookie, resource_url):
 
     res_map = json.loads(res.text)
 
-    confirmation_token = res_map["deleteToken"]
+    confirmation_token = json.dumps({"response": res_map})
+
     print(F"Will confirm deletion of {resource_url} with token {confirmation_token}")
     headers["content-type"] = "application/json"
     res = requests.delete(url=resource_url,
@@ -68,7 +68,7 @@ def delete_project(cookie, org_id, project_id=None):
     if project_id is None:
         print("received an empty project ID, this deletion will not take place")
         return
-    _delete_project(cookie, F"https://app.shiftleft.io/api/v2/organizations/{org_id}/projects/{project_id}")
+    _delete_project(cookie, F"https://app.shiftleft.io/api/v2/organizations/{org_id}/projects/{project_id}".strip())
 
 
 def bulk_delete_projects():
@@ -91,17 +91,20 @@ def bulk_delete_projects():
         sys.exit(1)
 
     with open(project_list_file_name) as project_file:
-        line = project_file.readline()
-        try:
-            delete_project(cookie, org_id, line)
-        except ErrReqFailed as e:
-            print(F"Failed to initiate deletion for project: {line} with HTTP code: {e.code}")
-            with open(FAILED_DELETES_FILE, "a") as f:
-                print(F"{line}\n", file=f)
-        except ErrConfirmationReqFailed as e:
-            print(F"Failed to complete deletion for project: {line} with HTTP code: {e.code}")
-            with open(FAILED_DELETES_FILE, "a") as f:
-                print(F"{line}\n", file=f)
+        lines = project_file.readlines()
+        for line in lines:
+            if line == "":
+                continue
+            try:
+                delete_project(cookie, org_id, line)
+            except ErrReqFailed as e:
+                print(F"Failed to initiate deletion for project: {line} with HTTP code: {e.code}")
+                with open(FAILED_DELETES_FILE, "a") as f:
+                    print(F"{line}\n", file=f)
+            except ErrConfirmationReqFailed as e:
+                print(F"Failed to complete deletion for project: {line} with HTTP code: {e.code}")
+                with open(FAILED_DELETES_FILE, "a") as f:
+                    print(F"{line}\n", file=f)
 
 
 if __name__ == "__main__":

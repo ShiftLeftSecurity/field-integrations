@@ -8,13 +8,14 @@ class Test(TestCase):
     def test__delete_project(self):
         with HTTPServer() as httpserver:
             def fail_if_not_confirmation(req):
-                if req.data != b"confirmation_token":
+                if req.data != """{response: {"response": "confirmation_token"}}""":
                     print(F"expected data to be confirmation_token but is {req.data}")
                     raise Exception("no confirmation token present")
 
             resource_url = httpserver.url_for("/resource")
             # set up the server to serve /foobar with the json
-            httpserver.expect_request("/resource", method="DELETE", data=b"confirmation_token"). \
+            httpserver.expect_request("/resource", method="DELETE",
+                                      data="""{response: {"response": "confirmation_token"}}"""). \
                 respond_with_handler(fail_if_not_confirmation)
             httpserver.expect_request("/resource", method="DELETE"). \
                 respond_with_json({"response": "confirmation_token"})
