@@ -5,6 +5,7 @@ import sys
 from os.path import exists, abspath
 
 import requests
+from requests.structures import CaseInsensitiveDict
 
 SHIFTLEFT_COOKIE_ENV_VAR_NAME = "SHIFTLEFT_COOKIE"
 SHIFTLEFT_ORG_ID_ENV_VAR_NANE = "SHIFTLEFT_ORG_ID"
@@ -38,15 +39,23 @@ def _delete_project(cookie, resource_url):
     First we issue a `DELETE` on the resource and retrieve a confirmation token, then we issue a second `DELETE` on the
     same resource adding the token as the body.
     """
+    print(F"Will initiate deletion of {resource_url}")
+    headers = CaseInsensitiveDict()
+    headers["Cookie"] = cookie
+    print(headers)
     res = requests.delete(url=resource_url,
-                          headers={"Cookie": cookie})
+                          headers=headers)
+    print(F"got response {res.text}")
     if res.status_code != 200:
         raise ErrReqFailed(res.status_code)
 
     res_map = json.loads(res.text)
-    confirmation_token = res_map["response"]
+
+    confirmation_token = res_map["deleteToken"]
+    print(F"Will confirm deletion of {resource_url} with token {confirmation_token}")
+    headers["content-type"] = "application/json"
     res = requests.delete(url=resource_url,
-                          headers={"Cookie": cookie, "content-type": "application/json"},
+                          headers=headers,
                           data=confirmation_token)
     if res.status_code != 200:
         raise ErrConfirmationReqFailed(res.status_code)
@@ -76,7 +85,7 @@ def bulk_delete_projects():
         print(F"{SHIFTLEFT_ORG_ID_ENV_VAR_NANE} {PLS_SET_ERR}")
         sys.exit(1)
 
-    project_list_file_name = abspath(os.args[1])
+    project_list_file_name = abspath(sys.argv[1])
     if not exists(project_list_file_name):
         print(F"cannot find the specified project id list: {project_list_file_name}")
         sys.exit(1)
@@ -88,11 +97,11 @@ def bulk_delete_projects():
         except ErrReqFailed as e:
             print(F"Failed to initiate deletion for project: {line} with HTTP code: {e.code}")
             with open(FAILED_DELETES_FILE, "a") as f:
-                print(F"{line}\n", f)
+                print(F"{line}\n", file=f)
         except ErrConfirmationReqFailed as e:
             print(F"Failed to complete deletion for project: {line} with HTTP code: {e.code}")
             with open(FAILED_DELETES_FILE, "a") as f:
-                print(F"{line}\n", f)
+                print(F"{line}\n", file=f)
 
 
 if __name__ == "__main__":
