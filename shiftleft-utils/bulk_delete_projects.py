@@ -78,17 +78,14 @@ def bulk_delete_projects():
     """
     cookie = os.environ.get(SHIFTLEFT_COOKIE_ENV_VAR_NAME, None)
     if cookie is None:
-        print(F"{SHIFTLEFT_COOKIE_ENV_VAR_NAME} {PLS_SET_ERR}")
-        sys.exit(1)
+        sys.exit(F"{SHIFTLEFT_COOKIE_ENV_VAR_NAME} {PLS_SET_ERR}")
     org_id = os.environ.get(SHIFTLEFT_ORG_ID_ENV_VAR_NANE, None)
     if org_id is None:
-        print(F"{SHIFTLEFT_ORG_ID_ENV_VAR_NANE} {PLS_SET_ERR}")
-        sys.exit(1)
+        sys.exit(F"{SHIFTLEFT_ORG_ID_ENV_VAR_NANE} {PLS_SET_ERR}")
 
     project_list_file_name = abspath(sys.argv[1])
     if not exists(project_list_file_name):
-        print(F"cannot find the specified project id list: {project_list_file_name}")
-        sys.exit(1)
+        sys.exit(F"cannot find the specified project id list: {project_list_file_name}")
 
     with open(project_list_file_name) as project_file:
         lines = project_file.readlines()
