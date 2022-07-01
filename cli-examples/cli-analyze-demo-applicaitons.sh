@@ -1,10 +1,13 @@
 #! /bin/bash
 # *** ENV Variables ***
 
-# Set absolute path to working directory. Don't include the closing /
+# Set absolute path to working directory.
 # "/home/user/projects/projectfolder" or "/home/user/projects/projectfolder/project.jar"
-DOCKER_WORK_DIR="/ABSOLUTE-PROJECT-PATH" # <-- Update per comment above
+DOCKER_WORK_DIR="/Users/yusefsaraby/projects/testing" # <-- Update per comment above
 DOCKER_IMAGE_NAME=shiftleft/core:latest
+# Variable Cleanup
+## Remove trailing slash(es) if present
+DOCKER_WORK_DIR=$(echo "$DOCKER_WORK_DIR" | sed 's:/*$::')
 
 # Check heck if Docker is installed
 if ! [ -x "$(command -v docker)" ]; then
@@ -19,21 +22,21 @@ docker pull $DOCKER_IMAGE_NAME
 # $2: absolute path to code or binaries
 shiftleft_analyze_code() {
     echo "Parameters passed: $1 > $2"
-    docker run --rm -e SHIFTLEFT_ACCESS_TOKEN -v $2:/myvol -it $DOCKER_IMAGE_NAME sl analyze --wait --sca --app shiftleft-js-demo --cpg --$1 /myvol
+    docker run --rm -e SHIFTLEFT_ACCESS_TOKEN -v "$2":/myvol -it $DOCKER_IMAGE_NAME sl analyze --wait --sca --app shiftleft-js-demo --cpg --"$1" /myvol
 }
 
 # $1: absolute path to code or binaries
 run_demo_go() {
     echo "Run Go Demo: Parameters passed: $1"
     shiftleft_analyze_code "go" "$1"
-    docker run --rm -e SHIFTLEFT_ACCESS_TOKEN -v $1:/myvol -it $DOCKER_IMAGE_NAME /bin/bash -c "cd /myvol; go build; sl analyze --wait --sca --app shiftleft-go-demo --cpg --go /myvol"
+    docker run --rm -e SHIFTLEFT_ACCESS_TOKEN -v "$1":/myvol -it $DOCKER_IMAGE_NAME /bin/bash -c "cd /myvol; go build; sl analyze --wait --sca --app shiftleft-go-demo --cpg --go /myvol"
 }
 
 # $1: absolute path to code or binaries
 run_demo_java() {
     echo "Run Java Demo: Parameters passed: $1"
     shiftleft_analyze_code "java" "$1"
-    docker run --rm -e SHIFTLEFT_ACCESS_TOKEN -v $1:/myvol -it $DOCKER_IMAGE_NAME /bin/bash -c "cd /myvol; mvn clean package; sl analyze --wait --sca --app shiftleft-java-demo --cpg --java /myvol/target/hello-shiftleft-0.0.1.jar"
+    docker run --rm -e SHIFTLEFT_ACCESS_TOKEN -v "$1":/myvol -it $DOCKER_IMAGE_NAME /bin/bash -c "cd /myvol; mvn clean package; sl analyze --wait --sca --app shiftleft-java-demo --cpg --java /myvol/target/hello-shiftleft-0.0.1.jar"
 }
 
 # $1: absolute path to code or binaries
@@ -41,7 +44,7 @@ run_demo_python() {
     echo "Run Python Demo: Parameters passed: $1"
     echo "Python path is: " pwd
     shiftleft_analyze_code "python" "$1"
-    docker run --rm -e SHIFTLEFT_ACCESS_TOKEN -v $1:/myvol -it $DOCKER_IMAGE_NAME /bin/bash -c "cd /myvol; pip install -r requirements.txt; sl analyze --wait --sca --app shiftleft-python-demo --cpg --python /myvol"
+    docker run --rm -e SHIFTLEFT_ACCESS_TOKEN -v "$1":/myvol -it $DOCKER_IMAGE_NAME /bin/bash -c "cd /myvol; pip install -r requirements.txt; sl analyze --wait --sca --app shiftleft-python-demo --cpg --python /myvol"
 }
 
 # SL to analyze demo applications
