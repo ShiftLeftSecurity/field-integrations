@@ -17,20 +17,17 @@ ngsast_logo = """
 """
 
 # This is WIP
+
 sl_owasp_category = {
-    "SQL Injection": "sqli",
-    "LDAP Injection": "ldapi",
-    "XPath Injection": "xpathi",
-    "Weak Random": "weakrand",
-    "Session Injection": "trustbound",
-    "Cookie Injection": "securecookie",
-    "Weak Hash": "hash",
-    "hash": "hash",
-    "Open Redirect": "pathtraver",
-    "XSS": "xss",
-    "Remote Code Execution": "cmdi",
-    "Insecure Cookie": "securecookie",
-    "Directory Traversal": "pathtraver",
-    "Broken Authentication": "crypto",
-    "Weak symmetric encryption algorithm": "crypto",
+    78: "cmdi",
+    327: "crypto",
+    328: "hash",
+    90: "ldapi",
+    22: "pathtraver",
+    614: "securecookie",
+    89: "sqli",
+    501: "trustbound",
+    330: "weakrand",
+    643: "xpathi",
+    79: "xss",
 }
