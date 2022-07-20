@@ -257,25 +257,16 @@ def export_report(org_id, app_list, report_file, format):
                                 f"Unable to extract filename from file_locations or title {title}. Skipping ..."
                             )
                             continue
-                        tags = af.get("tags")
-                        cwe_id = ""
-                        category = af.get("title")
-                        for tag in tags:
-                            if tag["key"] == "category":
-                                category = tag["value"]
-                            if tag["key"] == "cwe_category":
-                                cwe_id = tag["value"]
-                        if not category and cwe_id == "384":
-                            category = "Broken Authentication"
-                        if config.sl_owasp_category.get(category):
-                            category = config.sl_owasp_category.get(category)
-                        file_category = f"{filename},{category}"
-                        if (
-                            " " not in category
-                            and file_category not in file_category_set
-                        ):
-                            rp.write(file_category + "\n")
-                            file_category_set.add(file_category)
+                        cwes = (int(pair['value']) for pair in af['tags'] if pair['key'] == 'cwe_category')
+                        categories = (config.sl_owasp_category[cwe] for cwe in cwes if cwe in config.sl_owasp_category)
+                        try:
+                            category = next(categories)
+                            file_category = f"{filename},{category}"
+                            if file_category not in file_category_set:
+                                rp.write(file_category + "\n")
+                                file_category_set.add(file_category)
+                        except StopIteration:
+                            pass
                     progress.console.print(
                         f"Findings report successfully exported to {report_file}"
                     )
