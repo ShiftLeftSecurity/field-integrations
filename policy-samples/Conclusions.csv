@@ -1,137 +1,137 @@
 Conclusion,Vulnerability Description,OWASP category,CWE Categories,Score
 weak-random,Weak Random,A9-using-components-with-known-vulnerabilities,338,5
-weak-random-http,Sensitive Data Leak,A9-using-components-with-known-vulnerabilities,338,5
-env-to-outside,Deserialization,a3-sensitive-data-exposure,200,3
-env-to-println,Directory Traversal,a3-sensitive-data-exposure,200,3
-env-to-file,Sensitive Data Exposure,a3-sensitive-data-exposure,200,3
-deserialization-json,Remote Code Execution,a8-insecure-deserialization,502,8
-deserialization-http,Command Injection,a8-insecure-deserialization,502,8
-deserialization-network,Security Best Practices,a8-insecure-deserialization,502,8
-deserialization-database,Unsafe Reflection,a8-insecure-deserialization,502,8
-deserialization-attacker-controlled,Regex Injection,a8-insecure-deserialization,502,8
-safe-deserialization-json,SQL Injection,a8-insecure-deserialization,502,1
-safe-deserialization-http,XML External Entities,a8-insecure-deserialization,502,1
-safe-deserialization-network,Template Injection,a8-insecure-deserialization,502,1
-safe-deserialization-database,Cross-Site Scripting,a8-insecure-deserialization,502,1
-safe-deserialization-attacker-controlled,JSON Injection,a8-insecure-deserialization,502,1
-directory-traversal-zip,Potential SQL Injection,a5-broken-access-control,22;434,8
-directory-traversal-http-unzip,Potential Regex Injection,a5-broken-access-control,22;434,8
-directory-traversal-zip-js,Header Injection,a5-broken-access-control,22;434,8
-directory-traversal-http,Security Misconfiguration,a5-broken-access-control,22;434,8
-sensitive-to-local-storage,Deprecated Function Use,a3-sensitive-data-exposure,200;117,2
-lfi-http,Mail Injection,a1-injection,94;98,9
-code-injection-http,Race Condition,a1-injection,94;77;78;917,9
-command-injection-http,Sensitive Data Usage,a1-injection,94;77;78;917,9
-command-injection-cloud,Open Redirect,a1-injection,94;77;78;917,9
-command-injection-attacker-controlled,Error Handling,a1-injection,94;77;78;917,9
-command-injection-environment,HTTP to Database,a1-injection,94;77;78;917,2.5
-lfi-attacker,HTTP to Model,a1-injection,94;98,9
-code-injection-attacker-controlled,LDAP Injection,a1-injection,77;78;917,9
-lfi-database,Denial of Service,a1-injection,94;98,9
-code-injection-database,CRLF Injection,a1-injection,94;77;78;917,5
-stdio-to-ffi,NoSQL Injection,a1-injection,111,2
-stream-to-reflection,Weak Hash,a1-injection,470,6
-environment-to-reflection,Session Injection,a1-injection,470,2
-database-to-reflection,Server-Side Request Forgery,a1-injection,470,5
-redos,Prototype Pollution,a1-injection,1333,6
-sql-injection-attacker-controlled,Log Forging,a1-injection,89,9
-sql-injection-http,XPath Injection,a1-injection,89,9
-sql-injection-ui,Insecure Authentication,a1-injection,89,9
-sql-injection-env,Intent Redirection,a1-injection,89,3
-sql-injection-stream,Authentication Bypass,a1-injection,89,7
-sql-injection-network,Weak Cipher,a1-injection,89,7
-xxe-injection,Crypto,A4-XXE,611;91,9
-xml-generate-inject,,A4-XXE,611;91,6
-template-injection,,a7-XSS,79;94,8
-http-to-velocityTemplate,,a7-XSS,79;94,5
-template-name-injection,,a7-XSS,79,8
-xss-to-html-template,,a7-XSS,79,8
-http-to-template-name,,a7-XSS,79,8
-xss-to-html,,a7-XSS,79,8
-attacker-to-javascript,,a7-XSS,79,8
-http-to-javascript,,a7-XSS,79,8
-xss-to-print,,a7-XSS,79;94,8
-xss-file-to-html,,a7-XSS,79,8
-xss-play,,a7-XSS,79,8
-xss-abuilder,,a7-XSS,79,8
-http-to-jsp,,a7-XSS,79,8
-env-to-html,,a7-XSS,79,3
-network-to-html,,a7-XSS,79,3
-json-inject-response,,a1-injection,143,5
-xml-inject-response,,a1-injection,143,5
-template-unescaped-output,,a7-XSS,79,4
-string-manipulation-to-sql,,a1-injection,89,1
-string-manipulation-to-regex,,,1333,1
-http-to-httpHeader,,a1-injection,113,5
-cors-disabled,,a6-security-misconfiguration,942,4
-deprecated-node-url-parse,,a9-using-components-with-known-vulnerabilities,477,5
-mail-injection,,a1-injection,159;93,6
-cloud-access,,a5-broken-access-control,22,8
-file-to-http,,a5-broken-access-control,22,8
-arbitrary-file-read,,a5-broken-access-control,22,8
-file-toctou,,a5-broken-access-control,367,3
-sensitive-to-http,,a3-sensitive-data-exposure,200,2.5
-cache-to-http,,a3-sensitive-data-exposure,200,3
-open-redirect,,a1-injection,601,3
-exceptionStackTrace-to-http,,a3-sensitive-data-exposure,200,3
-security-miscfg,,a3-sensitive-data-exposure,200,2
-exception-handler-leak,,a3-sensitive-data-exposure,200,2
-error-leak,,a3-sensitive-data-exposure,200,2
-prometheusMetrics-to-http,,a3-sensitive-data-exposure,200,2
-http-to-dao,,a1-injection,,5
-http-to-httpModel,,A5-broken-access-control,501,8
-exception-to-log,,a6-sensitive-data-exposure,,8
-dao-to-model,,a6-sensitive-data-exposure,,8
-sqlinjectionsource-to-sqlinjection,,a1-injection,,8
-fileread-to-streamwrite,,a6-sensitive-data-exposure,,4
-sensitive-to-grpc,,a3-sensitive-data-exposure,200,2.5
-ldap-injection-attacker-controlled,,a1-injection,90,9
-ldap-injection-http,,a1-injection,90,9
-zip-bomb,,A6-security-misconfiguration,409,4
-attacker-controlled-to-cookie,,a5-broken-access-control,565;784,3
-attacker-controlled-to-cookie-attr,,a5-broken-access-control,565;784,3
-http-to-cookie,,a5-broken-access-control,565;784,3
-http-to-cookie-attr,,a5-broken-access-control,565;784,3
-insecure-cookie,,A3-sensitive-data-exposure,1004,3
-httponly-cookie,,A3-sensitive-data-exposure,1004,3
-socket-to-cookie,,a5-broken-access-control,565;784,3
-attacker-controlled-to-nosql,,a1-injection,943,9
-http-to-nosql,,a1-injection,943,9
-file-to-print,,a3-sensitive-data-exposure,200,3
-sensitive-to-print,,a3-sensitive-data-exposure,200,8
-weak-hash,,A3-sensitive-data-exposure,327,3
-weak-hash-io,,A3-sensitive-data-exposure,327,3
-weak-hash-sink,,A3-sensitive-data-exposure,327,3
-unsalted-one-way-hash,,A3-sensitive-data-exposure,760,1
-session-injection-attacker-controlled,,a2-broken-authentication,384,5
-session-injection-http,,a2-broken-authentication,384,5
-sensitive-to-registry,,a1-injection,74,8
-ssrf,,A1-injection,918,7
-ssrf-attacker,,A1-injection,918,7
-http-to-database-connection,,A1-injection,918,7
-attacker-to-http,,A1-injection,918,8
-attacker2-to-http,,A1-injection,918,8
-prototype-pollution-ac,,a1-injection,1321,4
-prototype-pollution-http,,a1-injection,1321,4
-sensitive-to-log,,a3-sensitive-data-exposure,200;117,8
-database-to-log,,a3-sensitive-data-exposure,200;117,3
-http-to-log,,A1-injection,117,2.5
-log-forging-attacker,,A1-injection,117,2.5
-cloud-to-log,,a3-sensitive-data-exposure,200;117,2.5
-xpath-injection-attacker-controlled,,a1-injection,643,9
-xpath-injection-http,,a1-injection,643,9
-mail-injection-http,,a1-injection,,6
-sensitive-to-file,,a6-sensitive-data-exposure,,3
-database-to-html,,a1-injection,,8
-jwt-token-to-parse,,A2-broken-authentication,347;288,5
-http-to-network-connection,,A1-injection,918,7
-file-to-network-connection,,A1-injection,918,7
-sensitive-to-implicitIntentBroadcast,,a3-sensitive-data-exposure,927,8
-extraIntent-to-startActivity,,A6-security-misconfiguration,20,7
-code-injection-untrustedIntent-to-webViewLoadUrl,,a1-injection,94;77;78;917,9
-stored-xss,,A7-XSS,79,5
-reflected-xss,,A7-XSS,79,5
-aws-sign-untrusted,,a5-broken-access-control,441,7
-weak-cipher,,A3-sensitive-data-exposure,327,5
-fixed-iv,,A3-sensitive-data-exposure,327,9
-fixed-salt,,A3-sensitive-data-exposure,327,9
+weak-random-http,Weak Random,A9-using-components-with-known-vulnerabilities,338,5
+env-to-outside,Sensitive Data Leak,a3-sensitive-data-exposure,200,3
+env-to-println,Sensitive Data Leak,a3-sensitive-data-exposure,200,3
+env-to-file,Sensitive Data Leak,a3-sensitive-data-exposure,200,3
+deserialization-json,Deserialization,a8-insecure-deserialization,502,8
+deserialization-http,Deserialization,a8-insecure-deserialization,502,8
+deserialization-network,Deserialization,a8-insecure-deserialization,502,8
+deserialization-database,Deserialization,a8-insecure-deserialization,502,8
+deserialization-attacker-controlled,Deserialization,a8-insecure-deserialization,502,8
+safe-deserialization-json,Deserialization,a8-insecure-deserialization,502,1
+safe-deserialization-http,Deserialization,a8-insecure-deserialization,502,1
+safe-deserialization-network,Deserialization,a8-insecure-deserialization,502,1
+safe-deserialization-database,Deserialization,a8-insecure-deserialization,502,1
+safe-deserialization-attacker-controlled,Deserialization,a8-insecure-deserialization,502,1
+directory-traversal-zip,Directory Traversal,a5-broken-access-control,22;434,8
+directory-traversal-http-unzip,Directory Traversal,a5-broken-access-control,22;434,8
+directory-traversal-zip-js,Directory Traversal,a5-broken-access-control,22;434,8
+directory-traversal-http,Directory Traversal,a5-broken-access-control,22;434,8
+sensitive-to-local-storage,Sensitive Data Exposure,a3-sensitive-data-exposure,200;117,2
+lfi-http,Remote Code Execution,a1-injection,94;98,9
+code-injection-http,Remote Code Execution,a1-injection,94;77;78;917,9
+command-injection-http,Remote Code Execution,a1-injection,94;77;78;917,9
+command-injection-cloud,Remote Code Execution,a1-injection,94;77;78;917,9
+command-injection-attacker-controlled,Remote Code Execution,a1-injection,94;77;78;917,9
+command-injection-environment,Command Injection,a1-injection,94;77;78;917,2.5
+lfi-attacker,Remote Code Execution,a1-injection,94;98,9
+code-injection-attacker-controlled,Remote Code Execution,a1-injection,77;78;917,9
+lfi-database,Remote Code Execution,a1-injection,94;98,9
+code-injection-database,Remote Code Execution,a1-injection,94;77;78;917,5
+stdio-to-ffi,Security Best Practices,a1-injection,111,2
+stream-to-reflection,Unsafe Reflection,a1-injection,470,6
+environment-to-reflection,Unsafe Reflection,a1-injection,470,2
+database-to-reflection,Unsafe Reflection,a1-injection,470,5
+redos,Regex Injection,a1-injection,1333,6
+sql-injection-attacker-controlled,SQL Injection,a1-injection,89,9
+sql-injection-http,SQL Injection,a1-injection,89,9
+sql-injection-ui,SQL Injection,a1-injection,89,9
+sql-injection-env,SQL Injection,a1-injection,89,3
+sql-injection-stream,SQL Injection,a1-injection,89,7
+sql-injection-network,SQL Injection,a1-injection,89,7
+xxe-injection,XML External Entities,A4-XXE,611;91,9
+xml-generate-inject,XML External Entities,A4-XXE,611;91,6
+template-injection,Template Injection,a7-XSS,79;94,8
+http-to-velocityTemplate,Template Injection,a7-XSS,79;94,5
+template-name-injection,Template Injection,a7-XSS,79,8
+xss-to-html-template,Template Injection,a7-XSS,79,8
+http-to-template-name,Template Injection,a7-XSS,79,8
+xss-to-html,Cross-Site Scripting,a7-XSS,79,8
+attacker-to-javascript,Cross-Site Scripting,a7-XSS,79,8
+http-to-javascript,Cross-Site Scripting,a7-XSS,79,8
+xss-to-print,Cross-Site Scripting,a7-XSS,79;94,8
+xss-file-to-html,Cross-Site Scripting,a7-XSS,79,8
+xss-play,Cross-Site Scripting,a7-XSS,79,8
+xss-abuilder,Cross-Site Scripting,a7-XSS,79,8
+http-to-jsp,Cross-Site Scripting,a7-XSS,79,8
+env-to-html,Cross-Site Scripting,a7-XSS,79,3
+network-to-html,Cross-Site Scripting,a7-XSS,79,3
+json-inject-response,JSON Injection,a1-injection,143,5
+xml-inject-response,XML External Entities,a1-injection,143,5
+template-unescaped-output,Cross-Site Scripting,a7-XSS,79,4
+string-manipulation-to-sql,Potential SQL Injection,a1-injection,89,1
+string-manipulation-to-regex,Potential Regex Injection,,1333,1
+http-to-httpHeader,Header Injection,a1-injection,113,5
+cors-disabled,Security Misconfiguration,a6-security-misconfiguration,942,4
+deprecated-node-url-parse,Deprecated Function Use,a9-using-components-with-known-vulnerabilities,477,5
+mail-injection,Mail Injection,a1-injection,159;93,6
+cloud-access,Directory Traversal,a5-broken-access-control,22,8
+file-to-http,Directory Traversal,a5-broken-access-control,22,8
+arbitrary-file-read,Directory Traversal,a5-broken-access-control,22,8
+file-toctou,Race Condition,a5-broken-access-control,367,3
+sensitive-to-http,Sensitive Data Usage,a3-sensitive-data-exposure,200,2.5
+cache-to-http,Sensitive Data Leak,a3-sensitive-data-exposure,200,3
+open-redirect,Open Redirect,a1-injection,601,3
+exceptionStackTrace-to-http,Sensitive Data Leak,a3-sensitive-data-exposure,200,3
+security-miscfg,Sensitive Data Leak,a3-sensitive-data-exposure,200,2
+exception-handler-leak,Error Handling,a3-sensitive-data-exposure,200,2
+error-leak,Sensitive Data Exposure,a3-sensitive-data-exposure,200,2
+prometheusMetrics-to-http,Sensitive Data Leak,a3-sensitive-data-exposure,200,2
+http-to-dao,HTTP to Database,a1-injection,,5
+http-to-httpModel,HTTP to Model,A5-broken-access-control,501,8
+exception-to-log,Sensitive Data Leak,a6-sensitive-data-exposure,,8
+dao-to-model,Sensitive Data Leak,a6-sensitive-data-exposure,,8
+sqlinjectionsource-to-sqlinjection,SQL Injection,a1-injection,,8
+fileread-to-streamwrite,Sensitive Data Leak,a6-sensitive-data-exposure,,4
+sensitive-to-grpc,Sensitive Data Usage,a3-sensitive-data-exposure,200,2.5
+ldap-injection-attacker-controlled,LDAP Injection,a1-injection,90,9
+ldap-injection-http,LDAP Injection,a1-injection,90,9
+zip-bomb,Denial of Service,A6-security-misconfiguration,409,4
+attacker-controlled-to-cookie,CRLF Injection,a5-broken-access-control,565;784,3
+attacker-controlled-to-cookie-attr,CRLF Injection,a5-broken-access-control,565;784,3
+http-to-cookie,CRLF Injection,a5-broken-access-control,565;784,3
+http-to-cookie-attr,CRLF Injection,a5-broken-access-control,565;784,3
+insecure-cookie,Security Misconfiguration,A3-sensitive-data-exposure,1004,3
+httponly-cookie,Security Misconfiguration,A3-sensitive-data-exposure,1004,3
+socket-to-cookie,CRLF Injection,a5-broken-access-control,565;784,3
+attacker-controlled-to-nosql,NoSQL Injection,a1-injection,943,9
+http-to-nosql,NoSQL Injection,a1-injection,943,9
+file-to-print,Sensitive Data Leak,a3-sensitive-data-exposure,200,3
+sensitive-to-print,Sensitive Data Leak,a3-sensitive-data-exposure,200,8
+weak-hash,Weak Hash,A3-sensitive-data-exposure,327,3
+weak-hash-io,Weak Hash,A3-sensitive-data-exposure,327,3
+weak-hash-sink,Weak Hash,A3-sensitive-data-exposure,327,3
+unsalted-one-way-hash,Security Best Practices,A3-sensitive-data-exposure,760,1
+session-injection-attacker-controlled,Session Injection,a2-broken-authentication,384,5
+session-injection-http,Session Injection,a2-broken-authentication,384,5
+sensitive-to-registry,Sensitive Data Leak,a1-injection,74,8
+ssrf,Server-Side Request Forgery,A1-injection,918,7
+ssrf-attacker,Server-Side Request Forgery,A1-injection,918,7
+http-to-database-connection,Server-Side Request Forgery,A1-injection,918,7
+attacker-to-http,Server-Side Request Forgery,A1-injection,918,8
+attacker2-to-http,Server-Side Request Forgery,A1-injection,918,8
+prototype-pollution-ac,Prototype Pollution,a1-injection,1321,4
+prototype-pollution-http,Prototype Pollution,a1-injection,1321,4
+sensitive-to-log,Sensitive Data Leak,a3-sensitive-data-exposure,200;117,8
+database-to-log,Sensitive Data Leak,a3-sensitive-data-exposure,200;117,3
+http-to-log,Log Forging,A1-injection,117,2.5
+log-forging-attacker,Log Forging,A1-injection,117,2.5
+cloud-to-log,Sensitive Data Leak,a3-sensitive-data-exposure,200;117,2.5
+xpath-injection-attacker-controlled,XPath Injection,a1-injection,643,9
+xpath-injection-http,XPath Injection,a1-injection,643,9
+mail-injection-http,Mail Injection,a1-injection,,6
+sensitive-to-file,Sensitive Data Leak,a6-sensitive-data-exposure,,3
+database-to-html,Cross-Site Scripting,a1-injection,,8
+jwt-token-to-parse,Insecure Authentication,A2-broken-authentication,347;288,5
+http-to-network-connection,Server-Side Request Forgery,A1-injection,918,7
+file-to-network-connection,Server-Side Request Forgery,A1-injection,918,7
+sensitive-to-implicitIntentBroadcast,Sensitive Data Leak,a3-sensitive-data-exposure,927,8
+extraIntent-to-startActivity,Intent Redirection,A6-security-misconfiguration,20,7
+code-injection-untrustedIntent-to-webViewLoadUrl,Remote Code Execution,a1-injection,94;77;78;917,9
+stored-xss,Cross-Site Scripting,A7-XSS,79,5
+reflected-xss,Cross-Site Scripting,A7-XSS,79,5
+aws-sign-untrusted,Authentication Bypass,a5-broken-access-control,441,7
+weak-cipher,Weak Cipher,A3-sensitive-data-exposure,327,5
+fixed-iv,Crypto,A3-sensitive-data-exposure,327,9
+fixed-salt,Crypto,A3-sensitive-data-exposure,327,9
