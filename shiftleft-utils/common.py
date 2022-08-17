@@ -42,7 +42,7 @@ headers = {
 
 def get_findings_url(org_id, app_name, version):
     version_suffix = f"&version={version}" if version else ""
-    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=secret&type=vuln&type=extscan&include_dataflows=true{version_suffix}"
+    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=package&type=container&type=secret&type=vuln&type=extscan&include_dataflows=true{version_suffix}"
 
 
 def get_all_apps(org_id):
@@ -55,8 +55,9 @@ def get_all_apps(org_id):
             apps_list = raw_response.get("response")
             return apps_list
     else:
-        print(f"Unable to retrieve apps list for the organization {org_id}")
-        print(r.status_code, r.json())
+        print(
+            f"Unable to retrieve apps list for the organization {org_id} due to {r.status_code} error"
+        )
     return None
 
 
@@ -101,13 +102,16 @@ def get_all_findings(org_id, app_name, version):
                     )
                     if raw_response.get("next_page"):
                         parsed = urllib.parse.urlparse(raw_response.get("next_page"))
-                        findings_url = parsed._replace(netloc=config.SHIFTLEFT_API_HOST).geturl()
+                        findings_url = parsed._replace(
+                            netloc=config.SHIFTLEFT_API_HOST
+                        ).geturl()
                     else:
                         page_available = False
             else:
                 page_available = False
-                print(f"Unable to retrieve findings for {app_name}")
-                print(r.status_code, r.json())
+                print(
+                    f"Unable to retrieve findings for {app_name} due to {r.status_code} error"
+                )
         progress.stop()
     return findings_list
 
@@ -123,8 +127,9 @@ def get_dataflow(org_id, app_name, finding_id):
             dataflow = details.get("dataflow", {}).get("list")
             return dataflow
     else:
-        print(f"Unable to retrieve dataflows for {finding_id}")
-        print(r.status_code, r.json())
+        print(
+            f"Unable to retrieve dataflows for {finding_id} due to {r.status_code} error"
+        )
         return None
 
 
