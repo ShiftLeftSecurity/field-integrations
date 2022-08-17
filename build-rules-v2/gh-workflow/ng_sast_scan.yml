@@ -16,29 +16,32 @@ jobs:
   NextGen-Static-Analysis:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     # We are building this application with Java 11
-    - name: Setup Java JDK
-      uses: actions/setup-java@v1.4.3
+    - uses: actions/setup-java@v3
       with:
-        java-version: 11.0.x
+        distribution: 'adopt'
+        java-version: '11'
     - name: Package with maven
       run: mvn compile package
     - name: Download ShiftLeft CLI
       run: |
         curl https://cdn.shiftleft.io/download/sl > ${GITHUB_WORKSPACE}/sl && chmod a+rx ${GITHUB_WORKSPACE}/sl
     # ShiftLeft requires Java 1.8. Post the package step override the version
-    - name: Setup Java JDK
-      uses: actions/setup-java@v1.4.3
+    - uses: actions/setup-java@v3
       with:
-        java-version: 1.8
+        distribution: 'adopt'
+        java-version: '8'
     - name: Extract branch name
       shell: bash
       run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
       id: extract_branch
-    - name: NextGen Static Analysis
+    - name: ShiftLeft CORE
       # Run the analyzer and wait for it to finis, the app is a part of a group and we can dynamicaly capture the branch we're on for tagging. It's a java app and we point to where the binary can be found
-      run: ${GITHUB_WORKSPACE}/sl analyze --wait --app shiftleft-java-demo --tag app.group=HSL --tag branch=${{ github.head_ref || steps.extract_branch.outputs.branch }} --java --cpg target/hello-shiftleft-*.jar
+      run: |
+        ${GITHUB_WORKSPACE}/sl analyze --wait --app shiftleft-java-demo --tag app.group=HSL --tag branch=${{ github.head_ref || steps.extract_branch.outputs.branch }} --java --cpg target/hello-shiftleft-*.jar
+        # In case of scanning a container image
+        # ${GITHUB_WORKSPACE}/sl analyze --wait --app shiftleft-java-demo --tag app.group=HSL --tag branch=${{ github.head_ref || steps.extract_branch.outputs.branch }} --container local_image_name --java --cpg target/hello-shiftleft-*.jar
       env:
         SHIFTLEFT_ACCESS_TOKEN: ${{ secrets.SHIFTLEFT_ACCESS_TOKEN }}
     - name: Validate Build Rules
@@ -47,7 +50,7 @@ jobs:
       # Lets check the previous analysis for this branch to our baseline on Main,
       # since we specify a 'branch' we don't have to specify a '--source'
       run: |
-            ${GITHUB_WORKSPACE}/sl check-analysis --app shiftleft-java-demo \
+            ${GITHUB_WORKSPACE}/sl check-analysis --v2 --app shiftleft-java-demo \
             --branch "${{ github.head_ref || steps.extract_branch.outputs.branch }}" \
             --report \
             --github-pr-number=${{github.event.number}} \
@@ -57,5 +60,3 @@ jobs:
       env:
       # For SL to run you'll need a Secret with an access token
         SHIFTLEFT_ACCESS_TOKEN: ${{ secrets.SHIFTLEFT_ACCESS_TOKEN }}
-
-
