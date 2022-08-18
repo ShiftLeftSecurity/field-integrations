@@ -4,45 +4,46 @@
 # Set absolute path to working directory.
 # "/home/user/projects/projectfolder" or "/home/user/projects/projectfolder/project.jar"
 DOCKER_WORK_DIR="/Users/yusefsaraby/projects/testing" # <-- Update per comment above
-DOCKER_IMAGE_NAME=shiftleft/core:latest
+DOCKER_IMAGE_NAME=shiftleft/scan:latest
+ERR_NOT_FOUND=126
+
 # Variable Cleanup
 ## Remove trailing slash(es) if present
-DOCKER_WORK_DIR=$(echo "$DOCKER_WORK_DIR" | sed 's:/*$::')
+DOCKER_WORK_DIR="${DOCKER_WORK_DIR%/}"
 
 # Check heck if Docker is installed
 if ! [ -x "$(command -v docker)" ]; then
     echo "Install docker"
-    exit 126
-    # command
+    exit $ERR_NOT_FOUND
 fi
+
 # Get the lastest docker image
 docker pull $DOCKER_IMAGE_NAME
 
 # $1: language (python, go, js, java)
 # $2: absolute path to code or binaries
 shiftleft_analyze_code() {
-    echo "Parameters passed: $1 > $2"
+    echo "Will analyze $1 code at location $2"
     docker run --rm -e SHIFTLEFT_ACCESS_TOKEN -v "$2":/myvol -it $DOCKER_IMAGE_NAME sl analyze --wait --app shiftleft-js-demo --"$1" /myvol
 }
 
 # $1: absolute path to code or binaries
 run_demo_go() {
-    echo "Run Go Demo: Parameters passed: $1"
+    echo "Analyzing Go project: code at location $1"
     shiftleft_analyze_code "go" "$1"
     docker run --rm -e SHIFTLEFT_ACCESS_TOKEN -v "$1":/myvol -it $DOCKER_IMAGE_NAME /bin/bash -c "cd /myvol; go build; sl analyze --wait --app shiftleft-go-demo --go /myvol"
 }
 
 # $1: absolute path to code or binaries
 run_demo_java() {
-    echo "Run Java Demo: Parameters passed: $1"
+    echo "Analyzing JAVA project: code at location $1"
     shiftleft_analyze_code "java" "$1"
     docker run --rm -e SHIFTLEFT_ACCESS_TOKEN -v "$1":/myvol -it $DOCKER_IMAGE_NAME /bin/bash -c "cd /myvol; mvn clean package; sl analyze --wait --app shiftleft-java-demo --java /myvol/target/hello-shiftleft-0.0.1.jar"
 }
 
 # $1: absolute path to code or binaries
 run_demo_python() {
-    echo "Run Python Demo: Parameters passed: $1"
-    echo "Python path is: " pwd
+    echo "Analyzing PYTHON project: code at location $1"
     shiftleft_analyze_code "python" "$1"
     docker run --rm -e SHIFTLEFT_ACCESS_TOKEN -v "$1":/myvol -it $DOCKER_IMAGE_NAME /bin/bash -c "cd /myvol; pip install -r requirements.txt; sl analyze --wait --app shiftleft-python-demo --python /myvol"
 }
