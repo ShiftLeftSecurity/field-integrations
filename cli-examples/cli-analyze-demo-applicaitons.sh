@@ -22,21 +22,21 @@ docker pull $DOCKER_IMAGE_NAME
 # $2: absolute path to code or binaries
 shiftleft_analyze_code() {
     echo "Parameters passed: $1 > $2"
-    docker run --rm -e SHIFTLEFT_ACCESS_TOKEN -v "$2":/myvol -it $DOCKER_IMAGE_NAME sl analyze --wait --sca --app shiftleft-js-demo --cpg --"$1" /myvol
+    docker run --rm -e SHIFTLEFT_ACCESS_TOKEN -v "$2":/myvol -it $DOCKER_IMAGE_NAME sl analyze --wait --app shiftleft-js-demo --"$1" /myvol
 }
 
 # $1: absolute path to code or binaries
 run_demo_go() {
     echo "Run Go Demo: Parameters passed: $1"
     shiftleft_analyze_code "go" "$1"
-    docker run --rm -e SHIFTLEFT_ACCESS_TOKEN -v "$1":/myvol -it $DOCKER_IMAGE_NAME /bin/bash -c "cd /myvol; go build; sl analyze --wait --sca --app shiftleft-go-demo --cpg --go /myvol"
+    docker run --rm -e SHIFTLEFT_ACCESS_TOKEN -v "$1":/myvol -it $DOCKER_IMAGE_NAME /bin/bash -c "cd /myvol; go build; sl analyze --wait --app shiftleft-go-demo --go /myvol"
 }
 
 # $1: absolute path to code or binaries
 run_demo_java() {
     echo "Run Java Demo: Parameters passed: $1"
     shiftleft_analyze_code "java" "$1"
-    docker run --rm -e SHIFTLEFT_ACCESS_TOKEN -v "$1":/myvol -it $DOCKER_IMAGE_NAME /bin/bash -c "cd /myvol; mvn clean package; sl analyze --wait --sca --app shiftleft-java-demo --cpg --java /myvol/target/hello-shiftleft-0.0.1.jar"
+    docker run --rm -e SHIFTLEFT_ACCESS_TOKEN -v "$1":/myvol -it $DOCKER_IMAGE_NAME /bin/bash -c "cd /myvol; mvn clean package; sl analyze --wait --app shiftleft-java-demo --java /myvol/target/hello-shiftleft-0.0.1.jar"
 }
 
 # $1: absolute path to code or binaries
@@ -44,7 +44,7 @@ run_demo_python() {
     echo "Run Python Demo: Parameters passed: $1"
     echo "Python path is: " pwd
     shiftleft_analyze_code "python" "$1"
-    docker run --rm -e SHIFTLEFT_ACCESS_TOKEN -v "$1":/myvol -it $DOCKER_IMAGE_NAME /bin/bash -c "cd /myvol; pip install -r requirements.txt; sl analyze --wait --sca --app shiftleft-python-demo --cpg --python /myvol"
+    docker run --rm -e SHIFTLEFT_ACCESS_TOKEN -v "$1":/myvol -it $DOCKER_IMAGE_NAME /bin/bash -c "cd /myvol; pip install -r requirements.txt; sl analyze --wait --app shiftleft-python-demo --python /myvol"
 }
 
 # SL to analyze demo applications
