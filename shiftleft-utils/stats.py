@@ -39,8 +39,9 @@ def collect_stats(org_id, report_file):
                 "Language",
                 "Expressions Count",
                 "Critical Count",
-                "Moderate Count",
-                "Info Count",
+                "High Count",
+                "Medium Count",
+                "Low Count",
                 "Secrets Count",
                 "Source Methods",
                 "Sink Methods",
@@ -91,8 +92,9 @@ def collect_stats(org_id, report_file):
                             and c["key"] in ["severity", "language"]
                         ]
                         critical_count = 0
-                        moderate_count = 0
-                        info_count = 0
+                        high_count = 0
+                        medium_count = 0
+                        low_count = 0
                         secrets_count = 0
                         sources_list = set()
                         sinks_list = set()
@@ -111,10 +113,12 @@ def collect_stats(org_id, report_file):
                             if vc["finding_type"] == "vuln" and vc["key"] == "severity":
                                 if vc["value"] == "critical":
                                     critical_count = vc["count"]
-                                elif vc["value"] == "moderate":
-                                    moderate_count = vc["count"]
-                                elif vc["value"] == "info":
-                                    info_count = vc["count"]
+                                elif vc["value"] == "high":
+                                    high_count = vc["count"]
+                                elif vc["value"] == "medium":
+                                    medium_count = vc["count"]
+                                elif vc["value"] == "low":
+                                    low_count = vc["count"]
                             if (
                                 vc["finding_type"] == "secret"
                                 and vc["key"] == "language"
@@ -129,8 +133,9 @@ def collect_stats(org_id, report_file):
                                 scan.get("language"),
                                 scan.get("number_of_expressions"),
                                 critical_count,
-                                moderate_count,
-                                info_count,
+                                high_count,
+                                medium_count,
+                                low_count,
                                 secrets_count,
                                 "\\n".join(sources_list),
                                 "\\n".join(sinks_list),

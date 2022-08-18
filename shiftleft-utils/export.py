@@ -131,7 +131,9 @@ def get_all_findings(org_id, app_name, version):
                 findings_list += findings
                 if raw_response.get("next_page"):
                     parsed = urllib.parse.urlparse(raw_response.get("next_page"))
-                    findings_url = parsed._replace(netloc=config.SHIFTLEFT_API_HOST).geturl()
+                    findings_url = parsed._replace(
+                        netloc=config.SHIFTLEFT_API_HOST
+                    ).geturl()
                 else:
                     page_available = False
         else:
@@ -257,8 +259,16 @@ def export_report(org_id, app_list, report_file, format):
                                 f"Unable to extract filename from file_locations or title {title}. Skipping ..."
                             )
                             continue
-                        cwes = (int(pair['value']) for pair in af['tags'] if pair['key'] == 'cwe_category')
-                        categories = (config.sl_owasp_category[cwe] for cwe in cwes if cwe in config.sl_owasp_category)
+                        cwes = (
+                            int(pair["value"])
+                            for pair in af["tags"]
+                            if pair["key"] == "cwe_category"
+                        )
+                        categories = (
+                            config.sl_owasp_category[cwe]
+                            for cwe in cwes
+                            if cwe in config.sl_owasp_category
+                        )
                         try:
                             category = next(categories)
                             file_category = f"{filename},{category}"

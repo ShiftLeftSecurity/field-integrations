@@ -35,6 +35,15 @@ IMPORT io.shiftleft/defaultdict
 CHECK_METHOD_TEMPLATE = """TAG "CHECK" METHOD -f "%(method_name)s"
 """
 
+REMEDIATION_TEMPLATE = """methods:
+"""
+
+REMEDIATION_METHOD_TEMPLATE = """  - method: %(method_name)s
+    tags:
+      - key: category
+        value: %(category_name)s
+"""
+
 
 def start_analysis(org_id, app_name, version):
     """Method to analyze all the findings to identify sources, sinks, methods and file locations"""
@@ -42,6 +51,7 @@ def start_analysis(org_id, app_name, version):
     sources_list = set()
     sources_dict = defaultdict(set)
     vars_dict = defaultdict(set)
+    methods_dict = defaultdict(set)
     methods_list = set()
     sinks_dict = defaultdict(set)
     files_loc_list = set()
@@ -108,14 +118,76 @@ def start_analysis(org_id, app_name, version):
                 method_name = location.get("method_name")
                 if method_name not in sinks_list and method_name not in sources_list:
                     methods_list.add(method_name)
+                    methods_dict[category].add(method_name)
             progress.advance(task)
     return (
         sources_dict,
         sinks_dict,
         methods_list,
+        methods_dict,
         files_loc_list,
         vars_dict,
         category_route_dict,
+    )
+
+
+def create_remediation(
+    org_id,
+    app_name,
+    sources_dict,
+    sinks_dict,
+    methods_dict,
+    files_loc_list,
+    remediation_file,
+):
+    """Method to create a sample remediation config file for the app"""
+    if os.path.exists(remediation_file):
+        LOG.info(f"WARNING: {remediation_file} would be overwritten")
+    with open(remediation_file, mode="w") as fp:
+        fp.write(REMEDIATION_TEMPLATE)
+        for category, sources_list in sources_dict.items():
+            for source in sorted(sources_list):
+                fp.write(
+                    REMEDIATION_METHOD_TEMPLATE
+                    % dict(method_name=source, category_name=category)
+                )
+        for category, sinks_list in sinks_dict.items():
+            for sink in sorted(sinks_list):
+                fp.write(
+                    REMEDIATION_METHOD_TEMPLATE
+                    % dict(method_name=sink, category_name=category)
+                )
+        for category, sinks_list in methods_dict.items():
+            for method in sorted(methods_list):
+                fp.write(
+                    REMEDIATION_METHOD_TEMPLATE
+                    % dict(method_name=method, category_name=category)
+                )
+    console.print("")
+    console.print(
+        Panel(
+            f"Sample remediation config file [bold]{remediation_file}[/bold] created successfully.\nEdit this file and include only the required methods.\nThen, to use this remediation config perform the below steps",
+            title="ShiftLeft Remediation Config Generator",
+            expand=False,
+        )
+    )
+    md = Markdown(
+        f"""
+```
+# Perform a dry run to validate this config file
+sl remediation dry-run --config {remediation_file} --app {app_name}
+# Include this file with sl analyze
+sl analyze --remediation-config {remediation_file} --app {app_name} ...
+```
+"""
+    )
+    console.print(md)
+    console.print(
+        Panel(
+            f"Using this remediation config file as-is would suppress all findings for {app_name}!",
+            title="NOTE",
+            expand=False,
+        )
     )
 
 
@@ -207,6 +279,12 @@ def build_args():
         default="ngsast.policy",
     )
     parser.add_argument(
+        "--remediation",
+        dest="remediation_file",
+        help="Remediation config filename to generate",
+        default="remediation.yaml",
+    )
+    parser.add_argument(
         "--vars-file",
         dest="vars_file",
         help="Variables filename",
@@ -247,6 +325,7 @@ if __name__ == "__main__":
         sources_dict,
         sinks_dict,
         methods_list,
+        methods_dict,
         files_loc_list,
         vars_dict,
         category_route_dict,
@@ -269,4 +348,13 @@ if __name__ == "__main__":
         methods_list,
         files_loc_list,
         args.policy_file,
+    )
+    create_remediation(
+        org_id,
+        args.app_name,
+        sources_dict,
+        sinks_dict,
+        methods_dict,
+        files_loc_list,
+        args.remediation_file,
     )
