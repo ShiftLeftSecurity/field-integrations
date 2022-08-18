@@ -93,7 +93,7 @@ def collect_stats(org_id, report_file):
                         ]
                         critical_count = 0
                         high_count = 0
-                        medium_count =0
+                        medium_count = 0
                         low_count = 0
                         secrets_count = 0
                         sources_list = set()
@@ -116,7 +116,7 @@ def collect_stats(org_id, report_file):
                                 elif vc["value"] == "high":
                                     high_count = vc["count"]
                                 elif vc["value"] == "medium":
-                                    medium_count = vc["count"]    
+                                    medium_count = vc["count"]
                                 elif vc["value"] == "low":
                                     low_count = vc["count"]
                             if (
