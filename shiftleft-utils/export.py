@@ -33,12 +33,15 @@ def export_csv(app_list, findings_dict, report_file):
                 "App",
                 "App Group",
                 "Finding ID",
+                "Type",
                 "Category",
                 "OWASP Category",
                 "Severity",
                 "Source Method",
                 "Sink Method",
                 "Source File",
+                "Version First Seen",
+                "Scan First Seen",
             ]
         )
         for app in app_list:
@@ -87,20 +90,46 @@ def export_csv(app_list, findings_dict, report_file):
                             sink_method = (
                                 f'{sink.get("file_name")}:{sink.get("line_number")}'
                             )
-                for loc in files_loc_list:
+                if afinding.get("type") in (
+                    "oss_vuln",
+                    "container",
+                    "extscan",
+                    "secret",
+                ):
                     reportwriter.writerow(
                         [
                             app_name,
                             app_group,
                             afinding.get("id"),
+                            afinding.get("type"),
                             afinding.get("category"),
                             afinding.get("owasp_category"),
                             afinding.get("severity"),
-                            source_method,
-                            sink_method,
-                            loc,
+                            "",
+                            "",
+                            afinding.get("title"),
+                            afinding.get("version_first_seen"),
+                            afinding.get("scan_first_seen"),
                         ]
                     )
+                elif afinding.get("type") in ("vuln"):
+                    for loc in files_loc_list:
+                        reportwriter.writerow(
+                            [
+                                app_name,
+                                app_group,
+                                afinding.get("id"),
+                                afinding.get("type"),
+                                afinding.get("category"),
+                                afinding.get("owasp_category"),
+                                afinding.get("severity"),
+                                source_method,
+                                sink_method,
+                                loc,
+                                afinding.get("version_first_seen"),
+                                afinding.get("scan_first_seen"),
+                            ]
+                        )
 
 
 def get_all_findings(org_id, app_name, version):
