@@ -1,7 +1,7 @@
 source:
   branch: main
 build_rules:
-  - id: allow-zero-high-sast
+  - id: "No critical or high SAST findings"
     finding_types:
       - vuln
       - secret
@@ -11,7 +11,7 @@ build_rules:
     threshold: 0
     options:
       num_findings: 10 # Return 10 sast findings
-  - id: allow-zero-reachable-sca
+  - id: "No reachable SCA findings"
     finding_types:
       - oss_vuln
     cvss_31_severity_ratings:
@@ -21,7 +21,7 @@ build_rules:
     options:
       reachable: true
       num_findings: 10 # Return 10 reachable sca findings
-  - id: allow-zero-high-container
+  - id: "No critical or high container findings"
     finding_types:
       - container
     cvss_31_severity_ratings:
