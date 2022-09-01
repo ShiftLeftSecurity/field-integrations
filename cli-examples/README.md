@@ -10,3 +10,8 @@ export SHIFTLEFT_ACCESS_TOKEN=YOUR_ACCESS_TOKEN_FOR_SHIFTLEFT
 ```
 * Update the script with your working directory by setting `DOCKER_WORK_DIR` variable.  This is the path where the github repos will be downloaded to.
 * **Must** have git installed.
+
+To invoke the script run the following:
+```bash
+./cli-examples/cli-analyze-demo-applicaitons.sh 
+```
