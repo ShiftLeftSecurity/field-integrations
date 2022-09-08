@@ -42,6 +42,10 @@ def export_csv(app_list, findings_dict, report_file):
                 "Source File",
                 "Version First Seen",
                 "Scan First Seen",
+                "Internal ID",
+                "CVSS 3.1 Rating",
+                "CVSS Score",
+                "Reachability",
             ]
         )
         for app in app_list:
@@ -57,12 +61,24 @@ def export_csv(app_list, findings_dict, report_file):
             findings = findings_dict[app_name]
             source_method = ""
             sink_method = ""
+            cvss_31_severity_rating = ""
+            cvss_score = ""
+            reachability = ""
             files_loc_list = set()
-            # Find the source and sink
+            # Find the source, sink and other tags
             for afinding in findings:
                 details = afinding.get("details", {})
                 source_method = details.get("source_method", "")
                 sink_method = details.get("sink_method", "")
+                tags = afinding.get("tags")
+                if tags:
+                    for tag in tags:
+                        if tag.get("key") == "cvss_31_severity_rating":
+                            cvss_31_severity_rating = tag.get("value")
+                        elif tag.get("key") == "cvss_score":
+                            cvss_score = tag.get("value")
+                        elif tag.get("key") == "reachability":
+                            reachability = tag.get("value")
                 if details.get("file_locations"):
                     files_loc_list.update(details.get("file_locations"))
                 # For old scans, details block might be empty.
@@ -110,6 +126,10 @@ def export_csv(app_list, findings_dict, report_file):
                             afinding.get("title"),
                             afinding.get("version_first_seen"),
                             afinding.get("scan_first_seen"),
+                            afinding.get("internal_id"),
+                            cvss_31_severity_rating,
+                            cvss_score,
+                            reachability,
                         ]
                     )
                 elif afinding.get("type") in ("vuln"):
@@ -128,6 +148,12 @@ def export_csv(app_list, findings_dict, report_file):
                                 loc,
                                 afinding.get("version_first_seen"),
                                 afinding.get("scan_first_seen"),
+                                afinding.get("internal_id"),
+                                cvss_31_severity_rating,
+                                cvss_score,
+                                "reachable"
+                                if afinding.get("related_findings", [])
+                                else "",
                             ]
                         )
 
