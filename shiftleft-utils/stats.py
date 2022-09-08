@@ -46,6 +46,16 @@ def collect_stats(org_id, report_file):
                 "Source Methods",
                 "Sink Methods",
                 "File Locations",
+                "OSS Critical Count",
+                "OSS High Count",
+                "OSS Medium Count",
+                "OSS Low Count",
+                "OSS Reachable Count",
+                "OSS Unreachable Count",
+                "Container Critical Count",
+                "Container High Count",
+                "Container Medium Count",
+                "Container Low Count",
             ]
         )
         with Progress(
@@ -84,17 +94,35 @@ def collect_stats(org_id, report_file):
                         projectSpId = f'sl/{org_id}/{scan.get("app")}'
                         counts = response.get("counts", [])
                         findings = response.get("findings", [])
-
                         vuln_counts = [
                             c
                             for c in counts
-                            if c["finding_type"] in ["vuln", "secret"]
-                            and c["key"] in ["severity", "language"]
+                            if c["finding_type"]
+                            in ["vuln", "secret", "oss_vuln", "container"]
+                            and c["key"]
+                            in [
+                                "severity",
+                                "language",
+                                "cvss_31_severity_rating",
+                                "reachable_oss_vulns",
+                                "reachability",
+                            ]
                         ]
                         critical_count = 0
                         high_count = 0
                         medium_count = 0
                         low_count = 0
+                        oss_critical_count = 0
+                        oss_high_count = 0
+                        oss_medium_count = 0
+                        oss_low_count = 0
+                        container_critical_count = 0
+                        container_high_count = 0
+                        container_medium_count = 0
+                        container_low_count = 0
+                        oss_reachable_count = 0
+                        oss_unreachable_count = 0
+                        reachable_oss_vulns = 0
                         secrets_count = 0
                         sources_list = set()
                         sinks_list = set()
@@ -110,7 +138,10 @@ def collect_stats(org_id, report_file):
                                 files_loc_list.update(details.get("file_locations"))
                         # Find the counts
                         for vc in vuln_counts:
-                            if vc["finding_type"] == "vuln" and vc["key"] == "severity":
+                            if (
+                                vc["finding_type"] == "vuln"
+                                and vc["key"] == "cvss_31_severity_rating"
+                            ):
                                 if vc["value"] == "critical":
                                     critical_count = vc["count"]
                                 elif vc["value"] == "high":
@@ -119,6 +150,43 @@ def collect_stats(org_id, report_file):
                                     medium_count = vc["count"]
                                 elif vc["value"] == "low":
                                     low_count = vc["count"]
+                            if (
+                                vc["finding_type"] == "vuln"
+                                and vc["key"] == "reachable_oss_vulns"
+                            ):
+                                reachable_oss_vulns = vc["count"]
+                            if (
+                                vc["finding_type"] == "oss_vuln"
+                                and vc["key"] == "cvss_31_severity_rating"
+                            ):
+                                if vc["value"] == "critical":
+                                    oss_critical_count = vc["count"]
+                                elif vc["value"] == "high":
+                                    oss_high_count = vc["count"]
+                                elif vc["value"] == "medium":
+                                    oss_medium_count = vc["count"]
+                                elif vc["value"] == "low":
+                                    oss_low_count = vc["count"]
+                            if (
+                                vc["finding_type"] == "oss_vuln"
+                                and vc["key"] == "reachability"
+                            ):
+                                if vc["value"] == "unreachable":
+                                    oss_unreachable_count = vc["count"]
+                                if vc["value"] == "reachable":
+                                    oss_reachable_count = vc["count"]
+                            if (
+                                vc["finding_type"] == "container"
+                                and vc["key"] == "cvss_31_severity_rating"
+                            ):
+                                if vc["value"] == "critical":
+                                    container_critical_count = vc["count"]
+                                elif vc["value"] == "high":
+                                    container_high_count = vc["count"]
+                                elif vc["value"] == "medium":
+                                    container_medium_count = vc["count"]
+                                elif vc["value"] == "low":
+                                    container_low_count = vc["count"]
                             if (
                                 vc["finding_type"] == "secret"
                                 and vc["key"] == "language"
@@ -140,6 +208,16 @@ def collect_stats(org_id, report_file):
                                 "\\n".join(sources_list),
                                 "\\n".join(sinks_list),
                                 "\\n".join(files_loc_list),
+                                oss_critical_count,
+                                oss_high_count,
+                                oss_medium_count,
+                                oss_low_count,
+                                oss_reachable_count,
+                                oss_unreachable_count,
+                                container_critical_count,
+                                container_high_count,
+                                container_medium_count,
+                                container_low_count,
                             ]
                         )
                 else:
