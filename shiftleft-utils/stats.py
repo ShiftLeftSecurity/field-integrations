@@ -12,8 +12,9 @@ import time
 import httpx
 import trio
 import trio_parallel
-from rich.progress import Progress
+from rich.console import Console
 from rich.live import Live
+from rich.progress import Progress
 from rich.table import Table
 
 import config
@@ -23,6 +24,8 @@ from common import (
     get_findings_counts_url,
     get_findings_url,
 )
+
+console = Console(color_system="auto")
 
 headers = {
     "Content-Type": "application/json",
@@ -176,17 +179,23 @@ def process_app(client, org_id, report_file, app, detailed):
                 container_low_count,
             ]
     else:
-        print(f"""Unable to retrieve findings for {app_name}""")
+        console.print(f"""Unable to retrieve findings for {app_name}""")
         return None
 
 
 def collect_stats(org_id, report_file, detailed):
     """Method to collect stats for all apps to a csv"""
     apps_list = get_all_apps(org_id)
+    attention_apps = 0
     if not apps_list:
-        print("No apps were found in this organization")
+        console.print("No apps were found in this organization")
         return
-    print(f"Found {len(apps_list)} apps in this organization. Please wait ...")
+    console.print(
+        f"Found {len(apps_list)} apps in this organization. Please wait for CSV report."
+    )
+    console.print(
+        "Highlighting apps with critical OWASP and Reachable OSS findings ..."
+    )
     with open(report_file, "w", newline="") as csvfile:
         reportwriter = csv.writer(
             csvfile, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL
@@ -220,11 +229,12 @@ def collect_stats(org_id, report_file, detailed):
         reportwriter.writerow(csv_cols)
         table = Table()
         table.add_column("App")
-        table.add_column("Critical Count")
-        table.add_column("High Count")
-        table.add_column("Secrets Count")
-        table.add_column("OSS Critical Count")
-        table.add_column("OSS High Count")
+        table.add_column("Critical")
+        table.add_column("High")
+        table.add_column("Secrets")
+        table.add_column("OSS Critical")
+        table.add_column("OSS High")
+        table.add_column("OSS Reachable")
         with Live(table, refresh_per_second=4):
             # with Progress(
             #     transient=True,
@@ -245,16 +255,21 @@ def collect_stats(org_id, report_file, detailed):
                     row = process_app(client, org_id, report_file, app, detailed)
                     if row:
                         reportwriter.writerow(row)
+                        needs_attention = row[6] > 0 and row[18] > 0
+                        if needs_attention:
+                            attention_apps += 1
                         table.add_row(
-                            row[0],
-                            f"{row[6]}",
+                            f"""{"[red]" if needs_attention else ""}{row[0]}""",
+                            f"""{"[red]" if needs_attention else ""}{row[6]}""",
                             f"{row[7]}",
                             f"{row[10]}",
                             f"{row[14]}",
                             f"{row[15]}",
+                            f"""{"[red]" if needs_attention else ""}{row[18]}""",
                         )
                     # progress.advance(task)
-    print(f"Stats written to {report_file}")
+    console.print(f"Stats written to {report_file}")
+    console.print(f"[red]{attention_apps}[/red] apps needs your attention")
 
 
 def build_args():
@@ -284,18 +299,18 @@ async def parallel_map(fn):
         await trio_parallel.run_sync(fn, *inp, cancellable=True)
 
     if not config.SHIFTLEFT_ACCESS_TOKEN:
-        print(
+        console.print(
             "Set the environment variable SHIFTLEFT_ACCESS_TOKEN before running this script"
         )
         sys.exit(1)
 
     org_id = extract_org_id(config.SHIFTLEFT_ACCESS_TOKEN)
     if not org_id:
-        print(
+        console.print(
             "Ensure the environment varibale SHIFTLEFT_ACCESS_TOKEN is copied exactly as-is from the website"
         )
         sys.exit(1)
-    print(config.ngsast_logo)
+    console.print(config.ngsast_logo)
     args = build_args()
     t0 = trio.current_time()
     report_file = args.report_file
@@ -305,7 +320,7 @@ async def parallel_map(fn):
             (org_id, report_file, args.detailed),
         )
         t1 = trio.current_time()
-    print("Time taken:", round(trio.current_time() - t0, 0), "Seconds")
+    console.print("Time taken:", round(trio.current_time() - t0, 0), "seconds")
 
 
 if __name__ == "__main__":
