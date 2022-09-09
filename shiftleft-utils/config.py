@@ -31,3 +31,6 @@ sl_owasp_category = {
     643: "xpathi",
     79: "xss",
 }
+
+# API timeout in seconds
+timeout = 90

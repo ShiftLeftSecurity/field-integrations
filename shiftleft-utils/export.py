@@ -4,23 +4,17 @@ import argparse
 import csv
 import json
 import os
-import requests
-import urllib.parse
 import sys
 import time
+import urllib.parse
 
 import joern2sarif.lib.convert as convertLib
+import requests
 from json2xml import json2xml
 from rich.progress import Progress
 
 import config
-from common import (
-    headers,
-    extract_org_id,
-    get_all_apps,
-    get_dataflow,
-    get_findings_url,
-)
+from common import extract_org_id, get_all_apps, get_dataflow, get_findings_url, headers
 
 
 def export_csv(app_list, findings_dict, report_file):

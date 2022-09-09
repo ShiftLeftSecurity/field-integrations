@@ -2,7 +2,7 @@
 import json
 import os
 import sys
-from os.path import exists, abspath
+from os.path import abspath, exists
 
 import requests
 from requests.structures import CaseInsensitiveDict

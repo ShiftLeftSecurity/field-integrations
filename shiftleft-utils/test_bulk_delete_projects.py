@@ -1,4 +1,5 @@
 from unittest import TestCase
+
 from pytest_httpserver import HTTPServer
 
 from bulk_delete_projects import _delete_project

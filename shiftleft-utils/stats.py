@@ -2,12 +2,16 @@
 
 import argparse
 import csv
+import gzip
 import json
 import os
+import signal
 import sys
 import time
+import trio
+from multiprocessing import context, Pool
 
-import requests
+import httpx
 from rich.progress import Progress
 
 import config
@@ -16,10 +20,167 @@ from common import extract_org_id, get_all_apps, get_findings_url
 headers = {
     "Content-Type": "application/json",
     "Authorization": f"Bearer {config.SHIFTLEFT_ACCESS_TOKEN}",
+    "Accept-Encoding": "gzip",
 }
 
 
-def collect_stats(org_id, report_file):
+def init_worker():
+    """
+    Handler for worker processes to let their parent handle interruptions
+    """
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+
+async def process_app(org_id, report_file, app):
+    app_id = app.get("id")
+    app_name = app.get("name")
+    findings_url = get_findings_url(org_id, app_id, None)
+    async with httpx.AsyncClient(http2=True) as client:
+        r = await client.get(findings_url, headers=headers, timeout=config.timeout)
+        if r.status_code == 200:
+            raw_response = r.json()
+            if raw_response and raw_response.get("response"):
+                response = raw_response.get("response")
+                total_count = response.get("total_count")
+                scan = response.get("scan")
+                # Scan will be None if there are any issues/errors
+                if not scan:
+                    return
+                tags = app.get("tags")
+                app_group = ""
+                if tags:
+                    for tag in tags:
+                        if tag.get("key") == "group":
+                            app_group = tag.get("value")
+                            break
+                # Other unused properties such as findings or counts
+                spid = scan.get("internal_id")
+                projectSpId = f'sl/{org_id}/{scan.get("app")}'
+                counts = response.get("counts", [])
+                findings = response.get("findings", [])
+                vuln_counts = [
+                    c
+                    for c in counts
+                    if c["finding_type"] in ["vuln", "secret", "oss_vuln", "container"]
+                    and c["key"]
+                    in [
+                        "severity",
+                        "language",
+                        "cvss_31_severity_rating",
+                        "reachable_oss_vulns",
+                        "reachability",
+                    ]
+                ]
+                critical_count = 0
+                high_count = 0
+                medium_count = 0
+                low_count = 0
+                oss_critical_count = 0
+                oss_high_count = 0
+                oss_medium_count = 0
+                oss_low_count = 0
+                container_critical_count = 0
+                container_high_count = 0
+                container_medium_count = 0
+                container_low_count = 0
+                oss_reachable_count = 0
+                oss_unreachable_count = 0
+                reachable_oss_vulns = 0
+                secrets_count = 0
+                sources_list = set()
+                sinks_list = set()
+                files_loc_list = set()
+                # Find the source and sink
+                for afinding in findings:
+                    details = afinding.get("details", {})
+                    if details.get("source_method"):
+                        sources_list.add(details.get("source_method"))
+                    if details.get("sink_method"):
+                        sinks_list.add(details.get("sink_method"))
+                    if details.get("file_locations"):
+                        files_loc_list.update(details.get("file_locations"))
+                # Find the counts
+                for vc in vuln_counts:
+                    if (
+                        vc["finding_type"] == "vuln"
+                        and vc["key"] == "cvss_31_severity_rating"
+                    ):
+                        if vc["value"] == "critical":
+                            critical_count = vc["count"]
+                        elif vc["value"] == "high":
+                            high_count = vc["count"]
+                        elif vc["value"] == "medium":
+                            medium_count = vc["count"]
+                        elif vc["value"] == "low":
+                            low_count = vc["count"]
+                    if (
+                        vc["finding_type"] == "vuln"
+                        and vc["key"] == "reachable_oss_vulns"
+                    ):
+                        reachable_oss_vulns = vc["count"]
+                    if (
+                        vc["finding_type"] == "oss_vuln"
+                        and vc["key"] == "cvss_31_severity_rating"
+                    ):
+                        if vc["value"] == "critical":
+                            oss_critical_count = vc["count"]
+                        elif vc["value"] == "high":
+                            oss_high_count = vc["count"]
+                        elif vc["value"] == "medium":
+                            oss_medium_count = vc["count"]
+                        elif vc["value"] == "low":
+                            oss_low_count = vc["count"]
+                    if vc["finding_type"] == "oss_vuln" and vc["key"] == "reachability":
+                        if vc["value"] == "unreachable":
+                            oss_unreachable_count = vc["count"]
+                        if vc["value"] == "reachable":
+                            oss_reachable_count = vc["count"]
+                    if (
+                        vc["finding_type"] == "container"
+                        and vc["key"] == "cvss_31_severity_rating"
+                    ):
+                        if vc["value"] == "critical":
+                            container_critical_count = vc["count"]
+                        elif vc["value"] == "high":
+                            container_high_count = vc["count"]
+                        elif vc["value"] == "medium":
+                            container_medium_count = vc["count"]
+                        elif vc["value"] == "low":
+                            container_low_count = vc["count"]
+                    if vc["finding_type"] == "secret" and vc["key"] == "language":
+                        secrets_count = vc["count"]
+                return [
+                    scan.get("app"),
+                    app_group,
+                    scan.get("version"),
+                    scan.get("completed_at"),
+                    scan.get("language"),
+                    scan.get("number_of_expressions"),
+                    critical_count,
+                    high_count,
+                    medium_count,
+                    low_count,
+                    secrets_count,
+                    "\\n".join(sources_list),
+                    "\\n".join(sinks_list),
+                    "\\n".join(files_loc_list),
+                    oss_critical_count,
+                    oss_high_count,
+                    oss_medium_count,
+                    oss_low_count,
+                    oss_reachable_count,
+                    oss_unreachable_count,
+                    container_critical_count,
+                    container_high_count,
+                    container_medium_count,
+                    container_low_count,
+                ]
+        else:
+            print(f"""Unable to retrieve findings for {app_name}""")
+            return None
+
+
+async def collect_stats(pool, org_id, report_file):
     """Method to collect stats for all apps to a csv"""
     apps_list = get_all_apps(org_id)
     if not apps_list:
@@ -68,163 +229,24 @@ def collect_stats(org_id, report_file):
                 "[green] Collect stats", total=len(apps_list), start=True
             )
             for app in apps_list:
-                app_id = app.get("id")
-                app_name = app.get("name")
-                progress.update(task, description=f"Processing [bold]{app_name}[/bold]")
-                findings_url = get_findings_url(org_id, app_id, None)
-                r = requests.get(findings_url, headers=headers)
-                if r.ok:
-                    raw_response = r.json()
-                    if raw_response and raw_response.get("response"):
-                        response = raw_response.get("response")
-                        total_count = response.get("total_count")
-                        scan = response.get("scan")
-                        # Scan will be None if there are any issues/errors
-                        if not scan:
-                            continue
-                        tags = app.get("tags")
-                        app_group = ""
-                        if tags:
-                            for tag in tags:
-                                if tag.get("key") == "group":
-                                    app_group = tag.get("value")
-                                    break
-                        # Other unused properties such as findings or counts
-                        spid = scan.get("internal_id")
-                        projectSpId = f'sl/{org_id}/{scan.get("app")}'
-                        counts = response.get("counts", [])
-                        findings = response.get("findings", [])
-                        vuln_counts = [
-                            c
-                            for c in counts
-                            if c["finding_type"]
-                            in ["vuln", "secret", "oss_vuln", "container"]
-                            and c["key"]
-                            in [
-                                "severity",
-                                "language",
-                                "cvss_31_severity_rating",
-                                "reachable_oss_vulns",
-                                "reachability",
-                            ]
-                        ]
-                        critical_count = 0
-                        high_count = 0
-                        medium_count = 0
-                        low_count = 0
-                        oss_critical_count = 0
-                        oss_high_count = 0
-                        oss_medium_count = 0
-                        oss_low_count = 0
-                        container_critical_count = 0
-                        container_high_count = 0
-                        container_medium_count = 0
-                        container_low_count = 0
-                        oss_reachable_count = 0
-                        oss_unreachable_count = 0
-                        reachable_oss_vulns = 0
-                        secrets_count = 0
-                        sources_list = set()
-                        sinks_list = set()
-                        files_loc_list = set()
-                        # Find the source and sink
-                        for afinding in findings:
-                            details = afinding.get("details", {})
-                            if details.get("source_method"):
-                                sources_list.add(details.get("source_method"))
-                            if details.get("sink_method"):
-                                sinks_list.add(details.get("sink_method"))
-                            if details.get("file_locations"):
-                                files_loc_list.update(details.get("file_locations"))
-                        # Find the counts
-                        for vc in vuln_counts:
-                            if (
-                                vc["finding_type"] == "vuln"
-                                and vc["key"] == "cvss_31_severity_rating"
-                            ):
-                                if vc["value"] == "critical":
-                                    critical_count = vc["count"]
-                                elif vc["value"] == "high":
-                                    high_count = vc["count"]
-                                elif vc["value"] == "medium":
-                                    medium_count = vc["count"]
-                                elif vc["value"] == "low":
-                                    low_count = vc["count"]
-                            if (
-                                vc["finding_type"] == "vuln"
-                                and vc["key"] == "reachable_oss_vulns"
-                            ):
-                                reachable_oss_vulns = vc["count"]
-                            if (
-                                vc["finding_type"] == "oss_vuln"
-                                and vc["key"] == "cvss_31_severity_rating"
-                            ):
-                                if vc["value"] == "critical":
-                                    oss_critical_count = vc["count"]
-                                elif vc["value"] == "high":
-                                    oss_high_count = vc["count"]
-                                elif vc["value"] == "medium":
-                                    oss_medium_count = vc["count"]
-                                elif vc["value"] == "low":
-                                    oss_low_count = vc["count"]
-                            if (
-                                vc["finding_type"] == "oss_vuln"
-                                and vc["key"] == "reachability"
-                            ):
-                                if vc["value"] == "unreachable":
-                                    oss_unreachable_count = vc["count"]
-                                if vc["value"] == "reachable":
-                                    oss_reachable_count = vc["count"]
-                            if (
-                                vc["finding_type"] == "container"
-                                and vc["key"] == "cvss_31_severity_rating"
-                            ):
-                                if vc["value"] == "critical":
-                                    container_critical_count = vc["count"]
-                                elif vc["value"] == "high":
-                                    container_high_count = vc["count"]
-                                elif vc["value"] == "medium":
-                                    container_medium_count = vc["count"]
-                                elif vc["value"] == "low":
-                                    container_low_count = vc["count"]
-                            if (
-                                vc["finding_type"] == "secret"
-                                and vc["key"] == "language"
-                            ):
-                                secrets_count = vc["count"]
-                        reportwriter.writerow(
-                            [
-                                scan.get("app"),
-                                app_group,
-                                scan.get("version"),
-                                scan.get("completed_at"),
-                                scan.get("language"),
-                                scan.get("number_of_expressions"),
-                                critical_count,
-                                high_count,
-                                medium_count,
-                                low_count,
-                                secrets_count,
-                                "\\n".join(sources_list),
-                                "\\n".join(sinks_list),
-                                "\\n".join(files_loc_list),
-                                oss_critical_count,
-                                oss_high_count,
-                                oss_medium_count,
-                                oss_low_count,
-                                oss_reachable_count,
-                                oss_unreachable_count,
-                                container_critical_count,
-                                container_high_count,
-                                container_medium_count,
-                                container_low_count,
-                            ]
-                        )
-                else:
-                    progress.console.print(
-                        f"""Unable to retrieve findings for {app_name}"""
+                progress.update(
+                    task, description=f"""Processing [bold]{app.get("name")}[/bold]"""
+                )
+                result = pool.apply_async(
+                    process_app,
+                    (org_id, report_file, app),
+                )
+                # result = await process_app(org_id, report_file, app)
+                try:
+                    row = result.get()
+                    # row = result
+                    if row:
+                        reportwriter.writerow(row)
+                except context.TimeoutError:
+                    progress.update(
+                        task,
+                        description=f"""Timeout while collecting stats for [bold]{app.get("name")}[/bold]""",
                     )
-                    progress.console.print(r.status_code, r.json())
                 progress.advance(task)
     print(f"Stats written to {report_file}")
 
@@ -244,7 +266,7 @@ def build_args():
     return parser.parse_args()
 
 
-if __name__ == "__main__":
+async def main():
     if not config.SHIFTLEFT_ACCESS_TOKEN:
         print(
             "Set the environment variable SHIFTLEFT_ACCESS_TOKEN before running this script"
@@ -261,6 +283,15 @@ if __name__ == "__main__":
     args = build_args()
     start_time = time.monotonic_ns()
     report_file = args.report_file
-    collect_stats(org_id, report_file)
+    with Pool(processes=os.cpu_count(), initializer=init_worker) as pool:
+        try:
+            await collect_stats(pool, org_id, report_file)
+            pool.close()
+        except KeyboardInterrupt:
+            pool.terminate()
+        pool.join()
     end_time = time.monotonic_ns()
     total_time_sec = round((end_time - start_time) / 1000000000, 2)
+
+
+trio.run(main)

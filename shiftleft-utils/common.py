@@ -1,10 +1,9 @@
 import logging
 import os
+import urllib.parse
 
 import jwt
 import requests
-import urllib.parse
-
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.progress import Progress
