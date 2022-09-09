@@ -144,3 +144,5 @@ appimage-builder-cache/
 category_routes.txt
 category_vars.txt
 ngsast.policy
+stats.csv
+remediation.yaml

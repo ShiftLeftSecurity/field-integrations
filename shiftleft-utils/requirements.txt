@@ -6,3 +6,4 @@ joern2sarif
 pytest_httpserver
 httpx[http2]
 trio
+trio_parallel

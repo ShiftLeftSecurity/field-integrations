@@ -31,10 +31,16 @@ export SHIFTLEFT_ACCESS_TOKEN=long token from shiftleft
 
 ### Sample usages
 
-Collect stats for your organization
+Collect summary stats for your organization
 
 ```bash
 python3 stats.py
+```
+
+Collect detailed stats for your organization including sources, sinks and file locations
+
+```bash
+python3 stats.py --detailed
 ```
 
 Export findings of an app in csv format
