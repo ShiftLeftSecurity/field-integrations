@@ -11,6 +11,7 @@ import urllib.parse
 import joern2sarif.lib.convert as convertLib
 import httpx
 from json2xml import json2xml
+from rich.console import Console
 from rich.progress import Progress
 
 import config
