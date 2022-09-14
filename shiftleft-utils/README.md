@@ -4,7 +4,7 @@ Collection of scripts to help integrate ShiftLeft NextGen Analysis with your Dev
 
 ## Usage
 
-Install python 3 on the machine or vm running the scripts.
+Install python 3.9 or above on the machine or vm running the scripts.
 
 Clone the repo and install the dependencies.
 

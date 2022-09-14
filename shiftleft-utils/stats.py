@@ -23,15 +23,10 @@ from common import (
     get_all_apps,
     get_findings_counts_url,
     get_findings_url,
+    headers,
 )
 
 console = Console(color_system="auto")
-
-headers = {
-    "Content-Type": "application/json",
-    "Authorization": f"Bearer {config.SHIFTLEFT_ACCESS_TOKEN}",
-    "Accept-Encoding": "gzip",
-}
 
 
 def process_app(client, org_id, report_file, app, detailed):

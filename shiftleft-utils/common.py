@@ -36,6 +36,7 @@ LOG = logging.getLogger(__name__)
 headers = {
     "Content-Type": "application/json",
     "Authorization": f"Bearer {config.SHIFTLEFT_ACCESS_TOKEN}",
+    "Accept-Encoding": "gzip",
 }
 
 
