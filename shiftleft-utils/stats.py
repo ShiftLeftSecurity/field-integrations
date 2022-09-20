@@ -264,7 +264,9 @@ def collect_stats(org_id, report_file, detailed):
                         )
                     # progress.advance(task)
     console.print(f"Stats written to {report_file}")
-    console.print(f"[red]{attention_apps}[/red] apps needs your attention")
+    console.print(
+        f"[red]{attention_apps}[/red] apps needs attention due to both Critical SAST and Reachable OSS findings"
+    )
 
 
 def build_args():

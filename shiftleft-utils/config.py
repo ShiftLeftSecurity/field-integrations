@@ -33,4 +33,4 @@ sl_owasp_category = {
 }
 
 # API timeout in seconds
-timeout = 90
+timeout = 180
