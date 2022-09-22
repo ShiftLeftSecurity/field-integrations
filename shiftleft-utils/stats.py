@@ -2,6 +2,7 @@
 
 import argparse
 import csv
+from datetime import datetime
 import functools
 import json
 import multiprocessing
@@ -91,6 +92,8 @@ def process_app(client, org_id, report_file, app, detailed):
             sources_list = set()
             sinks_list = set()
             files_loc_list = set()
+            methods_list = set()
+            routes_list = set()
             # Find the source and sink
             for afinding in findings:
                 details = afinding.get("details", {})
@@ -100,6 +103,32 @@ def process_app(client, org_id, report_file, app, detailed):
                     sinks_list.add(details.get("sink_method"))
                 if details.get("file_locations"):
                     files_loc_list.update(details.get("file_locations"))
+                dfobj = {}
+                if details.get("dataflow"):
+                    dfobj = details.get("dataflow")
+                dataflows = dfobj.get("list", [])
+                for i, df in enumerate(dataflows):
+                    method_tags = df.get("method_tags", [])
+                    mtags = [
+                        mt["value"]
+                        for mt in method_tags
+                        if mt["key"] == "EXPOSED_METHOD_ROUTE" or mt["key"] == 30
+                    ]
+                    route_value = mtags[0] if mtags else None
+                    if route_value:
+                        routes_list.add(route_value)
+                    location = df.get("location", {})
+                    if location.get("file_name") == "N/A" or not location.get(
+                        "line_number"
+                    ):
+                        continue
+                    method_name = location.get("method_name")
+                    if (
+                        method_name
+                        and method_name not in sinks_list
+                        and method_name not in sources_list
+                    ):
+                        methods_list.add(method_name)
             # Find the counts
             for vc in vuln_counts:
                 if (
@@ -147,11 +176,29 @@ def process_app(client, org_id, report_file, app, detailed):
                         container_low_count = vc["count"]
                 if vc["finding_type"] == "secret" and vc["key"] == "language":
                     secrets_count = vc["count"]
+            # Convert date time to BigQuery friendly format
+            completed_at = ""
+            try:
+                ctime = scan.get("completed_at", "")
+                completed_at_dt = datetime.strptime(
+                    ctime,
+                    "%Y-%m-%dT%H:%M:%S.%fZ %Z"
+                    if "UTC" in ctime
+                    else "%Y-%m-%dT%H:%M:%S.%fZ",
+                )
+                completed_at = completed_at_dt.strftime("%Y-%m-%d %H:%M:%S.%f")
+            except Exception as e:
+                completed_at = (
+                    scan.get("completed_at", "")
+                    .replace(" UTC", "")
+                    .replace("Z", "")
+                    .replace("T", " ")
+                )
             return [
                 scan.get("app"),
                 app_group,
                 scan.get("version"),
-                scan.get("completed_at"),
+                completed_at,
                 scan.get("language"),
                 scan.get("number_of_expressions"),
                 critical_count,
@@ -172,6 +219,8 @@ def process_app(client, org_id, report_file, app, detailed):
                 container_high_count,
                 container_medium_count,
                 container_low_count,
+                "\\n".join(methods_list),
+                "\\n".join(routes_list),
             ]
     else:
         console.print(f"""Unable to retrieve findings for {app_name}""")
@@ -220,6 +269,8 @@ def collect_stats(org_id, report_file, detailed):
             "Container High Count",
             "Container Medium Count",
             "Container Low Count",
+            "Methods",
+            "Routes",
         ]
         reportwriter.writerow(csv_cols)
         table = Table()

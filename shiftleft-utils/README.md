@@ -37,7 +37,7 @@ Collect summary stats for your organization
 python3 stats.py
 ```
 
-Collect detailed stats for your organization including sources, sinks and file locations
+Collect detailed stats for your organization including sources, sinks, file locations, method names, and routes.
 
 ```bash
 python3 stats.py --detailed
