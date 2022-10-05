@@ -91,9 +91,10 @@ def start_analysis(org_id, app_name, version):
                         variableInfo = variableInfo.get("Variable")
                     method_tags = df.get("method_tags", [])
                     mtags = [
-                        mt["value"]
+                        mt.get("value")
                         for mt in method_tags
-                        if mt["key"] == "EXPOSED_METHOD_ROUTE" or mt["key"] == 30
+                        if mt.get("key", "") in ("EXPOSED_METHOD_ROUTE", 30)
+                        and mt.get("value")
                     ]
                     route_value = mtags[0] if mtags else None
                     if variableInfo:

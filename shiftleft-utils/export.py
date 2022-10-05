@@ -8,8 +8,8 @@ import sys
 import time
 import urllib.parse
 
-import joern2sarif.lib.convert as convertLib
 import httpx
+import joern2sarif.lib.convert as convertLib
 from json2xml import json2xml
 from rich.console import Console
 from rich.progress import Progress
@@ -238,8 +238,10 @@ def export_report(org_id, app_list, report_file, format):
             total=len(app_list),
             start=True,
         )
-        limits = httpx.Limits(max_keepalive_connections=5, max_connections=10)
-        with httpx.Client(http2=True, limits=limits) as client:
+        limits = httpx.Limits(
+            max_keepalive_connections=20, max_connections=100, keepalive_expiry=120
+        )
+        with httpx.Client(http2="win" not in sys.platform, limits=limits) as client:
             for app in app_list:
                 app_id = app.get("id")
                 app_name = app.get("name")

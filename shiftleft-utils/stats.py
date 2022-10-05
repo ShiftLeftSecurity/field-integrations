@@ -2,17 +2,15 @@
 
 import argparse
 import csv
-from datetime import datetime
 import functools
 import json
 import multiprocessing
 import os
 import sys
 import time
+from datetime import datetime
 
 import httpx
-import trio
-import trio_parallel
 from rich.console import Console
 from rich.live import Live
 from rich.progress import Progress
@@ -38,8 +36,13 @@ def process_app(client, org_id, report_file, app, detailed):
         if detailed
         else get_findings_counts_url(org_id, app_id, None)
     )
-    r = client.get(findings_url, headers=headers, timeout=config.timeout)
-    if r.status_code == 200:
+    r = None
+    try:
+        r = client.get(findings_url, headers=headers, timeout=config.timeout)
+    except httpx.RequestError as exc:
+        console.print(f"""Unable to retrieve findings for {app_name}""")
+        return None
+    if r and r.status_code == 200:
         raw_response = r.json()
         if raw_response and raw_response.get("response"):
             response = raw_response.get("response")
@@ -97,10 +100,12 @@ def process_app(client, org_id, report_file, app, detailed):
             # Find the source and sink
             for afinding in findings:
                 details = afinding.get("details", {})
-                if details.get("source_method"):
-                    sources_list.add(details.get("source_method"))
-                if details.get("sink_method"):
-                    sinks_list.add(details.get("sink_method"))
+                if details.get("source_method") and "{" not in details.get(
+                    "source_method"
+                ):
+                    sources_list.add(details.get("source_method").replace("\n", " "))
+                if details.get("sink_method") and "{" not in details.get("sink_method"):
+                    sinks_list.add(details.get("sink_method").replace("\n", " "))
                 if details.get("file_locations"):
                     files_loc_list.update(details.get("file_locations"))
                 dfobj = {}
@@ -110,9 +115,10 @@ def process_app(client, org_id, report_file, app, detailed):
                 for i, df in enumerate(dataflows):
                     method_tags = df.get("method_tags", [])
                     mtags = [
-                        mt["value"]
+                        mt.get("value")
                         for mt in method_tags
-                        if mt["key"] == "EXPOSED_METHOD_ROUTE" or mt["key"] == 30
+                        if mt.get("key", "") in ("EXPOSED_METHOD_ROUTE", 30)
+                        and mt.get("value")
                     ]
                     route_value = mtags[0] if mtags else None
                     if route_value:
@@ -127,6 +133,7 @@ def process_app(client, org_id, report_file, app, detailed):
                         method_name
                         and method_name not in sinks_list
                         and method_name not in sources_list
+                        and "{" not in method_name
                     ):
                         methods_list.add(method_name)
             # Find the counts
@@ -274,6 +281,7 @@ def collect_stats(org_id, report_file, detailed):
         ]
         reportwriter.writerow(csv_cols)
         table = Table()
+        table.add_column("#")
         table.add_column("App")
         table.add_column("Critical")
         table.add_column("High")
@@ -281,18 +289,23 @@ def collect_stats(org_id, report_file, detailed):
         table.add_column("OSS Critical")
         table.add_column("OSS High")
         table.add_column("OSS Reachable")
-        with Live(table, refresh_per_second=4):
+        with Live(
+            table, refresh_per_second=2, vertical_overflow="visible", screen=False
+        ):
             # with Progress(
             #     transient=True,
             #     redirect_stderr=False,
             #     redirect_stdout=False,
             #     refresh_per_second=1,
             # ) as progress:
-            limits = httpx.Limits(max_keepalive_connections=5, max_connections=10)
-            with httpx.Client(http2=True, limits=limits) as client:
+            limits = httpx.Limits(
+                max_keepalive_connections=20, max_connections=100, keepalive_expiry=120
+            )
+            with httpx.Client(http2="win" not in sys.platform, limits=limits) as client:
                 # task = progress.add_task(
                 #     "[green] Collect stats", total=len(apps_list), start=True
                 # )
+                i = 1
                 for app in apps_list:
                     # progress.update(
                     #     task,
@@ -305,6 +318,7 @@ def collect_stats(org_id, report_file, detailed):
                         if needs_attention:
                             attention_apps += 1
                         table.add_row(
+                            f"{i}",
                             f"""{"[red]" if needs_attention else ""}{row[0]}""",
                             f"""{"[red]" if needs_attention else ""}{row[6]}""",
                             f"{row[7]}",
@@ -313,6 +327,7 @@ def collect_stats(org_id, report_file, detailed):
                             f"{row[15]}",
                             f"""{"[red]" if needs_attention else ""}{row[18]}""",
                         )
+                        i = i + 1
                     # progress.advance(task)
     console.print(f"Stats written to {report_file}")
     console.print(
@@ -342,10 +357,7 @@ def build_args():
     return parser.parse_args()
 
 
-async def parallel_map(fn):
-    async def worker(inp):
-        await trio_parallel.run_sync(fn, *inp, cancellable=True)
-
+def main():
     if not config.SHIFTLEFT_ACCESS_TOKEN:
         console.print(
             "Set the environment variable SHIFTLEFT_ACCESS_TOKEN before running this script"
@@ -360,17 +372,9 @@ async def parallel_map(fn):
         sys.exit(1)
     console.print(config.ngsast_logo)
     args = build_args()
-    t0 = trio.current_time()
     report_file = args.report_file
-    async with trio.open_nursery() as nursery:
-        nursery.start_soon(
-            worker,
-            (org_id, report_file, args.detailed),
-        )
-        t1 = trio.current_time()
-    console.print("Time taken:", round(trio.current_time() - t0, 0), "seconds")
+    collect_stats(org_id, report_file, args.detailed)
 
 
 if __name__ == "__main__":
-    multiprocessing.freeze_support()
-    trio.run(parallel_map, collect_stats)
+    main()
