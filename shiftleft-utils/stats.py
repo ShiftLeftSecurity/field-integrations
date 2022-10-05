@@ -97,6 +97,9 @@ def process_app(client, org_id, report_file, app, detailed):
             files_loc_list = set()
             methods_list = set()
             routes_list = set()
+            secrets_list = set()
+            entropy_low = 0
+            entropy_high = 0
             # Find the source and sink
             for afinding in findings:
                 details = afinding.get("details", {})
@@ -108,6 +111,21 @@ def process_app(client, org_id, report_file, app, detailed):
                     sinks_list.add(details.get("sink_method").replace("\n", " "))
                 if details.get("file_locations"):
                     files_loc_list.update(details.get("file_locations"))
+                if details.get("secret"):
+                    secrets_list.update(details.get("secret"))
+                if details.get("entropy"):
+                    try:
+                        entropy = float(details.get("entropy"))
+                        if entropy_low == 0:
+                            entropy_low = entropy
+                        if entropy_high == 0:
+                            entropy_high = entropy
+                        if entropy_low > entropy:
+                            entropy_low = entropy
+                        if entropy_high < entropy:
+                            entropy_high = entropy
+                    except Exception:
+                        pass
                 dfobj = {}
                 if details.get("dataflow"):
                     dfobj = details.get("dataflow")
@@ -228,6 +246,9 @@ def process_app(client, org_id, report_file, app, detailed):
                 container_low_count,
                 "\\n".join(methods_list),
                 "\\n".join(routes_list),
+                "\\n".join(secrets_list),
+                entropy_low,
+                entropy_high,
             ]
     else:
         console.print(f"""Unable to retrieve findings for {app_name}""")
@@ -278,6 +299,9 @@ def collect_stats(org_id, report_file, detailed):
             "Container Low Count",
             "Methods",
             "Routes",
+            "Secrets",
+            "Entropy Low",
+            "Entropy High",
         ]
         reportwriter.writerow(csv_cols)
         table = Table()
