@@ -36,4 +36,4 @@ sl_owasp_category = {
 timeout = 180
 
 # How many chunks of apps to process for stats
-app_chunk_size = 10
+app_chunk_size = 20
