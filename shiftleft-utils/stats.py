@@ -4,6 +4,7 @@ import argparse
 import csv
 import functools
 import json
+import math
 import multiprocessing
 import os
 import sys
@@ -29,8 +30,11 @@ console = Console(color_system="auto")
 
 
 def process_app(client, org_id, report_file, app, detailed):
+    start = time.time()
     app_id = app.get("id")
     app_name = app.get("name")
+    # Stats only considers the first page for performance so the detailed report is based only on the latest 250 findings
+    # The various counts, however, are based on the full list of findings so are correct
     findings_url = (
         get_findings_url(org_id, app_id, None)
         if detailed
@@ -40,8 +44,8 @@ def process_app(client, org_id, report_file, app, detailed):
     try:
         r = client.get(findings_url, headers=headers, timeout=config.timeout)
     except httpx.RequestError as exc:
-        console.print(f"""Unable to retrieve findings for {app_name}""")
-        return None
+        print(f"""Unable to retrieve findings for {app_name}""")
+        return None, None
     if r and r.status_code == 200:
         raw_response = r.json()
         if raw_response and raw_response.get("response"):
@@ -249,10 +253,10 @@ def process_app(client, org_id, report_file, app, detailed):
                 "\\n".join(secrets_list),
                 entropy_low,
                 entropy_high,
-            ]
+            ], math.ceil(time.time() - start)
     else:
-        console.print(f"""Unable to retrieve findings for {app_name}""")
-        return None
+        print(f"""Unable to retrieve findings for {app_name}""")
+        return None, None
 
 
 def collect_stats(org_id, report_file, detailed):
@@ -262,12 +266,14 @@ def collect_stats(org_id, report_file, detailed):
     if not apps_list:
         console.print("No apps were found in this organization")
         return
-    console.print(
-        f"Found {len(apps_list)} apps in this organization. Please wait for CSV report."
-    )
-    console.print(
-        "Highlighting apps with critical OWASP and Reachable OSS findings ..."
-    )
+    if detailed:
+        console.print(
+            f"Found {len(apps_list)} apps in this organization. Estimated time: {math.ceil(len(apps_list)/3.2)} minutes!"
+        )
+    else:
+        console.print(
+            f"Found {len(apps_list)} apps in this organization. Estimated time: {math.ceil(len(apps_list)*1.5/60)} minutes!"
+        )
     with open(report_file, "w", newline="") as csvfile:
         reportwriter = csv.writer(
             csvfile, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL
@@ -304,18 +310,23 @@ def collect_stats(org_id, report_file, detailed):
             "Entropy High",
         ]
         reportwriter.writerow(csv_cols)
-        table = Table()
+        table = Table(title="App Stats", highlight=True)
         table.add_column("#")
+        table.add_column("Script Time\n(Seconds)", justify="right")
         table.add_column("App")
-        table.add_column("Critical")
-        table.add_column("High")
-        table.add_column("Secrets")
-        table.add_column("OSS Critical")
-        table.add_column("OSS High")
-        table.add_column("OSS Reachable")
+        table.add_column("Critical", justify="right")
+        table.add_column("High", justify="right")
+        table.add_column("Secrets", justify="right")
+        table.add_column("OSS Critical", justify="right")
+        table.add_column("OSS High", justify="right")
+        table.add_column("OSS Reachable", justify="right")
         with Live(
-            table, refresh_per_second=2, vertical_overflow="visible", screen=False
-        ):
+            table,
+            refresh_per_second=2,
+            vertical_overflow="visible",
+            screen=False,
+            console=console,
+        ) as live:
             # with Progress(
             #     transient=True,
             #     redirect_stderr=False,
@@ -335,7 +346,9 @@ def collect_stats(org_id, report_file, detailed):
                     #     task,
                     #     description=f"""Processing [bold]{app.get("name")}[/bold]""",
                     # )
-                    row = process_app(client, org_id, report_file, app, detailed)
+                    row, time_taken = process_app(
+                        client, org_id, report_file, app, detailed
+                    )
                     if row:
                         reportwriter.writerow(row)
                         needs_attention = row[6] > 0 and row[18] > 0
@@ -343,6 +356,7 @@ def collect_stats(org_id, report_file, detailed):
                             attention_apps += 1
                         table.add_row(
                             f"{i}",
+                            f"""{time_taken if time_taken else ""}""",
                             f"""{"[red]" if needs_attention else ""}{row[0]}""",
                             f"""{"[red]" if needs_attention else ""}{row[6]}""",
                             f"{row[7]}",
