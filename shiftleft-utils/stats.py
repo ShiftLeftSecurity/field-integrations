@@ -9,6 +9,7 @@ import multiprocessing
 import os
 import sys
 import time
+import dask
 from datetime import datetime
 
 import httpx
@@ -29,7 +30,7 @@ from common import (
 console = Console(color_system="auto")
 
 
-def process_app(client, org_id, report_file, app, detailed):
+def process_app(progress, task, org_id, report_file, app, detailed):
     start = time.time()
     app_id = app.get("id")
     app_name = app.get("name")
@@ -42,10 +43,11 @@ def process_app(client, org_id, report_file, app, detailed):
     )
     r = None
     try:
+        client = httpx.Client(http2="win" not in sys.platform)
         r = client.get(findings_url, headers=headers, timeout=config.timeout)
     except httpx.RequestError as exc:
-        print(f"""Unable to retrieve findings for {app_name}""")
-        return None, None
+        console.print(f"""WARN: Unable to retrieve findings for {app_name}""")
+        return []
     if r and r.status_code == 200:
         raw_response = r.json()
         if raw_response and raw_response.get("response"):
@@ -54,7 +56,8 @@ def process_app(client, org_id, report_file, app, detailed):
             scan = response.get("scan")
             # Scan will be None if there are any issues/errors
             if not scan:
-                return None, None
+                console.print(f"""INFO: No scans found for {app_name}""")
+                return []
             tags = app.get("tags")
             app_group = ""
             if tags:
@@ -223,6 +226,10 @@ def process_app(client, org_id, report_file, app, detailed):
                     .replace("Z", "")
                     .replace("T", " ")
                 )
+            progress.update(
+                task,
+                description=f"""Processed [bold]{app.get("name")}[/bold] in {math.ceil(time.time() - start)} seconds""",
+            )
             return [
                 scan.get("app"),
                 app_group,
@@ -253,10 +260,10 @@ def process_app(client, org_id, report_file, app, detailed):
                 "\\n".join(secrets_list),
                 entropy_low,
                 entropy_high,
-            ], math.ceil(time.time() - start)
+            ]
     else:
-        print(f"""Unable to retrieve findings for {app_name}""")
-        return None, None
+        console.print(f"""WARN: Unable to retrieve findings for {app_name}""")
+        return []
 
 
 def collect_stats(org_id, report_file, detailed):
@@ -312,7 +319,6 @@ def collect_stats(org_id, report_file, detailed):
         reportwriter.writerow(csv_cols)
         table = Table(title="App Stats", highlight=True)
         table.add_column("#")
-        table.add_column("Script Time\n(Seconds)", justify="right")
         table.add_column("App")
         table.add_column("Critical", justify="right")
         table.add_column("High", justify="right")
@@ -346,9 +352,7 @@ def collect_stats(org_id, report_file, detailed):
                     #     task,
                     #     description=f"""Processing [bold]{app.get("name")}[/bold]""",
                     # )
-                    row, time_taken = process_app(
-                        client, org_id, report_file, app, detailed
-                    )
+                    row = process_app(client, org_id, report_file, app, detailed)
                     if row:
                         reportwriter.writerow(row)
                         needs_attention = row[6] > 0 and row[18] > 0
@@ -356,7 +360,6 @@ def collect_stats(org_id, report_file, detailed):
                             attention_apps += 1
                         table.add_row(
                             f"{i}",
-                            f"""{time_taken if time_taken else ""}""",
                             f"""{"[red]" if needs_attention else ""}{row[0]}""",
                             f"""{"[red]" if needs_attention else ""}{row[6]}""",
                             f"{row[7]}",
@@ -371,6 +374,93 @@ def collect_stats(org_id, report_file, detailed):
     console.print(
         f"[red]{attention_apps}[/red] apps needs attention due to both Critical SAST and Reachable OSS findings"
     )
+
+
+def write_to_csv(report_file, row):
+    if not os.path.exists(report_file):
+        with open(report_file, "w", newline="") as csvfile:
+            reportwriter = csv.writer(
+                csvfile, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL
+            )
+            csv_cols = [
+                "App",
+                "App Group",
+                "Version",
+                "Last Scan",
+                "Language",
+                "Expressions Count",
+                "Critical Count",
+                "High Count",
+                "Medium Count",
+                "Low Count",
+                "Secrets Count",
+                "Source Methods",
+                "Sink Methods",
+                "File Locations",
+                "OSS Critical Count",
+                "OSS High Count",
+                "OSS Medium Count",
+                "OSS Low Count",
+                "OSS Reachable Count",
+                "OSS Unreachable Count",
+                "Container Critical Count",
+                "Container High Count",
+                "Container Medium Count",
+                "Container Low Count",
+                "Methods",
+                "Routes",
+                "Secrets",
+                "Entropy Low",
+                "Entropy High",
+            ]
+            reportwriter.writerow(csv_cols)
+    elif row:
+        with open(report_file, "a", newline="") as csvfile:
+            reportwriter = csv.writer(
+                csvfile,
+                delimiter=",",
+                quotechar='"',
+                quoting=csv.QUOTE_MINIMAL,
+            )
+            reportwriter.writerow(row)
+
+
+def collect_stats_parallel(org_id, report_file, detailed):
+    """Method to collect stats for all apps to a csv"""
+    apps_list = get_all_apps(org_id)
+    attention_apps = 0
+    if not apps_list:
+        console.print("No apps were found in this organization")
+        return
+    console.print(f"Found {len(apps_list)} apps in this organization")
+    chunk_size = (
+        config.app_chunk_size
+        if len(apps_list) > config.app_chunk_size
+        else len(apps_list)
+    )
+    chunked_list = [
+        apps_list[i : i + chunk_size] for i in range(0, len(apps_list), chunk_size)
+    ]
+    with Progress(
+        transient=True,
+        redirect_stderr=False,
+        redirect_stdout=False,
+        refresh_per_second=1,
+    ) as progress:
+        task = progress.add_task(
+            "[green] Collect stats", total=len(chunked_list), start=True
+        )
+        for capps in chunked_list:
+            rows = []
+            for app in capps:
+                row = dask.delayed(process_app)(
+                    progress, task, org_id, report_file, app, detailed
+                )
+                rows.append(row)
+            rows = dask.compute(*rows)
+            [write_to_csv(report_file, row) for row in rows]
+            progress.advance(task)
+    console.print(f"Stats written to {report_file}")
 
 
 def build_args():
@@ -411,7 +501,7 @@ def main():
     console.print(config.ngsast_logo)
     args = build_args()
     report_file = args.report_file
-    collect_stats(org_id, report_file, args.detailed)
+    collect_stats_parallel(org_id, report_file, args.detailed)
 
 
 if __name__ == "__main__":

@@ -5,3 +5,5 @@ pyjwt
 joern2sarif
 pytest_httpserver
 httpx[http2]
+dask
+dask[array]
