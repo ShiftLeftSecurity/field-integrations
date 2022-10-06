@@ -54,7 +54,7 @@ def process_app(client, org_id, report_file, app, detailed):
             scan = response.get("scan")
             # Scan will be None if there are any issues/errors
             if not scan:
-                return
+                return None, None
             tags = app.get("tags")
             app_group = ""
             if tags:
