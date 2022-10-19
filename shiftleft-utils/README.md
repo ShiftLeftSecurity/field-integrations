@@ -23,11 +23,12 @@ export SHIFTLEFT_ACCESS_TOKEN=long token from shiftleft
 ## Description of scripts
 
 | Script                  | Purpose                                                           |
-|-------------------------|-------------------------------------------------------------------|
+| ----------------------- | ----------------------------------------------------------------- |
 | export.py               | Export NG SAST findings report to csv, xml, json and SARIF format |
 | stats.py                | Display stats for all apps based on last scan                     |
 | policygen.py            | Generate policy file to suppress findings                         |
 | bulk_delete_projects.py | Delete projects from a file containing a list                     |
+| bestfix.py              | Suggest best fix locations for key SAST findings for an app       |
 
 ### Sample usages
 
@@ -59,6 +60,12 @@ NOTE: For jvm languages, we may have to fix the file path since the value return
 
 ```bash
 WORKSPACE=<path to src/main/java> python export.py -f sarif -a <app name>
+```
+
+Find best fix locations for `vuln-spring` app with the source code under `/mnt/work/HooliCorp/vuln-spring`
+
+```
+python3 bestfix.py -a vuln-spring -s /mnt/work/HooliCorp/vuln-spring
 ```
 
 ## License

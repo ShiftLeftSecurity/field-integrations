@@ -27,7 +27,7 @@ from common import extract_org_id, get_all_apps, get_dataflow, get_findings_url,
 console = Console(color_system="auto")
 
 
-def _get_code_line(source_dir, fname, line, variables=[]):
+def _get_code_line(source_dir, app, fname, line, variables=[]):
     """Return the given line from the file. Handles any utf8 error from tokenize
 
     :param fname: File name
@@ -35,6 +35,10 @@ def _get_code_line(source_dir, fname, line, variables=[]):
     :return: Exact line as string
     """
     text = ""
+    # For monorepos, app could be inside a directory
+    app_path = os.path.join(source_dir, app["id"])
+    if os.path.exists(app_path):
+        source_dir = app_path
     full_path = os.path.join(source_dir, fname)
     if not os.path.exists(full_path):
         java_path = os.path.join(source_dir, "src", "main", "java", fname)
@@ -71,7 +75,7 @@ def _get_code_line(source_dir, fname, line, variables=[]):
     return text, variable_detected
 
 
-def get_code(source_dir, fname, lineno, variables, max_lines=3, tabbed=False):
+def get_code(source_dir, app, fname, lineno, variables, max_lines=3, tabbed=False):
     """Gets lines of code from a file.
 
     :param max_lines: Max lines of context to return
@@ -87,7 +91,9 @@ def get_code(source_dir, fname, lineno, variables, max_lines=3, tabbed=False):
     variable_detected = ""
     tmplt = "%i\t%s" if tabbed else "%i %s"
     for line in moves.xrange(lmin, lmax):
-        text, new_variable_detected = _get_code_line(source_dir, fname, line, variables)
+        text, new_variable_detected = _get_code_line(
+            source_dir, app, fname, line, variables
+        )
         if not variable_detected and new_variable_detected:
             variable_detected = new_variable_detected
         if isinstance(text, bytes):
@@ -161,14 +167,22 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     if symbol not in tracked_list:
                         tracked_list.append(symbol)
                 if local and local.get("symbol"):
+                    symbol = local.get("symbol")
                     if symbol not in tracked_list:
-                        tracked_list.append(local.get("symbol"))
+                        tracked_list.append(symbol)
             location = df.get("location", {})
             if location.get("file_name") == "N/A" or not location.get("line_number"):
                 continue
             method_name = location.get("method_name")
             short_method_name = location.get("short_method_name")
             if short_method_name:
+                # For JavaScript/TypeScript short method name is mostly anonymous
+                if "anonymous" in short_method_name:
+                    short_method_name = (
+                        method_name.split(":anonymous")[0]
+                        .split("::")[-1]
+                        .split(":")[-1]
+                    )
                 if short_method_name not in methods_list:
                     methods_list.append(short_method_name)
                 for check_labels in ("check", "valid", "sanit"):
@@ -198,7 +212,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
             first_location_fname = tmpB[0]
             first_location_lineno = int(tmpB[-1])
             code_snippet, variable_detected = get_code(
-                source_dir, last_location_fname, last_location_lineno, tracked_list
+                source_dir, app, last_location_fname, last_location_lineno, tracked_list
             )
             # Arrive at a best fix
             best_fix = ""
@@ -213,7 +227,18 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     location_suggestion
                     + f"\n- After line {first_location_lineno} in {first_location_fname}"
                 )
-            if variable_detected:
+            if source_method == sink_method:
+                best_fix = f"""This is likely a best practice finding or a false positive.
+
+**Fix locations:**\n
+{location_suggestion}
+
+**Remediation suggestions:**\n
+Specify the sink method in your remediation config to suppress this finding.\n
+- {sink_method}
+
+"""
+            elif variable_detected:
                 best_fix = f"""**Taint:** Parameter `{variable_detected}` in the method `{methods_list[-1]}`\n
 Validate or Sanitize the parameter `{variable_detected}` before invoking the sink `{sink_method}`
 
@@ -271,16 +296,17 @@ Include these detected CHECK methods in your remediation config to suppress this
 
 
 def export_csv(app, annotated_findings, report_file):
-    fieldnames = annotated_findings[0].keys()
-    if not os.path.exists(report_file):
-        with open(report_file, "w", newline="") as csvfile:
+    if annotated_findings:
+        fieldnames = annotated_findings[0].keys()
+        if not os.path.exists(report_file):
+            with open(report_file, "w", newline="") as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writeheader()
+        with open(report_file, "a", newline="") as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()
-    with open(report_file, "a", newline="") as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        for finding in annotated_findings:
-            writer.writerow(finding)
-        console.print(f"CSV exported to {report_file}")
+            for finding in annotated_findings:
+                writer.writerow(finding)
+            console.print(f"CSV exported to {report_file}")
 
 
 def get_all_findings_with_scan(
@@ -401,7 +427,7 @@ def build_args():
         dest="rformat",
         help="Report format",
         default="csv",
-        choices=["json", "csv"],
+        choices=["csv"],
     )
     return parser.parse_args()
 
@@ -429,6 +455,9 @@ if __name__ == "__main__":
     report_file = args.report_file
     source_dir = args.source_dir
     if not source_dir:
+        console.print(
+            f"WARN: Source directory not specified with -s argument. Assuming current directory!"
+        )
         source_dir = os.getcwd()
         for e in ["GITHUB_WORKSPACE", "WORKSPACE"]:
             if os.getenv(e):
