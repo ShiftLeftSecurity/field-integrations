@@ -102,10 +102,12 @@ def get_code(source_dir, fname, lineno, variables, max_lines=3, tabbed=False):
         return "", variable_detected
 
 
-def find_best_fix(app, scan, findings, source_dir):
+def find_best_fix(org_id, app, scan, findings, source_dir):
     console.print("\n\n")
     table = Table(title=f"""Best Fix Suggestions for {app["name"]}""", show_lines=True)
+    table.add_column("ID", justify="right", style="cyan")
     table.add_column("Category")
+    table.add_column("Locations")
     table.add_column("Code Snippet")
     table.add_column("Comment")
     for afinding in findings:
@@ -124,7 +126,7 @@ def find_best_fix(app, scan, findings, source_dir):
         source_method = details.get("source_method", "")
         sink_method = details.get("sink_method", "")
         tags = afinding.get("tags")
-        methods_list = set()
+        methods_list = []
         check_methods = set()
         if tags:
             for tag in tags:
@@ -140,7 +142,6 @@ def find_best_fix(app, scan, findings, source_dir):
         if details.get("dataflow"):
             dfobj = details.get("dataflow")
         dataflows = dfobj.get("list", [])
-        files_loc_list = []
         for df in dataflows:
             variableInfo = df.get("variable_info", {})
             if variableInfo.get("variable"):
@@ -165,24 +166,28 @@ def find_best_fix(app, scan, findings, source_dir):
             if location.get("file_name") == "N/A" or not location.get("line_number"):
                 continue
             method_name = location.get("method_name")
-            if method_name:
-                methods_list.add(method_name)
+            short_method_name = location.get("short_method_name")
+            if short_method_name:
+                if short_method_name not in methods_list:
+                    methods_list.append(short_method_name)
                 for check_labels in ("check", "valid", "sanit"):
-                    if check_labels in method_name:
+                    if check_labels in short_method_name.lower():
                         check_methods.add(method_name)
             if not source_method:
                 source_method = (
                     f'{location.get("file_name")}:{location.get("line_number")}'
                 )
-            files_loc_list.append(
-                f'{location.get("file_name")}:{location.get("line_number")}'
-            )
+            loc_line = f'{location.get("file_name")}:{location.get("line_number")}'
+            if loc_line not in files_loc_list:
+                files_loc_list.append(loc_line)
         if dataflows and dataflows[-1]:
             sink = dataflows[-1].get("location", {})
             if sink and not sink_method:
                 sink_method = f'{sink.get("file_name")}:{sink.get("line_number")}'
 
         if afinding.get("type") in ("vuln"):
+            methods_list = methods_list
+            check_methods = list(check_methods)
             last_location = files_loc_list[-1]
             first_location = files_loc_list[0]
             tmpA = last_location.split(":")
@@ -196,21 +201,31 @@ def find_best_fix(app, scan, findings, source_dir):
             )
             # Arrive at a best fix
             best_fix = ""
-            if variable_detected:
+            location_suggestion = (
+                f"- Before line {last_location_lineno} in {last_location_fname}"
+            )
+            if (
+                first_location_fname != last_location_fname
+                or last_location_lineno - first_location_lineno > 3
+            ):
                 location_suggestion = (
-                    f"- Before line {last_location_lineno} in {last_location_fname}"
+                    location_suggestion
+                    + f"\n- After line {first_location_lineno} in {first_location_fname}"
                 )
-                if (
-                    first_location_fname != last_location_fname
-                    or last_location_lineno - first_location_lineno > 3
-                ):
-                    location_suggestion = (
-                        location_suggestion
-                        + f"\n- After line {first_location_lineno} in {first_location_fname}"
-                    )
-                best_fix = f"""Validate or Sanitize the parameter `{variable_detected}` before invoking the sink `{sink_method}`
+            if variable_detected:
+                best_fix = f"""**Taint:** Parameter `{variable_detected}` in the method `{methods_list[-1]}`\n
+Validate or Sanitize the parameter `{variable_detected}` before invoking the sink `{sink_method}`
 
-**Some suggested locations:**\n
+**Fix locations:**\n
+{location_suggestion}
+"""
+            elif tracked_list:
+                variable_detected = tracked_list[0]
+                # No variable detected but taint list available
+                best_fix = f"""**Taint:** Parameter `{variable_detected}` in the method `{methods_list[-1]}`\n
+Validate or Sanitize the parameter `{variable_detected}` before invoking the sink `{sink_method}`
+
+**Fix locations:**\n
 {location_suggestion}
 """
             if check_methods:
@@ -219,11 +234,14 @@ def find_best_fix(app, scan, findings, source_dir):
                     + f"""
 **Remediation suggestions:**\n
 Include these detected CHECK methods in your remediation config to suppress this finding.\n
-- {"- ".join(list(check_methods))}
+- {"- ".join(check_methods)}
 """
                 )
+            deep_link = f"""https://app.shiftleft.io/apps/{app["id"]}/vulnerabilities?scan={scan.get("id")}&findingId={afinding.get("id")}"""
             table.add_row(
+                f"""[link={deep_link}]{afinding.get("id")}[/link]""",
                 afinding.get("category"),
+                "\n".join(files_loc_list),
                 Syntax(code_snippet, scan.get("language", "java")),
                 Markdown(best_fix),
             )
@@ -242,7 +260,7 @@ Include these detected CHECK methods in your remediation config to suppress this
                 last_location,
                 variable_detected,
                 tracked_list,
-                list(check_methods),
+                check_methods,
                 Syntax(code_snippet, scan.get("language", "java")),
                 Markdown(best_fix),
             )
@@ -335,7 +353,7 @@ def export_report(org_id, app_list, report_file, format, source_dir):
                 scan, findings = get_all_findings_with_scan(
                     client, org_id, app_id, None
                 )
-                find_best_fix(app, scan, findings, source_dir)
+                find_best_fix(org_id, app, scan, findings, source_dir)
                 if format == "csv":
                     export_csv([app], findings, report_file)
                 progress.advance(task)
