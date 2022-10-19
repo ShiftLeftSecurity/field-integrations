@@ -68,6 +68,9 @@ def start_analysis(org_id, app_name, version):
         )
         # Find the source and sink
         for afinding in findings:
+            # Remediation is only supported for vuln findings
+            if afinding.get("type") != "vuln":
+                continue
             category = afinding.get("category")
             details = afinding.get("details", {})
             if details.get("source_method"):

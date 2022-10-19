@@ -63,7 +63,11 @@ def _get_code_line(source_dir, app, fname, line, variables=[]):
     variable_detected = ""
     for var in variables:
         if var in text:
-            if "$" not in var and "__" not in var and var not in ("this", "self"):
+            if (
+                "$" not in var
+                and "__" not in var
+                and var not in ("this", "self", "req", "res", "p1")
+            ):
                 variable_detected = var
                 text = (
                     text.replace(f"({var}", f"( {var} ")
@@ -110,6 +114,8 @@ def get_code(source_dir, app, fname, lineno, variables, max_lines=3, tabbed=Fals
 
 def find_best_fix(org_id, app, scan, findings, source_dir):
     annotated_findings = []
+    if not findings:
+        return annotated_findings
     console.print("\n\n")
     table = Table(title=f"""Best Fix Suggestions for {app["name"]}""", show_lines=True)
     table.add_column("ID", justify="right", style="cyan")
@@ -160,22 +166,44 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 if not parameter:
                     parameter = variableInfo.get("parameter")
                 local = variableInfo.get("Local")
+                member = variableInfo.get("Member")
+                if not member:
+                    member = variableInfo.get("member")
                 if not local:
                     local = variableInfo.get("local")
                 if parameter and parameter.get("symbol"):
                     symbol = parameter.get("symbol")
-                    if symbol not in tracked_list:
+                    if symbol not in tracked_list and symbol not in (
+                        "this",
+                        "req",
+                        "res",
+                        "p1",
+                    ):
+                        tracked_list.append(symbol)
+                if member and member.get("symbol"):
+                    symbol = member.get("symbol").split(".")[-1]
+                    if symbol not in tracked_list and symbol not in (
+                        "this",
+                        "req",
+                        "res",
+                        "p1",
+                    ):
                         tracked_list.append(symbol)
                 if local and local.get("symbol"):
                     symbol = local.get("symbol")
-                    if symbol not in tracked_list:
+                    if symbol not in tracked_list and symbol not in (
+                        "this",
+                        "req",
+                        "res",
+                        "p1",
+                    ):
                         tracked_list.append(symbol)
             location = df.get("location", {})
             if location.get("file_name") == "N/A" or not location.get("line_number"):
                 continue
             method_name = location.get("method_name")
             short_method_name = location.get("short_method_name")
-            if short_method_name:
+            if short_method_name and not "empty" in short_method_name:
                 # For JavaScript/TypeScript short method name is mostly anonymous
                 if "anonymous" in short_method_name:
                     short_method_name = (
@@ -204,6 +232,9 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
             methods_list = methods_list
             check_methods = list(check_methods)
             last_location = files_loc_list[-1]
+            # Ignore html files
+            if "html" in last_location and len(files_loc_list) > 2:
+                last_location = files_loc_list[-2]
             first_location = files_loc_list[0]
             tmpA = last_location.split(":")
             tmpB = first_location.split(":")
@@ -217,7 +248,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
             # Arrive at a best fix
             best_fix = ""
             location_suggestion = (
-                f"- Before line {last_location_lineno} in {last_location_fname}"
+                f"- Before or at line {last_location_lineno} in {last_location_fname}"
             )
             if (
                 first_location_fname != last_location_fname
@@ -264,11 +295,18 @@ Include these detected CHECK methods in your remediation config to suppress this
 """
                 )
             deep_link = f"""https://app.shiftleft.io/apps/{app["id"]}/vulnerabilities?scan={scan.get("id")}&findingId={afinding.get("id")}"""
+            app_language = scan.get("language", "java")
+            comment_str = "//"
+            if app_language == "python":
+                comment_str = "#"
             table.add_row(
                 f"""[link={deep_link}]{afinding.get("id")}[/link]""",
                 afinding.get("category"),
                 "\n".join(files_loc_list),
-                Syntax(code_snippet, scan.get("language", "java")),
+                Syntax(
+                    f"{comment_str} {last_location_fname}\n\n" + code_snippet,
+                    app_language,
+                ),
                 Markdown(best_fix),
             )
             annotated_finding = {
