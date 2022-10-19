@@ -9,6 +9,7 @@ import re
 import sys
 import time
 import urllib.parse
+from collections import defaultdict
 from urllib.parse import unquote
 
 import httpx
@@ -116,6 +117,50 @@ def get_code(source_dir, app, fname, lineno, variables, max_lines=3, tabbed=Fals
         return "", variable_detected
 
 
+def get_category_suggestion(category, variable_detected):
+    category_suggestion = ""
+    if category == "Remote Code Execution":
+        category_suggestion = f"""Use an allowlist for approved commands and compare `{variable_detected}` and the arguments against this list."""
+    elif category == "SQL Injection":
+        category_suggestion = f"""Use any alternative SQL method with builtin parameterization capability."""
+    elif category == "NoSQL Injection":
+        category_suggestion = f"""Use any alternative SDK method with builtin parameterization capability."""
+    elif category == "Directory Traversal":
+        category_suggestion = f"""Use an allowlist of safe file locations and compare `{variable_detected}` against this list."""
+    elif category == "Deserialization":
+        category_suggestion = f"""Follow security best practices to configure and use the deserialization library in a safe manner."""
+    elif category == "SSRF":
+        category_suggestion = f"""Use an allowlist of approved URL domains or service IP addresses and compare `{variable_detected}` against this list."""
+    elif category == "XML External Entities":
+        category_suggestion = f"""Follow security best practices to configure and use the XML library in a safe manner."""
+    return category_suggestion
+
+
+def cohort_analysis(app_id, scan_id, source_cohorts, sink_cohorts, source_sink_cohorts):
+    data_found = False
+    table = Table(title=f"""Cohort Analysis for {app_id}""", show_lines=True)
+    table.add_column("Category")
+    table.add_column("Similar Data Flows")
+    table.add_column("Finding ID", justify="right", style="cyan")
+    for category, source_sink in source_sink_cohorts.items():
+        for sshash, cohort_findings in source_sink.items():
+            tmpA = sshash.split("|")
+            if len(cohort_findings) > 1:
+                deep_links = [
+                    f"""[link=https://app.shiftleft.io/apps/{app_id}/vulnerabilities?scan={scan_id}&findingId={fid}]{fid}[/link]"""
+                    for fid in cohort_findings
+                ]
+                table.add_row(
+                    category,
+                    f"""Flow start: {tmpA[0]}\nFlow end: {tmpA[1]}""",
+                    "\n".join(deep_links),
+                )
+                data_found = True
+    if data_found:
+        console.print("\n\n")
+        console.print(table)
+
+
 def find_best_fix(org_id, app, scan, findings, source_dir):
     annotated_findings = []
     if not findings:
@@ -127,6 +172,9 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
     table.add_column("Locations")
     table.add_column("Code Snippet")
     table.add_column("Comment")
+    source_cohorts = defaultdict(dict)
+    sink_cohorts = defaultdict(dict)
+    source_sink_cohorts = defaultdict(dict)
     for afinding in findings:
         category = afinding.get("category")
         # Ignore Sensitive Data Leaks, Sensitive Data Usage and Log Forging for now.
@@ -234,6 +282,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 sink_method = f'{sink.get("file_name")}:{sink.get("line_number")}'
 
         if afinding.get("type") in ("vuln"):
+            category = afinding.get("category")
             methods_list = methods_list
             check_methods = list(check_methods)
             last_location = files_loc_list[-1]
@@ -241,6 +290,20 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
             if "html" in last_location and len(files_loc_list) > 2:
                 last_location = files_loc_list[-2]
             first_location = files_loc_list[0]
+            if not source_cohorts[category].get(first_location):
+                source_cohorts[category][first_location] = []
+            if not sink_cohorts[category].get(last_location):
+                sink_cohorts[category][last_location] = []
+            if not source_sink_cohorts[category].get(
+                f"{first_location}|{last_location}"
+            ):
+                source_sink_cohorts[category][f"{first_location}|{last_location}"] = []
+            # Identify cohorts
+            source_cohorts[category][first_location].append(afinding.get("id"))
+            sink_cohorts[category][last_location].append(afinding.get("id"))
+            source_sink_cohorts[category][f"{first_location}|{last_location}"].append(
+                afinding.get("id")
+            )
             tmpA = last_location.split(":")
             tmpB = first_location.split(":")
             last_location_fname = tmpA[0]
@@ -255,6 +318,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
             location_suggestion = (
                 f"- Before or at line {last_location_lineno} in {last_location_fname}"
             )
+            category_suggestion = ""
             if (
                 first_location_fname != last_location_fname
                 or last_location_lineno - first_location_lineno > 3
@@ -275,13 +339,18 @@ Specify the sink method in your remediation config to suppress this finding.\n
 
 """
             elif variable_detected:
+                category_suggestion = get_category_suggestion(
+                    category, variable_detected
+                )
                 best_fix = f"""**Taint:** Parameter `{variable_detected}` in the method `{methods_list[-1]}`\n
+{category_suggestion}
 Validate or Sanitize the parameter `{variable_detected}` before invoking the sink `{sink_method}`
 
 **Fix locations:**\n
 {location_suggestion}
 """
             elif tracked_list:
+                # No variable detected but taint list available
                 variable_detected = tracked_list[-1]
                 Parameter_str = "Parameter"
                 if len(tracked_list) > 4:
@@ -289,8 +358,11 @@ Validate or Sanitize the parameter `{variable_detected}` before invoking the sin
                         f"{tracked_list[0]}, {tracked_list[-2]} and {tracked_list[-1]}"
                     )
                     Parameter_str = "Variables"
-                # No variable detected but taint list available
+                category_suggestion = get_category_suggestion(
+                    category, variable_detected
+                )
                 best_fix = f"""**Taint:** {Parameter_str} `{variable_detected}` in the method `{methods_list[-1]}`\n
+{category_suggestion}
 Validate or Sanitize the {Parameter_str} `{variable_detected}` before invoking the sink `{sink_method}`
 
 **Fix locations:**\n
@@ -333,7 +405,7 @@ Specify the sink method in your remediation config to suppress this finding.\n
             )
             annotated_finding = {
                 "id": afinding.get("id"),
-                "category": afinding.get("category"),
+                "category": category,
                 "title": afinding.get("title"),
                 "version_first_seen": afinding.get("version_first_seen"),
                 "scan_first_seen": afinding.get("scan_first_seen"),
@@ -352,6 +424,9 @@ Specify the sink method in your remediation config to suppress this finding.\n
             }
             annotated_findings.append(annotated_finding)
     console.print(table)
+    cohort_analysis(
+        app["id"], scan.get("id"), source_cohorts, sink_cohorts, source_sink_cohorts
+    )
     return annotated_findings
 
 
