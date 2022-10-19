@@ -18,12 +18,21 @@ from rich.markdown import Markdown
 from rich.progress import Progress
 from rich.syntax import Syntax
 from rich.table import Table
+from rich.theme import Theme
 from six import moves
 
 import config
 from common import extract_org_id, get_all_apps, get_dataflow, get_findings_url, headers
 
-console = Console(color_system="auto")
+custom_theme = Theme({"info": "cyan", "warning": "purple4", "danger": "bold red"})
+console = Console(
+    log_time=False,
+    log_path=False,
+    theme=custom_theme,
+    width=280,
+    color_system="256",
+    force_terminal=True,
+)
 
 
 def _get_code_line(source_dir, app, fname, line, variables=[]):
