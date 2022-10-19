@@ -3,23 +3,22 @@
 import argparse
 import csv
 import json
+import linecache
 import os
 import re
-import linecache
-
-from six import moves
-
 import sys
 import time
 import urllib.parse
+from urllib.parse import unquote
 
 import httpx
 from json2xml import json2xml
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.progress import Progress
-from rich.table import Table
 from rich.syntax import Syntax
+from rich.table import Table
+from six import moves
 
 import config
 from common import extract_org_id, get_all_apps, get_dataflow, get_findings_url, headers
@@ -63,11 +62,7 @@ def _get_code_line(source_dir, app, fname, line, variables=[]):
     variable_detected = ""
     for var in variables:
         if var in text:
-            if (
-                "$" not in var
-                and "__" not in var
-                and var not in ("this", "self", "req", "res", "p1")
-            ):
+            if "$" not in var and var not in ("this", "self", "req", "res", "p1"):
                 variable_detected = var
                 text = (
                     text.replace(f"({var}", f"( {var} ")
@@ -156,7 +151,18 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
             dfobj = details.get("dataflow")
         dataflows = dfobj.get("list", [])
         for df in dataflows:
+            location = df.get("location", {})
+            method_name = location.get("method_name")
+            short_method_name = location.get("short_method_name")
+            if location.get("file_name") == "N/A" or not location.get("line_number"):
+                continue
+            # Skip getter/setter methods in csharp
+            if ".cs" in location.get("file_name") and (
+                "get_" in short_method_name or "set_" in short_method_name
+            ):
+                continue
             variableInfo = df.get("variable_info", {})
+            symbol = ""
             if variableInfo.get("variable"):
                 variableInfo = variableInfo.get("variable")
             if variableInfo.get("Variable"):
@@ -173,36 +179,27 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     local = variableInfo.get("local")
                 if parameter and parameter.get("symbol"):
                     symbol = parameter.get("symbol")
-                    if symbol not in tracked_list and symbol not in (
-                        "this",
-                        "req",
-                        "res",
-                        "p1",
-                    ):
-                        tracked_list.append(symbol)
                 if member and member.get("symbol"):
                     symbol = member.get("symbol").split(".")[-1]
-                    if symbol not in tracked_list and symbol not in (
-                        "this",
-                        "req",
-                        "res",
-                        "p1",
-                    ):
-                        tracked_list.append(symbol)
                 if local and local.get("symbol"):
                     symbol = local.get("symbol")
-                    if symbol not in tracked_list and symbol not in (
+                if (
+                    symbol
+                    and symbol not in tracked_list
+                    and "____obj" not in symbol
+                    and symbol
+                    not in (
                         "this",
                         "req",
                         "res",
                         "p1",
-                    ):
+                    )
+                ):
+                    if ".cs" in location.get("file_name"):
+                        if "Dto" not in symbol:
+                            tracked_list.append(symbol)
+                    else:
                         tracked_list.append(symbol)
-            location = df.get("location", {})
-            if location.get("file_name") == "N/A" or not location.get("line_number"):
-                continue
-            method_name = location.get("method_name")
-            short_method_name = location.get("short_method_name")
             if short_method_name and not "empty" in short_method_name:
                 # For JavaScript/TypeScript short method name is mostly anonymous
                 if "anonymous" in short_method_name:
@@ -211,8 +208,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                         .split("::")[-1]
                         .split(":")[-1]
                     )
-                if short_method_name not in methods_list:
-                    methods_list.append(short_method_name)
+                methods_list.append(short_method_name)
                 for check_labels in ("check", "valid", "sanit"):
                     if check_labels in short_method_name.lower():
                         check_methods.add(method_name)
@@ -222,7 +218,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 )
             loc_line = f'{location.get("file_name")}:{location.get("line_number")}'
             if loc_line not in files_loc_list:
-                files_loc_list.append(loc_line)
+                files_loc_list.append(unquote(loc_line))
         if dataflows and dataflows[-1]:
             sink = dataflows[-1].get("location", {})
             if sink and not sink_method:
@@ -277,10 +273,16 @@ Validate or Sanitize the parameter `{variable_detected}` before invoking the sin
 {location_suggestion}
 """
             elif tracked_list:
-                variable_detected = tracked_list[0]
+                variable_detected = tracked_list[-1]
+                Parameter_str = "Parameter"
+                if len(tracked_list) > 4:
+                    variable_detected = (
+                        f"{tracked_list[0]}, {tracked_list[-2]} and {tracked_list[-1]}"
+                    )
+                    Parameter_str = "Variables"
                 # No variable detected but taint list available
-                best_fix = f"""**Taint:** Parameter `{variable_detected}` in the method `{methods_list[-1]}`\n
-Validate or Sanitize the parameter `{variable_detected}` before invoking the sink `{sink_method}`
+                best_fix = f"""**Taint:** {Parameter_str} `{variable_detected}` in the method `{methods_list[-1]}`\n
+Validate or Sanitize the {Parameter_str} `{variable_detected}` before invoking the sink `{sink_method}`
 
 **Fix locations:**\n
 {location_suggestion}
@@ -294,6 +296,15 @@ Include these detected CHECK methods in your remediation config to suppress this
 - {"- ".join(check_methods)}
 """
                 )
+            # Fallback
+            if not best_fix:
+                best_fix = f"""This is likely a best practice finding.
+
+**Remediation suggestions:**\n
+Specify the sink method in your remediation config to suppress this finding.\n
+- {sink_method}
+
+"""
             deep_link = f"""https://app.shiftleft.io/apps/{app["id"]}/vulnerabilities?scan={scan.get("id")}&findingId={afinding.get("id")}"""
             app_language = scan.get("language", "java")
             comment_str = "//"
@@ -306,7 +317,9 @@ Include these detected CHECK methods in your remediation config to suppress this
                 Syntax(
                     f"{comment_str} {last_location_fname}\n\n" + code_snippet,
                     app_language,
-                ),
+                )
+                if code_snippet
+                else "",
                 Markdown(best_fix),
             )
             annotated_finding = {
