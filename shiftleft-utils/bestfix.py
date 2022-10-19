@@ -103,6 +103,7 @@ def get_code(source_dir, fname, lineno, variables, max_lines=3, tabbed=False):
 
 
 def find_best_fix(org_id, app, scan, findings, source_dir):
+    annotated_findings = []
     console.print("\n\n")
     table = Table(title=f"""Best Fix Suggestions for {app["name"]}""", show_lines=True)
     table.add_column("ID", justify="right", style="cyan")
@@ -245,30 +246,41 @@ Include these detected CHECK methods in your remediation config to suppress this
                 Syntax(code_snippet, scan.get("language", "java")),
                 Markdown(best_fix),
             )
-            annotated_finding = (
-                afinding.get("id"),
-                afinding.get("category"),
-                afinding.get("title"),
-                afinding.get("version_first_seen"),
-                afinding.get("scan_first_seen"),
-                afinding.get("internal_id"),
-                cvss_31_severity_rating,
-                cvss_score,
-                reachability,
-                source_method,
-                sink_method,
-                last_location,
-                variable_detected,
-                tracked_list,
-                check_methods,
-                Syntax(code_snippet, scan.get("language", "java")),
-                Markdown(best_fix),
-            )
+            annotated_finding = {
+                "id": afinding.get("id"),
+                "category": afinding.get("category"),
+                "title": afinding.get("title"),
+                "version_first_seen": afinding.get("version_first_seen"),
+                "scan_first_seen": afinding.get("scan_first_seen"),
+                "internal_id": afinding.get("internal_id"),
+                "cvss_31_severity_rating": cvss_31_severity_rating,
+                "cvss_score": cvss_score,
+                "reachability": reachability,
+                "source_method": source_method,
+                "sink_method": sink_method,
+                "last_location": last_location,
+                "variable_detected": variable_detected,
+                "tracked_list": "\n".join(tracked_list),
+                "check_methods": "\n".join(check_methods),
+                "code_snippet": code_snippet.replace("\n", "\\n"),
+                "best_fix": best_fix.replace("\n", "\\n"),
+            }
+            annotated_findings.append(annotated_finding)
     console.print(table)
+    return annotated_findings
 
 
-def export_csv(app, findings, report_file):
-    pass
+def export_csv(app, annotated_findings, report_file):
+    fieldnames = annotated_findings[0].keys()
+    if not os.path.exists(report_file):
+        with open(report_file, "w", newline="") as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+    with open(report_file, "a", newline="") as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        for finding in annotated_findings:
+            writer.writerow(finding)
+        console.print(f"CSV exported to {report_file}")
 
 
 def get_all_findings_with_scan(
@@ -323,7 +335,7 @@ def get_all_findings_with_scan(
     return scan, findings_list
 
 
-def export_report(org_id, app_list, report_file, format, source_dir):
+def export_report(org_id, app_list, report_file, rformat, source_dir):
     if not app_list:
         app_list = get_all_apps(org_id)
     work_dir = os.getcwd()
@@ -353,9 +365,11 @@ def export_report(org_id, app_list, report_file, format, source_dir):
                 scan, findings = get_all_findings_with_scan(
                     client, org_id, app_id, None
                 )
-                find_best_fix(org_id, app, scan, findings, source_dir)
-                if format == "csv":
-                    export_csv([app], findings, report_file)
+                annotated_findings = find_best_fix(
+                    org_id, app, scan, findings, source_dir
+                )
+                if rformat == "csv":
+                    export_csv([app], annotated_findings, report_file)
                 progress.advance(task)
 
 
@@ -379,12 +393,12 @@ def build_args():
         "--report_file",
         dest="report_file",
         help="Report filename",
-        default="ngsast-report.csv",
+        default="ngsast-bestfix-report.csv",
     )
     parser.add_argument(
         "-f",
         "--format",
-        dest="format",
+        dest="rformat",
         help="Report format",
         default="csv",
         choices=["json", "csv"],
@@ -420,6 +434,6 @@ if __name__ == "__main__":
             if os.getenv(e):
                 source_dir = os.getenv(e)
                 break
-    export_report(org_id, app_list, report_file, format, source_dir)
+    export_report(org_id, app_list, report_file, args.rformat, source_dir)
     end_time = time.monotonic_ns()
     total_time_sec = round((end_time - start_time) / 1000000000, 2)
