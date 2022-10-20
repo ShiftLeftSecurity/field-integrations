@@ -9,6 +9,11 @@ from rich.logging import RichHandler
 from rich.progress import Progress
 from rich.theme import Theme
 
+try:
+    os.environ["PYTHONIOENCODING"] = "utf-8"
+except Exception:
+    pass
+
 import config
 
 custom_theme = Theme({"info": "cyan", "warning": "purple4", "danger": "bold red"})

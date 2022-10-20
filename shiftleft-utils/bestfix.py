@@ -14,6 +14,7 @@ from urllib.parse import unquote
 
 import httpx
 from json2xml import json2xml
+from rich import box
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.progress import Progress
@@ -138,7 +139,12 @@ def get_category_suggestion(category, variable_detected):
 
 def cohort_analysis(app_id, scan_id, source_cohorts, sink_cohorts, source_sink_cohorts):
     data_found = False
-    table = Table(title=f"""Cohort Analysis for {app_id}""", show_lines=True)
+    table = Table(
+        title=f"""Findings Similarity Analysis for {app_id}""",
+        show_lines=True,
+        box=box.DOUBLE_EDGE,
+        header_style="bold magenta",
+    )
     table.add_column("Category")
     table.add_column("Similar Data Flows")
     table.add_column("Finding ID", justify="right", style="cyan")
@@ -152,10 +158,38 @@ def cohort_analysis(app_id, scan_id, source_cohorts, sink_cohorts, source_sink_c
                 ]
                 table.add_row(
                     category,
-                    f"""Flow start: {tmpA[0]}\nFlow end: {tmpA[1]}""",
+                    f"""Start: {tmpA[0]}\nEnd: {tmpA[1]}""",
                     "\n".join(deep_links),
                 )
                 data_found = True
+    if not data_found:
+        for category, source_sink in sink_cohorts.items():
+            for sink, cohort_findings in source_sink.items():
+                if len(cohort_findings) > 1:
+                    deep_links = [
+                        f"""[link=https://app.shiftleft.io/apps/{app_id}/vulnerabilities?scan={scan_id}&findingId={fid}]{fid}[/link]"""
+                        for fid in cohort_findings
+                    ]
+                    table.add_row(
+                        category,
+                        f"""End: {sink}""",
+                        "\n".join(deep_links),
+                    )
+                    data_found = True
+    if not data_found:
+        for category, source_sink in source_cohorts.items():
+            for source, cohort_findings in source_sink.items():
+                if len(cohort_findings) > 1:
+                    deep_links = [
+                        f"""[link=https://app.shiftleft.io/apps/{app_id}/vulnerabilities?scan={scan_id}&findingId={fid}]{fid}[/link]"""
+                        for fid in cohort_findings
+                    ]
+                    table.add_row(
+                        category,
+                        f"""Start: {source}""",
+                        "\n".join(deep_links),
+                    )
+                    data_found = True
     if data_found:
         console.print("\n\n")
         console.print(table)
@@ -165,8 +199,14 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
     annotated_findings = []
     if not findings:
         return annotated_findings
-    console.print("\n\n")
-    table = Table(title=f"""Best Fix Suggestions for {app["name"]}""", show_lines=True)
+    data_found = False
+    table = Table(
+        title=f"""Best Fix Suggestions for {app["name"]}""",
+        show_lines=True,
+        box=box.DOUBLE_EDGE,
+        header_style="bold magenta",
+        expand=True,
+    )
     table.add_column("ID", justify="right", style="cyan")
     table.add_column("Category")
     table.add_column("Locations")
@@ -391,6 +431,7 @@ Specify the sink method in your remediation config to suppress this finding.\n
             comment_str = "//"
             if app_language == "python":
                 comment_str = "#"
+            data_found = True
             table.add_row(
                 f"""[link={deep_link}]{afinding.get("id")}[/link]""",
                 afinding.get("category"),
@@ -423,10 +464,14 @@ Specify the sink method in your remediation config to suppress this finding.\n
                 "best_fix": best_fix.replace("\n", "\\n"),
             }
             annotated_findings.append(annotated_finding)
-    console.print(table)
-    cohort_analysis(
-        app["id"], scan.get("id"), source_cohorts, sink_cohorts, source_sink_cohorts
-    )
+    if data_found:
+        console.print("\n\n")
+        console.print(table)
+        cohort_analysis(
+            app["id"], scan.get("id"), source_cohorts, sink_cohorts, source_sink_cohorts
+        )
+    else:
+        console.print("No critical or high findings found to suggest best fix.")
     return annotated_findings
 
 
