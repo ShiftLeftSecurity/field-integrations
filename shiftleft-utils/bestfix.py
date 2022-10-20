@@ -146,8 +146,8 @@ def cohort_analysis(app_id, scan_id, source_cohorts, sink_cohorts, source_sink_c
         header_style="bold magenta",
     )
     table.add_column("Category")
-    table.add_column("Similar Data Flows")
-    table.add_column("Finding ID", justify="right", style="cyan")
+    table.add_column(":magnifying_glass_tilted_right: Similar Data Flows")
+    table.add_column(":link: Finding ID", justify="right", style="cyan")
     for category, source_sink in source_sink_cohorts.items():
         for sshash, cohort_findings in source_sink.items():
             tmpA = sshash.split("|")
@@ -207,11 +207,11 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
         header_style="bold magenta",
         expand=True,
     )
-    table.add_column("ID", justify="right", style="cyan")
+    table.add_column(":link: ID", justify="right", style="cyan")
     table.add_column("Category")
     table.add_column("Locations")
-    table.add_column("Code Snippet")
-    table.add_column("Comment")
+    table.add_column(":page_facing_up: Code Snippet")
+    table.add_column(":speech_balloon: Comment")
     source_cohorts = defaultdict(dict)
     sink_cohorts = defaultdict(dict)
     source_sink_cohorts = defaultdict(dict)
