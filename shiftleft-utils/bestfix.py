@@ -2,6 +2,7 @@
 
 import argparse
 import csv
+import io
 import json
 import linecache
 import os
@@ -35,6 +36,7 @@ console = Console(
     color_system="256",
     force_terminal=True,
 )
+MD_LIST_MARKER = "\n- "
 
 
 def _get_code_line(source_dir, app, fname, line, variables=[]):
@@ -59,7 +61,8 @@ def _get_code_line(source_dir, app, fname, line, variables=[]):
             if os.path.exists(scala_path):
                 full_path = scala_path
             else:
-                console.print(f"Unable to locate the file {fname} under {source_dir}")
+                # console.print(f"Unable to locate the file {fname} under {source_dir}")
+                return "", ""
     try:
         text = linecache.getline(full_path, line)
     except UnicodeDecodeError:
@@ -97,7 +100,7 @@ def get_code(source_dir, app, fname, lineno, variables, max_lines=3, tabbed=Fals
     lines = []
     max_lines = max(max_lines, 1)
     lmin = max(1, lineno - max_lines // 2)
-    lmax = lmin + max_lines - 1
+    lmax = lmin + max_lines
     variable_detected = ""
     tmplt = "%i\t%s" if tabbed else "%i %s"
     for line in moves.xrange(lmin, lmax):
@@ -118,22 +121,24 @@ def get_code(source_dir, app, fname, lineno, variables, max_lines=3, tabbed=Fals
         return "", variable_detected
 
 
-def get_category_suggestion(category, variable_detected):
+def get_category_suggestion(category, variable_detected, source_method, sink_method):
     category_suggestion = ""
     if category == "Remote Code Execution":
-        category_suggestion = f"""Use an allowlist for approved commands and compare `{variable_detected}` and the arguments against this list."""
+        category_suggestion = f"""Use an allowlist for approved commands and compare `{variable_detected}` and the arguments against this list in a new validation method. Then, specify this validation method name in the remediation config file."""
     elif category == "SQL Injection":
-        category_suggestion = f"""Use any alternative SQL method with builtin parameterization capability."""
+        category_suggestion = f"""Use any alternative SQL method with builtin parameterization capability. Parameterize and validate the variables `{variable_detected}` before invoking the SQL method `{sink_method}`."""
     elif category == "NoSQL Injection":
-        category_suggestion = f"""Use any alternative SDK method with builtin parameterization capability."""
+        category_suggestion = f"""Use any alternative SDK method with builtin parameterization capability. Parameterize and validate the variables `{variable_detected}` before invoking the NoSQL method `{sink_method}`."""
     elif category == "Directory Traversal":
-        category_suggestion = f"""Use an allowlist of safe file locations and compare `{variable_detected}` against this list."""
+        category_suggestion = f"""Use an allowlist of safe file or URL locations and compare `{variable_detected}` against this list before invoking the method `{sink_method}`."""
     elif category == "Deserialization":
         category_suggestion = f"""Follow security best practices to configure and use the deserialization library in a safe manner."""
-    elif category == "SSRF":
-        category_suggestion = f"""Use an allowlist of approved URL domains or service IP addresses and compare `{variable_detected}` against this list."""
+    elif category in ("SSRF", "Server-Side Request Forgery"):
+        category_suggestion = f"""Use an allowlist of approved URL domains or service IP addresses and compare `{variable_detected}` against this list in a new validation method. Then, specify this validation method name or the source method `{source_method}` in the remediation config file to suppress this finding."""
     elif category == "XML External Entities":
         category_suggestion = f"""Follow security best practices to configure and use the XML library in a safe manner."""
+    elif category == "XSS":
+        category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before returning via HTML or API response."""
     return category_suggestion
 
 
@@ -195,6 +200,55 @@ def cohort_analysis(app_id, scan_id, source_cohorts, sink_cohorts, source_sink_c
         console.print(table)
 
 
+def find_best_oss_fix(org_id, app, scan, package_cves, source_dir):
+    data_found = False
+    app_language = scan.get("language", "java")
+    table = Table(
+        title=f"""Best OSS Fix Suggestions for {app["name"]}""",
+        show_lines=True,
+        box=box.DOUBLE_EDGE,
+        header_style="bold magenta",
+    )
+    table.add_column(":package: Package")
+    table.add_column("Version", justify="right", max_width=40)
+    table.add_column("CVE", max_width=40)
+    table.add_column("Fix Version", justify="right", max_width=40, style="cyan")
+    for purl, cves in package_cves.items():
+        fix = ""
+        fix_version = ""
+        cveids = set()
+        group = ""
+        tmpA = purl.split("/")
+        package_ver = tmpA[-1].split("@")
+        version = package_ver[-1]
+        package = package_ver[-2]
+        if len(tmpA) > 2:
+            group = tmpA[1]
+        for cveobj in cves:
+            if not data_found:
+                data_found = True
+            cve_id = cveobj.get("cve")
+            if not cve_id:
+                cve_id = cveobj.get("oss_internal_id")
+            cveids.add(cve_id)
+            if not fix and cveobj.get("fix"):
+                fix = cveobj.get("fix").split(",")[0]
+                fix_version = fix.split(" ")[-1]
+        cveids = list(cveids)
+        package_str = package
+        if group:
+            package_str = f"{group}/{package}"
+        table.add_row(
+            package_str,
+            version,
+            "\n".join(cveids),
+            fix_version,
+        )
+    if data_found:
+        console.print("\n\n")
+        console.print(table)
+
+
 def find_best_fix(org_id, app, scan, findings, source_dir):
     annotated_findings = []
     if not findings:
@@ -210,11 +264,13 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
     table.add_column(":link: ID", justify="right", style="cyan")
     table.add_column("Category")
     table.add_column("Locations")
-    table.add_column(":page_facing_up: Code Snippet")
-    table.add_column(":speech_balloon: Comment")
+    table.add_column(":page_facing_up: Code Snippet", overflow="fold")
+    table.add_column(":speech_balloon: Comment", overflow="fold")
     source_cohorts = defaultdict(dict)
     sink_cohorts = defaultdict(dict)
     source_sink_cohorts = defaultdict(dict)
+    package_cves = defaultdict(list)
+    app_language = scan.get("language", "java")
     for afinding in findings:
         category = afinding.get("category")
         # Ignore Sensitive Data Leaks, Sensitive Data Usage and Log Forging for now.
@@ -233,6 +289,9 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
         tags = afinding.get("tags")
         methods_list = []
         check_methods = set()
+        package_url = ""
+        cve = ""
+        oss_internal_id = ""
         if tags:
             for tag in tags:
                 if tag.get("key") == "cvss_31_severity_rating":
@@ -241,6 +300,12 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     cvss_score = tag.get("value")
                 elif tag.get("key") == "reachability":
                     reachability = tag.get("value")
+                elif tag.get("key") == "package_url":
+                    package_url = tag.get("value")
+                elif tag.get("key") == "cve":
+                    cve = tag.get("value")
+                elif tag.get("key") == "oss_internal_id":
+                    oss_internal_id = tag.get("value")
         # For old scans, details block might be empty.
         # We go old school and iterate all dataflows
         dfobj = {}
@@ -284,6 +349,8 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     symbol
                     and symbol not in tracked_list
                     and "____obj" not in symbol
+                    and not symbol.endswith("_0")
+                    and not symbol.startswith("$")
                     and symbol
                     not in (
                         "this",
@@ -293,10 +360,12 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     )
                 ):
                     if ".cs" in location.get("file_name"):
-                        if "Dto" not in symbol:
+                        if "Dto" not in symbol and symbol not in tracked_list:
                             tracked_list.append(symbol)
                     else:
-                        tracked_list.append(symbol)
+                        cleaned_symbol = symbol.replace("val$", "")
+                        if cleaned_symbol not in tracked_list:
+                            tracked_list.append(cleaned_symbol)
             if short_method_name and not "empty" in short_method_name:
                 # For JavaScript/TypeScript short method name is mostly anonymous
                 if "anonymous" in short_method_name:
@@ -306,9 +375,12 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                         .split(":")[-1]
                     )
                 methods_list.append(short_method_name)
-                for check_labels in ("check", "valid", "sanit"):
+                for check_labels in ("check", "valid", "sanit", "escape"):
                     if check_labels in short_method_name.lower():
                         check_methods.add(method_name)
+                # Methods that start with is are usually validation methods
+                if short_method_name.startswith("is"):
+                    check_methods.add(method_name)
             if not source_method:
                 source_method = (
                     f'{location.get("file_name")}:{location.get("line_number")}'
@@ -320,9 +392,8 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
             sink = dataflows[-1].get("location", {})
             if sink and not sink_method:
                 sink_method = f'{sink.get("file_name")}:{sink.get("line_number")}'
-
+        ###########
         if afinding.get("type") in ("vuln"):
-            category = afinding.get("category")
             methods_list = methods_list
             check_methods = list(check_methods)
             last_location = files_loc_list[-1]
@@ -368,7 +439,13 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     + f"\n- After line {first_location_lineno} in {first_location_fname}"
                 )
             if source_method == sink_method:
+                if not variable_detected:
+                    variable_detected = tracked_list[-1]
+                category_suggestion = get_category_suggestion(
+                    category, variable_detected, source_method, sink_method
+                )
                 best_fix = f"""This is likely a best practice finding or a false positive.
+{category_suggestion}
 
 **Fix locations:**\n
 {location_suggestion}
@@ -380,11 +457,10 @@ Specify the sink method in your remediation config to suppress this finding.\n
 """
             elif variable_detected:
                 category_suggestion = get_category_suggestion(
-                    category, variable_detected
+                    category, variable_detected, source_method, sink_method
                 )
                 best_fix = f"""**Taint:** Parameter `{variable_detected}` in the method `{methods_list[-1]}`\n
-{category_suggestion}
-Validate or Sanitize the parameter `{variable_detected}` before invoking the sink `{sink_method}`
+{category_suggestion if category_suggestion else f"Validate or Sanitize the parameter `{variable_detected}` before invoking the sink `{sink_method}`"}
 
 **Fix locations:**\n
 {location_suggestion}
@@ -399,11 +475,10 @@ Validate or Sanitize the parameter `{variable_detected}` before invoking the sin
                     )
                     Parameter_str = "Variables"
                 category_suggestion = get_category_suggestion(
-                    category, variable_detected
+                    category, variable_detected, source_method, sink_method
                 )
                 best_fix = f"""**Taint:** {Parameter_str} `{variable_detected}` in the method `{methods_list[-1]}`\n
-{category_suggestion}
-Validate or Sanitize the {Parameter_str} `{variable_detected}` before invoking the sink `{sink_method}`
+{category_suggestion if category_suggestion else f"Validate or Sanitize the {Parameter_str} `{variable_detected}` before invoking the sink `{sink_method}`"}
 
 **Fix locations:**\n
 {location_suggestion}
@@ -414,12 +489,12 @@ Validate or Sanitize the {Parameter_str} `{variable_detected}` before invoking t
                     + f"""
 **Remediation suggestions:**\n
 Include these detected CHECK methods in your remediation config to suppress this finding.\n
-- {"- ".join(check_methods)}
+- {MD_LIST_MARKER.join(check_methods)}
 """
                 )
             # Fallback
             if not best_fix:
-                best_fix = f"""This is likely a best practice finding.
+                best_fix = f"""{"This is likely a best practice finding" if app_language in ("js", "python") else "This is likely a best practice finding or a false positive"}.
 
 **Remediation suggestions:**\n
 Specify the sink method in your remediation config to suppress this finding.\n
@@ -427,7 +502,6 @@ Specify the sink method in your remediation config to suppress this finding.\n
 
 """
             deep_link = f"""https://app.shiftleft.io/apps/{app["id"]}/vulnerabilities?scan={scan.get("id")}&findingId={afinding.get("id")}"""
-            app_language = scan.get("language", "java")
             comment_str = "//"
             if app_language == "python":
                 comment_str = "#"
@@ -444,26 +518,43 @@ Specify the sink method in your remediation config to suppress this finding.\n
                 else "",
                 Markdown(best_fix),
             )
-            annotated_finding = {
-                "id": afinding.get("id"),
-                "category": category,
-                "title": afinding.get("title"),
-                "version_first_seen": afinding.get("version_first_seen"),
-                "scan_first_seen": afinding.get("scan_first_seen"),
-                "internal_id": afinding.get("internal_id"),
-                "cvss_31_severity_rating": cvss_31_severity_rating,
-                "cvss_score": cvss_score,
-                "reachability": reachability,
-                "source_method": source_method,
-                "sink_method": sink_method,
-                "last_location": last_location,
-                "variable_detected": variable_detected,
-                "tracked_list": "\n".join(tracked_list),
-                "check_methods": "\n".join(check_methods),
-                "code_snippet": code_snippet.replace("\n", "\\n"),
-                "best_fix": best_fix.replace("\n", "\\n"),
-            }
-            annotated_findings.append(annotated_finding)
+            annotated_findings.append(
+                {
+                    "id": afinding.get("id"),
+                    "category": category,
+                    "title": afinding.get("title"),
+                    "version_first_seen": afinding.get("version_first_seen"),
+                    "scan_first_seen": afinding.get("scan_first_seen"),
+                    "internal_id": afinding.get("internal_id"),
+                    "cvss_31_severity_rating": cvss_31_severity_rating,
+                    "cvss_score": cvss_score,
+                    "reachability": reachability,
+                    "source_method": source_method,
+                    "sink_method": sink_method,
+                    "last_location": last_location,
+                    "variable_detected": variable_detected,
+                    "tracked_list": "\n".join(tracked_list),
+                    "check_methods": "\n".join(check_methods),
+                    "code_snippet": code_snippet.replace("\n", "\\n"),
+                    "best_fix": best_fix.replace("\n", "\\n"),
+                }
+            )
+        ###########
+        ###########
+        if afinding.get("type") in ("oss_vuln") and reachability == "reachable":
+            fix = details.get("fix", "")
+            package_cves[package_url].append(
+                {
+                    "id": afinding.get("id"),
+                    "cve": cve,
+                    "oss_internal_id": oss_internal_id,
+                    "fix": fix,
+                    "cvss_31_severity_rating": cvss_31_severity_rating,
+                }
+            )
+        ###########
+    # Find the best oss fixes
+    find_best_oss_fix(org_id, app, scan, package_cves, source_dir)
     if data_found:
         console.print("\n\n")
         console.print(table)
@@ -489,9 +580,7 @@ def export_csv(app, annotated_findings, report_file):
             console.print(f"CSV exported to {report_file}")
 
 
-def get_all_findings_with_scan(
-    client, org_id, app_name, version, ratings=["critical", "high"]
-):
+def get_all_findings_with_scan(client, org_id, app_name, version, ratings):
     """Method to retrieve all findings"""
     findings_list = []
     version_suffix = f"&version={version}" if version else ""
@@ -541,7 +630,15 @@ def get_all_findings_with_scan(
     return scan, findings_list
 
 
-def export_report(org_id, app_list, report_file, rformat, source_dir):
+def export_report(
+    org_id,
+    app_list,
+    report_file,
+    rformat,
+    source_dir,
+    version=None,
+    ratings=["critical", "high"],
+):
     if not app_list:
         app_list = get_all_apps(org_id)
     work_dir = os.getcwd()
@@ -569,7 +666,7 @@ def export_report(org_id, app_list, report_file, rformat, source_dir):
                 app_name = app.get("name")
                 progress.update(task, description=f"Processing [bold]{app_name}[/bold]")
                 scan, findings = get_all_findings_with_scan(
-                    client, org_id, app_id, None
+                    client, org_id, app_id, version, ratings
                 )
                 annotated_findings = find_best_fix(
                     org_id, app, scan, findings, source_dir
@@ -590,6 +687,12 @@ def build_args():
         dest="app_name",
         help="App name",
         default=config.SHIFTLEFT_APP,
+    )
+    parser.add_argument(
+        "-v",
+        "--version",
+        dest="version",
+        help="Scan version",
     )
     parser.add_argument(
         "-s", "--source_dir", dest="source_dir", help="Source directory"
@@ -630,9 +733,10 @@ if __name__ == "__main__":
     start_time = time.monotonic_ns()
     args = build_args()
     app_list = []
+    report_file = args.report_file
     if args.app_name:
         app_list.append({"id": args.app_name, "name": args.app_name})
-    report_file = args.report_file
+        report_file = f"ngsast-bestfix-{args.app_name}.csv"
     source_dir = args.source_dir
     if not source_dir:
         console.print(
@@ -643,6 +747,6 @@ if __name__ == "__main__":
             if os.getenv(e):
                 source_dir = os.getenv(e)
                 break
-    export_report(org_id, app_list, report_file, args.rformat, source_dir)
+    export_report(org_id, app_list, report_file, args.rformat, source_dir, args.version)
     end_time = time.monotonic_ns()
     total_time_sec = round((end_time - start_time) / 1000000000, 2)
