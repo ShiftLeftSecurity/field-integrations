@@ -331,6 +331,9 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 file_name.startswith("vendor") or file_name.startswith("/")
             ):
                 continue
+            # Skip anonymous methods in scala
+            if ".scala" in file_name and short_method_name.startswith("$anon"):
+                continue
             variableInfo = df.get("variable_info", {})
             symbol = ""
             if variableInfo.get("variable"):
