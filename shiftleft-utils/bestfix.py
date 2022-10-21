@@ -160,7 +160,7 @@ def cohort_analysis(app_id, scan_id, source_cohorts, sink_cohorts, source_sink_c
             tmpA = sshash.split("|")
             if len(cohort_findings) > 1:
                 deep_links = [
-                    f"""[link=https://app.shiftleft.io/apps/{app_id}/vulnerabilities?scan={scan_id}&findingId={fid}]{fid}[/link]"""
+                    f"""[link=https://app.shiftleft.io/apps/{app_id}/vulnerabilities?scan={scan_id}&expanded=true&findingId={fid}]{fid}[/link]"""
                     for fid in cohort_findings
                 ]
                 table.add_row(
@@ -174,7 +174,7 @@ def cohort_analysis(app_id, scan_id, source_cohorts, sink_cohorts, source_sink_c
             for sink, cohort_findings in source_sink.items():
                 if len(cohort_findings) > 1:
                     deep_links = [
-                        f"""[link=https://app.shiftleft.io/apps/{app_id}/vulnerabilities?scan={scan_id}&findingId={fid}]{fid}[/link]"""
+                        f"""[link=https://app.shiftleft.io/apps/{app_id}/vulnerabilities?scan={scan_id}&expanded=true&findingId={fid}]{fid}[/link]"""
                         for fid in cohort_findings
                     ]
                     table.add_row(
@@ -188,7 +188,7 @@ def cohort_analysis(app_id, scan_id, source_cohorts, sink_cohorts, source_sink_c
             for source, cohort_findings in source_sink.items():
                 if len(cohort_findings) > 1:
                     deep_links = [
-                        f"""[link=https://app.shiftleft.io/apps/{app_id}/vulnerabilities?scan={scan_id}&findingId={fid}]{fid}[/link]"""
+                        f"""[link=https://app.shiftleft.io/apps/{app_id}/vulnerabilities?scan={scan_id}&expanded=true&findingId={fid}]{fid}[/link]"""
                         for fid in cohort_findings
                     ]
                     table.add_row(
@@ -509,7 +509,7 @@ Specify the sink method in your remediation config to suppress this finding.\n
 - {sink_method}
 
 """
-            deep_link = f"""https://app.shiftleft.io/apps/{app["id"]}/vulnerabilities?scan={scan.get("id")}&findingId={afinding.get("id")}"""
+            deep_link = f"""https://app.shiftleft.io/apps/{app["id"]}/vulnerabilities?scan={scan.get("id")}&expanded=true&findingId={afinding.get("id")}"""
             comment_str = "//"
             if app_language == "python":
                 comment_str = "#"
