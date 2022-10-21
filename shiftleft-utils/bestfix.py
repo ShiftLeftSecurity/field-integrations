@@ -37,7 +37,9 @@ console = Console(
     force_terminal=True,
 )
 MD_LIST_MARKER = "\n- "
-CI_MODE = os.environ.get("CI") in ("true", "1")
+CI_MODE = (
+    os.environ.get("CI") in ("true", "1") or os.environ.get("AGENT_OS") is not None
+)
 
 
 def _get_code_line(source_dir, app, fname, line, variables=[]):
@@ -152,8 +154,8 @@ def cohort_analysis(app_id, scan_id, source_cohorts, sink_cohorts, source_sink_c
         header_style="bold magenta",
     )
     table.add_column("Category")
-    table.add_column(":magnifying_glass_tilted_right: Similar Data Flows")
-    table.add_column(":link: Finding ID", justify="right", style="cyan")
+    table.add_column("Similar Data Flows")
+    table.add_column("Finding ID", justify="right", style="cyan")
     for category, source_sink in source_sink_cohorts.items():
         for sshash, cohort_findings in source_sink.items():
             tmpA = sshash.split("|")
@@ -210,7 +212,7 @@ def find_best_oss_fix(org_id, app, scan, package_cves, source_dir):
         box=box.DOUBLE_EDGE,
         header_style="bold magenta",
     )
-    table.add_column(":package: Package")
+    table.add_column("Package")
     table.add_column("Version", justify="right", max_width=40)
     table.add_column("CVE", max_width=40)
     table.add_column("Fix Version", justify="right", max_width=40, style="cyan")
@@ -262,11 +264,11 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
         header_style="bold magenta",
         expand=True,
     )
-    table.add_column(":link: ID", justify="right", style="cyan")
+    table.add_column("ID", justify="right", style="cyan")
     table.add_column("Category")
     table.add_column("Locations")
-    table.add_column(":page_facing_up: Code Snippet", overflow="fold")
-    table.add_column(":speech_balloon: Comment", overflow="fold")
+    table.add_column("Code Snippet", overflow="fold")
+    table.add_column("Comment", overflow="fold")
     source_cohorts = defaultdict(dict)
     sink_cohorts = defaultdict(dict)
     source_sink_cohorts = defaultdict(dict)
