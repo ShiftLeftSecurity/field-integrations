@@ -37,6 +37,7 @@ console = Console(
     force_terminal=True,
 )
 MD_LIST_MARKER = "\n- "
+CI_MODE = os.environ.get("CI") in ("true", "1")
 
 
 def _get_code_line(source_dir, app, fname, line, variables=[]):
@@ -314,13 +315,19 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
         dataflows = dfobj.get("list", [])
         for df in dataflows:
             location = df.get("location", {})
+            file_name = location.get("file_name")
             method_name = location.get("method_name")
             short_method_name = location.get("short_method_name")
-            if location.get("file_name") == "N/A" or not location.get("line_number"):
+            if file_name == "N/A" or not location.get("line_number"):
                 continue
             # Skip getter/setter methods in csharp
-            if ".cs" in location.get("file_name") and (
+            if ".cs" in file_name and (
                 "get_" in short_method_name or "set_" in short_method_name
+            ):
+                continue
+            # Skip vendor and stdlib for go
+            if ".go" in file_name and (
+                file_name.startswith("vendor") or file_name.startswith("/")
             ):
                 continue
             variableInfo = df.get("variable_info", {})
@@ -375,7 +382,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                         .split(":")[-1]
                     )
                 methods_list.append(short_method_name)
-                for check_labels in ("check", "valid", "sanit", "escape"):
+                for check_labels in ("check", "valid", "sanit", "escape", "clean"):
                     if check_labels in short_method_name.lower():
                         check_methods.add(method_name)
                 # Methods that start with is are usually validation methods
@@ -506,16 +513,17 @@ Specify the sink method in your remediation config to suppress this finding.\n
             if app_language == "python":
                 comment_str = "#"
             data_found = True
+            fmt_code_snippet = code_snippet
+            if not CI_MODE and code_snippet:
+                fmt_code_snippet = Syntax(
+                    f"{comment_str} {last_location_fname}\n\n" + code_snippet,
+                    app_language,
+                )
             table.add_row(
                 f"""[link={deep_link}]{afinding.get("id")}[/link]""",
                 afinding.get("category"),
                 "\n".join(files_loc_list),
-                Syntax(
-                    f"{comment_str} {last_location_fname}\n\n" + code_snippet,
-                    app_language,
-                )
-                if code_snippet
-                else "",
+                fmt_code_snippet,
                 Markdown(best_fix),
             )
             annotated_findings.append(
