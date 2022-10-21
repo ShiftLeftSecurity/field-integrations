@@ -7,3 +7,4 @@ pytest_httpserver
 httpx[http2]
 dask
 dask[array]
+PyGitHub

@@ -26,6 +26,7 @@ from six import moves
 
 import config
 from common import extract_org_id, get_all_apps, get_dataflow, get_findings_url, headers
+import gh as GitHubLib
 
 custom_theme = Theme({"info": "cyan", "warning": "purple4", "danger": "bold red"})
 console = Console(
@@ -37,9 +38,7 @@ console = Console(
     force_terminal=True,
 )
 MD_LIST_MARKER = "\n- "
-CI_MODE = (
-    os.environ.get("CI") in ("true", "1") or os.environ.get("AGENT_OS") is not None
-)
+CI_MODE = os.getenv("CI") in ("true", "1") or os.getenv("AGENT_OS") is not None
 
 
 def _get_code_line(source_dir, app, fname, line, variables=[]):
@@ -531,6 +530,7 @@ Specify the sink method in your remediation config to suppress this finding.\n
             annotated_findings.append(
                 {
                     "id": afinding.get("id"),
+                    "deep_link": deep_link,
                     "category": category,
                     "title": afinding.get("title"),
                     "version_first_seen": afinding.get("version_first_seen"),
@@ -573,6 +573,9 @@ Specify the sink method in your remediation config to suppress this finding.\n
         )
     else:
         console.print("No critical or high findings found to suggest best fix.")
+    # Annotate the pull request
+    if os.getenv("GITHUB_TOKEN"):
+        GitHubLib.annotate(annotated_findings, scan, False)
     return annotated_findings
 
 
