@@ -202,7 +202,15 @@ def cohort_analysis(app_id, scan_id, source_cohorts, sink_cohorts, source_sink_c
         console.print(table)
 
 
-def find_best_oss_fix(org_id, app, scan, package_cves, source_dir):
+def find_best_oss_fix(
+    org_id,
+    app,
+    scan,
+    package_cves,
+    source_dir,
+    reachable_oss_count,
+    unreachable_oss_count,
+):
     data_found = False
     app_language = scan.get("language", "java")
     table = Table(
@@ -212,6 +220,7 @@ def find_best_oss_fix(org_id, app, scan, package_cves, source_dir):
         header_style="bold magenta",
     )
     table.add_column("Package")
+    table.add_column("Reachable")
     table.add_column("Version", justify="right", max_width=40)
     table.add_column("CVE", max_width=40)
     table.add_column("Fix Version", justify="right", max_width=40, style="cyan")
@@ -227,6 +236,11 @@ def find_best_oss_fix(org_id, app, scan, package_cves, source_dir):
         if len(tmpA) > 2:
             group = tmpA[1]
         for cveobj in cves:
+            reachability = cveobj.get("reachability")
+            # If we have reachable oss findings then operate in reachable mode
+            # If not report all critical and high oss vulnerabilities
+            if reachable_oss_count > 0 and reachability != "reachable":
+                continue
             if not data_found:
                 data_found = True
             cve_id = cveobj.get("cve")
@@ -242,6 +256,7 @@ def find_best_oss_fix(org_id, app, scan, package_cves, source_dir):
             package_str = f"{group}/{package}"
         table.add_row(
             package_str,
+            reachability if reachability == "reachable" else "N/A",
             version,
             "\n".join(cveids),
             fix_version,
@@ -273,6 +288,8 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
     source_sink_cohorts = defaultdict(dict)
     package_cves = defaultdict(list)
     app_language = scan.get("language", "java")
+    reachable_oss_count = 0
+    unreachable_oss_count = 0
     for afinding in findings:
         category = afinding.get("category")
         # Ignore Sensitive Data Leaks, Sensitive Data Usage and Log Forging for now.
@@ -375,6 +392,9 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                             tracked_list.append(symbol)
                     else:
                         cleaned_symbol = symbol.replace("val$", "")
+                        # Clean $ suffixed variables in scala
+                        if ".scala" in file_name and "$" in cleaned_symbol:
+                            cleaned_symbol = cleaned_symbol.split("$")[0]
                         if cleaned_symbol not in tracked_list:
                             tracked_list.append(cleaned_symbol)
             if short_method_name and not "empty" in short_method_name:
@@ -404,7 +424,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
             if sink and not sink_method:
                 sink_method = f'{sink.get("file_name")}:{sink.get("line_number")}'
         ###########
-        if afinding.get("type") in ("vuln"):
+        if afinding.get("type") == "vuln":
             methods_list = methods_list
             check_methods = list(check_methods)
             last_location = files_loc_list[-1]
@@ -554,7 +574,7 @@ Specify the sink method in your remediation config to suppress this finding.\n
             )
         ###########
         ###########
-        if afinding.get("type") in ("oss_vuln") and reachability == "reachable":
+        if afinding.get("type") == "oss_vuln":
             fix = details.get("fix", "")
             package_cves[package_url].append(
                 {
@@ -563,11 +583,24 @@ Specify the sink method in your remediation config to suppress this finding.\n
                     "oss_internal_id": oss_internal_id,
                     "fix": fix,
                     "cvss_31_severity_rating": cvss_31_severity_rating,
+                    "reachability": reachability,
                 }
             )
+            if reachability == "reachable":
+                reachable_oss_count += 1
+            else:
+                unreachable_oss_count += 1
         ###########
     # Find the best oss fixes
-    find_best_oss_fix(org_id, app, scan, package_cves, source_dir)
+    find_best_oss_fix(
+        org_id,
+        app,
+        scan,
+        package_cves,
+        source_dir,
+        reachable_oss_count,
+        unreachable_oss_count,
+    )
     if data_found:
         console.print("\n\n")
         console.print(table)
