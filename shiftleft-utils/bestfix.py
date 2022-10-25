@@ -223,10 +223,9 @@ def find_best_oss_fix(
     table.add_column("Reachable")
     table.add_column("Version", justify="right", max_width=40)
     table.add_column("CVE", max_width=40)
-    table.add_column("Fix Version", justify="right", max_width=40, style="cyan")
+    table.add_column("Fix Version(s)", justify="right", max_width=40, style="cyan")
     for purl, cves in package_cves.items():
-        fix = ""
-        fix_version = ""
+        fix_version = set()
         cveids = set()
         group = ""
         tmpA = purl.split("/")
@@ -247,9 +246,10 @@ def find_best_oss_fix(
             if not cve_id:
                 cve_id = cveobj.get("oss_internal_id")
             cveids.add(cve_id)
-            if not fix and cveobj.get("fix"):
+            if cveobj.get("fix"):
                 fix = cveobj.get("fix").split(",")[0]
-                fix_version = fix.split(" ")[-1]
+                new_fix_version = fix.split(" ")[-1]
+                fix_version.add(new_fix_version)
         cveids = list(cveids)
         package_str = package
         if group:
@@ -259,7 +259,7 @@ def find_best_oss_fix(
             reachability if reachability == "reachable" else "N/A",
             version,
             "\n".join(cveids),
-            fix_version,
+            "\n".join(list(fix_version)),
         )
     if data_found:
         console.print("\n\n")
