@@ -136,7 +136,7 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
     elif category == "Deserialization":
         category_suggestion = f"""Follow security best practices to configure and use the deserialization library in a safe manner."""
     elif category in ("SSRF", "Server-Side Request Forgery"):
-        category_suggestion = f"""Use an allowlist of approved URL domains or service IP addresses and compare `{variable_detected}` against this list in a new validation method. Then, specify this validation method name or the source method `{source_method}` in the remediation config file to suppress this finding."""
+        category_suggestion = f"""Validate and ensure `{variable_detected}` do not contain any URL and other malicious input. For externally injected values, compare `{variable_detected}` against an allowlist of approved URL domains or service IP addresses. Then, specify this validation method name or the source method `{source_method}` in the remediation config file to suppress this finding."""
     elif category == "XML External Entities":
         category_suggestion = f"""Follow security best practices to configure and use the XML library in a safe manner."""
     elif category == "XSS":
@@ -406,7 +406,14 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                         .split(":")[-1]
                     )
                 methods_list.append(short_method_name)
-                for check_labels in ("check", "valid", "sanit", "escape", "clean"):
+                for check_labels in (
+                    "check",
+                    "valid",
+                    "sanit",
+                    "escape",
+                    "clean",
+                    "safe",
+                ):
                     if check_labels in short_method_name.lower():
                         check_methods.add(method_name)
                 # Methods that start with is are usually validation methods
