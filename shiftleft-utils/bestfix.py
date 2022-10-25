@@ -25,8 +25,8 @@ from rich.theme import Theme
 from six import moves
 
 import config
-from common import extract_org_id, get_all_apps, get_dataflow, get_findings_url, headers
 import gh as GitHubLib
+from common import extract_org_id, get_all_apps, get_dataflow, get_findings_url, headers
 
 CI_MODE = os.getenv("CI") in ("true", "1") or os.getenv("AGENT_OS") is not None
 
@@ -284,7 +284,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
     )
     table.add_column("ID", justify="right", style="cyan")
     table.add_column("Category")
-    table.add_column("Locations")
+    table.add_column("Locations", overflow="fold")
     table.add_column("Code Snippet", overflow="fold")
     table.add_column("Comment", overflow="fold")
     source_cohorts = defaultdict(dict)
