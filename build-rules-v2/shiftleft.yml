@@ -1,14 +1,15 @@
-source:
-  branch: main
 build_rules:
   - id: "No critical or high SAST findings"
     finding_types:
       - vuln
-      - secret
     cvss_31_severity_ratings:
       - critical
       - high
     threshold: 0
+  - id: "Allow 0 secrets"
+    finding_types:
+      - secret
+    threshold: 0  
     options:
       num_findings: 10 # Return 10 sast findings
   - id: "No reachable SCA findings"
@@ -106,3 +107,4 @@ build_rules:
 #      - a08-2021-software-and-data-integrity-failures
 #      - a09-2021-security-logging-and-monitoring-failures
 #      - a10-2021-server-side-request-forgery-(ssrf)
+      
