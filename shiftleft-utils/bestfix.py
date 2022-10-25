@@ -28,17 +28,19 @@ import config
 from common import extract_org_id, get_all_apps, get_dataflow, get_findings_url, headers
 import gh as GitHubLib
 
+CI_MODE = os.getenv("CI") in ("true", "1") or os.getenv("AGENT_OS") is not None
+
 custom_theme = Theme({"info": "cyan", "warning": "purple4", "danger": "bold red"})
 console = Console(
     log_time=False,
     log_path=False,
     theme=custom_theme,
-    width=280,
     color_system="256",
     force_terminal=True,
 )
+if CI_MODE:
+    console.update(width=280)
 MD_LIST_MARKER = "\n- "
-CI_MODE = os.getenv("CI") in ("true", "1") or os.getenv("AGENT_OS") is not None
 
 
 def _get_code_line(source_dir, app, fname, line, variables=[]):
@@ -141,6 +143,8 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
         category_suggestion = f"""Follow security best practices to configure and use the XML library in a safe manner."""
     elif category == "XSS":
         category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before returning via HTML or API response."""
+    elif category == "LDAP Injection":
+        category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before invoking the LDAP method `{sink_method}`."""
     return category_suggestion
 
 
@@ -236,10 +240,6 @@ def find_best_oss_fix(
             group = tmpA[1]
         for cveobj in cves:
             reachability = cveobj.get("reachability")
-            # If we have reachable oss findings then operate in reachable mode
-            # If not report all critical and high oss vulnerabilities
-            if reachable_oss_count > 0 and reachability != "reachable":
-                continue
             if not data_found:
                 data_found = True
             cve_id = cveobj.get("cve")
@@ -254,9 +254,13 @@ def find_best_oss_fix(
         package_str = package
         if group:
             package_str = f"{group}/{package}"
+        # If we have reachable oss findings then operate in reachable mode
+        # If not report all critical and high oss vulnerabilities
+        if reachable_oss_count > 0 and reachability != "reachable":
+            continue
         table.add_row(
             package_str,
-            reachability if reachability == "reachable" else "N/A",
+            reachability.capitalize() if reachability == "reachable" else "",
             version,
             "\n".join(cveids),
             "\n".join(list(fix_version)),
@@ -522,6 +526,9 @@ Specify the sink method in your remediation config to suppress this finding.\n
 {location_suggestion}
 """
             if check_methods:
+                if not variable_detected and not tracked_list:
+                    best_fix = f"""Validate or Sanitize user provided input before invoking the sink method `{sink_method}`
+"""
                 best_fix = (
                     best_fix
                     + f"""
