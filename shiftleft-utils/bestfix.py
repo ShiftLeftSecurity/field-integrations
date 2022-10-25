@@ -136,7 +136,7 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
     elif category == "Deserialization":
         category_suggestion = f"""Follow security best practices to configure and use the deserialization library in a safe manner."""
     elif category in ("SSRF", "Server-Side Request Forgery"):
-        category_suggestion = f"""Validate and ensure `{variable_detected}` do not contain any URL and other malicious input. For externally injected values, compare `{variable_detected}` against an allowlist of approved URL domains or service IP addresses. Then, specify this validation method name or the source method `{source_method}` in the remediation config file to suppress this finding."""
+        category_suggestion = f"""Validate and ensure `{variable_detected}` does not contain URLs and other malicious input. For externally injected values, compare `{variable_detected}` against an allowlist of approved URL domains or service IP addresses. Then, specify this validation method name or the source method `{source_method}` in the remediation config file to suppress this finding."""
     elif category == "XML External Entities":
         category_suggestion = f"""Follow security best practices to configure and use the XML library in a safe manner."""
     elif category == "XSS":
