@@ -89,7 +89,7 @@ def _get_code_line(source_dir, app, fname, line, variables=[]):
                     .replace(f"{var},", f" {var} ,")
                 )
                 break
-    return text, variable_detected
+    return text, variable_detected, full_path
 
 
 def get_code(source_dir, app, fname, lineno, variables, max_lines=3, tabbed=False):
@@ -107,8 +107,9 @@ def get_code(source_dir, app, fname, lineno, variables, max_lines=3, tabbed=Fals
     lmax = lmin + max_lines
     variable_detected = ""
     tmplt = "%i\t%s" if tabbed else "%i %s"
+    full_path = ""
     for line in moves.xrange(lmin, lmax):
-        text, new_variable_detected = _get_code_line(
+        text, new_variable_detected, full_path = _get_code_line(
             source_dir, app, fname, line, variables
         )
         if not variable_detected and new_variable_detected:
@@ -120,9 +121,9 @@ def get_code(source_dir, app, fname, lineno, variables, max_lines=3, tabbed=Fals
             break
         lines.append(tmplt % (line, text))
     if lines:
-        return "".join(lines), variable_detected
+        return "".join(lines), variable_detected, full_path
     else:
-        return "", variable_detected
+        return "", variable_detected, full_path
 
 
 def get_category_suggestion(category, variable_detected, source_method, sink_method):
@@ -284,7 +285,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
     )
     table.add_column("ID", justify="right", style="cyan")
     table.add_column("Category")
-    table.add_column("Locations", overflow="fold")
+    table.add_column("Locations", overflow="fold", max_width=50)
     table.add_column("Code Snippet", overflow="fold")
     table.add_column("Comment", overflow="fold")
     source_cohorts = defaultdict(dict)
@@ -463,7 +464,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
             last_location_lineno = int(tmpA[-1])
             first_location_fname = tmpB[0]
             first_location_lineno = int(tmpB[-1])
-            code_snippet, variable_detected = get_code(
+            code_snippet, variable_detected, full_path = get_code(
                 source_dir, app, last_location_fname, last_location_lineno, tracked_list
             )
             # Arrive at a best fix
@@ -560,7 +561,12 @@ Specify the sink method in your remediation config to suppress this finding.\n
             table.add_row(
                 f"""[link={deep_link}]{afinding.get("id")}[/link]""",
                 afinding.get("category"),
-                "\n".join(files_loc_list),
+                Markdown(
+                    MD_LIST_MARKER
+                    + MD_LIST_MARKER.join(
+                        [f"[{fl}](file://{full_path})" for fl in files_loc_list]
+                    )
+                ),
                 fmt_code_snippet,
                 Markdown(best_fix),
             )
