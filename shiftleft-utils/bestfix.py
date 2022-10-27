@@ -248,7 +248,7 @@ def find_best_oss_fix(
                 cve_id = cveobj.get("oss_internal_id")
             cveids.add(cve_id)
             if cveobj.get("fix"):
-                fix = cveobj.get("fix").split(",")[0]
+                fix = cveobj.get("fix").split(",")[0].split(" or ")[0]
                 new_fix_version = fix.split(" ")[-1]
                 fix_version.add(new_fix_version)
         cveids = sorted(cveids, reverse=True)
