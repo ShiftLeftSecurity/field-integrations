@@ -66,7 +66,7 @@ def _get_code_line(source_dir, app, fname, line, variables=[]):
                 full_path = scala_path
             else:
                 # console.print(f"Unable to locate the file {fname} under {source_dir}")
-                return "", ""
+                return "", "", ""
     try:
         text = linecache.getline(full_path, line)
     except UnicodeDecodeError:
