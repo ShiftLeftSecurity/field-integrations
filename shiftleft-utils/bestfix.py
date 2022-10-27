@@ -467,6 +467,9 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
             code_snippet, variable_detected, full_path = get_code(
                 source_dir, app, last_location_fname, last_location_lineno, tracked_list
             )
+            full_path_prefix = ""
+            if full_path:
+                full_path_prefix = full_path.replace(last_location_fname, "")
             # Arrive at a best fix
             best_fix = ""
             location_suggestion = (
@@ -564,7 +567,10 @@ Specify the sink method in your remediation config to suppress this finding.\n
                 Markdown(
                     MD_LIST_MARKER
                     + MD_LIST_MARKER.join(
-                        [f"[{fl}](file://{full_path})" for fl in files_loc_list]
+                        [
+                            f"[{fl}](file://{full_path_prefix}{fl})"
+                            for fl in files_loc_list
+                        ]
                     )
                 ),
                 fmt_code_snippet,
