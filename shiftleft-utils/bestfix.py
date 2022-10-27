@@ -382,6 +382,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     symbol
                     and symbol not in tracked_list
                     and "____obj" not in symbol
+                    and "(" not in symbol
                     and not symbol.endswith("_0")
                     and not symbol.startswith("$")
                     and symbol
@@ -485,12 +486,12 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     + f"\n- After line {first_location_lineno} in {first_location_fname}"
                 )
             if source_method == sink_method:
-                if not variable_detected:
+                if not variable_detected and tracked_list:
                     variable_detected = tracked_list[-1]
                 category_suggestion = get_category_suggestion(
                     category, variable_detected, source_method, sink_method
                 )
-                best_fix = f"""This is likely a best practice finding or a false positive.
+                best_fix = f"""This is likely a security best practices type finding or a false positive.
 {category_suggestion}
 
 **Fix locations:**\n
@@ -543,7 +544,7 @@ Include these detected CHECK methods in your remediation config to suppress this
                 )
             # Fallback
             if not best_fix:
-                best_fix = f"""{"This is likely a best practice finding" if app_language in ("js", "python") else "This is likely a best practice finding or a false positive"}.
+                best_fix = f"""{"This is likely a security best practices type finding" if app_language in ("js", "python") else "This is likely a security best practices type finding or a false positive"}.
 
 **Remediation suggestions:**\n
 Specify the sink method in your remediation config to suppress this finding.\n
