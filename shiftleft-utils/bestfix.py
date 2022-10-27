@@ -251,7 +251,7 @@ def find_best_oss_fix(
                 fix = cveobj.get("fix").split(",")[0]
                 new_fix_version = fix.split(" ")[-1]
                 fix_version.add(new_fix_version)
-        cveids = list(cveids)
+        cveids = sorted(cveids, reverse=True)
         package_str = package
         if group:
             package_str = f"{group}/{package}"
@@ -264,7 +264,7 @@ def find_best_oss_fix(
             reachability.capitalize() if reachability == "reachable" else "",
             version,
             "\n".join(cveids),
-            "\n".join(list(fix_version)),
+            "\n".join(sorted(fix_version, reverse=True)),
         )
     if data_found:
         console.print("\n\n")
