@@ -423,7 +423,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     if check_labels in short_method_name.lower():
                         check_methods.add(method_name)
                 # Methods that start with is are usually validation methods
-                if short_method_name.startswith("is"):
+                if re.match(r"^is[A-Z]", short_method_name):
                     check_methods.add(method_name)
             if not source_method:
                 source_method = (
