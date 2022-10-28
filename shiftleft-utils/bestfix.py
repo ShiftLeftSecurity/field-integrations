@@ -431,7 +431,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 )
             loc_line = f'{location.get("file_name")}:{location.get("line_number")}'
             if loc_line not in files_loc_list:
-                files_loc_list.append(unquote(loc_line))
+                files_loc_list.append(unquote(loc_line.replace("D:\\a\\1\\s\\", "")))
         if dataflows and dataflows[-1]:
             sink = dataflows[-1].get("location", {})
             if sink and not sink_method:

@@ -9,9 +9,10 @@ import multiprocessing
 import os
 import sys
 import time
-import dask
+from collections import defaultdict
 from datetime import datetime
 
+import dask
 import httpx
 from rich.console import Console
 from rich.live import Live
@@ -28,6 +29,13 @@ from common import (
 )
 
 console = Console(color_system="auto")
+
+
+def to_arr(counts_dict):
+    arr = []
+    for k, v in counts_dict.items():
+        arr.append({"name": k, "count": v})
+    return arr
 
 
 def process_app(progress, task, org_id, report_file, app, detailed):
@@ -60,6 +68,7 @@ def process_app(progress, task, org_id, report_file, app, detailed):
                 return []
             tags = app.get("tags")
             app_group = ""
+            app_branch = scan.get("tags", {}).get("branch", "")
             if tags:
                 for tag in tags:
                     if tag.get("key") == "group":
@@ -80,6 +89,8 @@ def process_app(progress, task, org_id, report_file, app, detailed):
                     "language",
                     "cvss_31_severity_rating",
                     "reachable_oss_vulns",
+                    "owasp_2021_category",
+                    "cwe_category",
                     "reachability",
                 ]
             ]
@@ -97,6 +108,8 @@ def process_app(progress, task, org_id, report_file, app, detailed):
             container_low_count = 0
             oss_reachable_count = 0
             oss_unreachable_count = 0
+            owasp_2021_category_counts = defaultdict(int)
+            cwe_category_counts = defaultdict(int)
             reachable_oss_vulns = 0
             secrets_count = 0
             sources_list = set()
@@ -119,7 +132,9 @@ def process_app(progress, task, org_id, report_file, app, detailed):
                 if details.get("file_locations"):
                     files_loc_list.update(details.get("file_locations"))
                 if details.get("secret"):
-                    secrets_list.update(details.get("secret"))
+                    secrets_list.update(
+                        details.get("secret").replace("\n", "").replace('"', "")
+                    )
                 if details.get("entropy"):
                     try:
                         entropy = float(details.get("entropy"))
@@ -208,6 +223,10 @@ def process_app(progress, task, org_id, report_file, app, detailed):
                         container_low_count = vc["count"]
                 if vc["finding_type"] == "secret" and vc["key"] == "language":
                     secrets_count = vc["count"]
+                if vc["key"] == "owasp_2021_category":
+                    owasp_2021_category_counts[vc["value"]] += vc["count"]
+                if vc["key"] == "cwe_category":
+                    cwe_category_counts[vc["value"]] += vc["count"]
             # Convert date time to BigQuery friendly format
             completed_at = ""
             try:
@@ -233,6 +252,7 @@ def process_app(progress, task, org_id, report_file, app, detailed):
             return [
                 scan.get("app"),
                 app_group,
+                app_branch,
                 scan.get("version"),
                 completed_at,
                 scan.get("language"),
@@ -244,7 +264,7 @@ def process_app(progress, task, org_id, report_file, app, detailed):
                 secrets_count,
                 "\\n".join(sources_list),
                 "\\n".join(sinks_list),
-                "\\n".join(files_loc_list),
+                "\\n".join(files_loc_list).replace("D:\\a\\1\\s\\", ""),
                 oss_critical_count,
                 oss_high_count,
                 oss_medium_count,
@@ -257,9 +277,6 @@ def process_app(progress, task, org_id, report_file, app, detailed):
                 container_low_count,
                 "\\n".join(methods_list),
                 "\\n".join(routes_list),
-                "\\n".join(secrets_list),
-                entropy_low,
-                entropy_high,
             ]
     else:
         console.print(f"""WARN: Unable to retrieve findings for {app_name}""")
@@ -275,6 +292,7 @@ def write_to_csv(report_file, row):
             csv_cols = [
                 "App",
                 "App Group",
+                "Branch",
                 "Version",
                 "Last Scan",
                 "Language",
@@ -299,9 +317,6 @@ def write_to_csv(report_file, row):
                 "Container Low Count",
                 "Methods",
                 "Routes",
-                "Secrets",
-                "Entropy Low",
-                "Entropy High",
             ]
             reportwriter.writerow(csv_cols)
     elif row:
