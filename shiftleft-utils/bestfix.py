@@ -296,6 +296,9 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
     reachable_oss_count = 0
     unreachable_oss_count = 0
     for afinding in findings:
+        # Skip ignored and fixed findings
+        if afinding.get("status") in ("ignore", "ignored", "fixed"):
+            continue
         category = afinding.get("category")
         # Ignore Sensitive Data Leaks, Sensitive Data Usage and Log Forging for now.
         if "Sensitive" in category or "Log" in category:
