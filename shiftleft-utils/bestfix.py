@@ -5,6 +5,7 @@ import csv
 import io
 import json
 import linecache
+import math
 import os
 import re
 import sys
@@ -248,11 +249,12 @@ def find_best_oss_fix(
             if not cve_id:
                 cve_id = cveobj.get("oss_internal_id")
             cveids.add(cve_id)
-            if cveobj.get("fix"):
+            orig_fix_str = cveobj.get("fix", "").lower()
+            # Ignore fix strings that do not contain versions
+            if orig_fix_str and "unfortunately" not in orig_fix_str:
                 fixes_list = []
                 fixes_str = (
-                    cveobj.get("fix")
-                    .replace("Upgrade to versions ", "")
+                    orig_fix_str.replace("Upgrade to versions ", "")
                     .replace("Upgrade to ", "")
                     .split(" or ")[0]
                 )
@@ -273,6 +275,9 @@ def find_best_oss_fix(
         if reachable_oss_count > 0 and reachability != "reachable":
             continue
         fix_versions = sorted(fix_version, key=parse, reverse=True)
+        # For long list of fix versions just show the first half
+        if len(fix_versions) > 5:
+            fix_versions = fix_versions[0 : math.ceil(len(fix_versions) / 2)]
         table.add_row(
             package_str,
             reachability.capitalize() if reachability == "reachable" else "",
