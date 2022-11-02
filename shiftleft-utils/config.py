@@ -39,3 +39,14 @@ timeout = 180
 app_chunk_size = 20
 
 ignorable_paths = ("test", "sample", "build", "docs", "dist")
+
+check_labels_list = (
+    "check",
+    "valid",
+    "sanit",
+    "escape",
+    "clean",
+    "safe",
+    "serialize",
+    "convert",
+)

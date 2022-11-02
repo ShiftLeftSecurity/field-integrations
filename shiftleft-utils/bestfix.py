@@ -445,14 +445,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                         .split(":")[-1]
                     )
                 methods_list.append(short_method_name)
-                for check_labels in (
-                    "check",
-                    "valid",
-                    "sanit",
-                    "escape",
-                    "clean",
-                    "safe",
-                ):
+                for check_labels in config.check_labels_list:
                     if check_labels in short_method_name.lower():
                         check_methods.add(method_name)
                 # Methods that start with is are usually validation methods
@@ -475,17 +468,24 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
         if afinding.get("type") == "vuln":
             methods_list = methods_list
             check_methods = list(check_methods)
-            last_location = files_loc_list[-1]
+            last_location = ""
+            first_location = ""
+            if files_loc_list:
+                last_location = files_loc_list[-1]
+                first_location = files_loc_list[0]
             # Ignore html files
             if "html" in last_location and len(files_loc_list) > 2:
                 last_location = files_loc_list[-2]
-            first_location = files_loc_list[0]
-            if not source_cohorts[category].get(first_location):
+            if first_location and not source_cohorts[category].get(first_location):
                 source_cohorts[category][first_location] = []
-            if not sink_cohorts[category].get(last_location):
+            if last_location and not sink_cohorts[category].get(last_location):
                 sink_cohorts[category][last_location] = []
-            if not source_sink_cohorts[category].get(
-                f"{first_location}|{last_location}"
+            if (
+                first_location
+                and last_location
+                and not source_sink_cohorts[category].get(
+                    f"{first_location}|{last_location}"
+                )
             ):
                 source_sink_cohorts[category][f"{first_location}|{last_location}"] = []
             # Identify cohorts
@@ -512,6 +512,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 f"- Before or at line {last_location_lineno} in {last_location_fname}"
             )
             category_suggestion = ""
+            suppressable_finding = False
             if (
                 first_location_fname != last_location_fname
                 or last_location_lineno - first_location_lineno > 3
@@ -526,13 +527,14 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 category_suggestion = get_category_suggestion(
                     category, variable_detected, source_method, sink_method
                 )
+                suppressable_finding = True
                 best_fix = f"""This is likely a security best practices type finding or a false positive.
 {category_suggestion}
 
 **Fix locations:**\n
 {location_suggestion}
 
-**Remediation suggestions:**\n
+**Supression:**\n
 Specify the sink method in your remediation config to suppress this finding.\n
 - {sink_method}
 
@@ -569,14 +571,15 @@ Specify the sink method in your remediation config to suppress this finding.\n
                 if not variable_detected and not tracked_list:
                     best_fix = f"""Validate or Sanitize user provided input before invoking the sink method `{sink_method}`
 """
-                best_fix = (
-                    best_fix
-                    + f"""
+                if not suppressable_finding:
+                    best_fix = (
+                        best_fix
+                        + f"""
 **Remediation suggestions:**\n
 Include these detected CHECK methods in your remediation config to suppress this finding.\n
 - {MD_LIST_MARKER.join(check_methods)}
 """
-                )
+                    )
             ignorables_list = find_ignorables(
                 app_language, last_location_fname, files_loc_list
             )
