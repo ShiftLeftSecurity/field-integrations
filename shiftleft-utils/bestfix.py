@@ -248,9 +248,18 @@ def find_best_oss_fix(
                 cve_id = cveobj.get("oss_internal_id")
             cveids.add(cve_id)
             if cveobj.get("fix"):
-                fix = cveobj.get("fix").split(",")[0].split(" or ")[0]
-                new_fix_version = fix.split(" ")[-1]
-                fix_version.add(new_fix_version)
+                fixes_list = (
+                    cveobj.get("fix")
+                    .replace("Upgrade to versions ", "")
+                    .replace("Upgrade to ", "")
+                    .split(" or ")[0]
+                )
+                if " " in fixes_list:
+                    fixes_list = [fixes_list.split(" ")[-1]]
+                if "," in fixes_list:
+                    fixes_list = fixes_list.split(",")
+                for new_fix_version in fixes_list:
+                    fix_version.add(new_fix_version.strip())
         cveids = sorted(cveids, reverse=True)
         package_str = package
         if group:
