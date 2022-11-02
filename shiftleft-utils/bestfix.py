@@ -39,6 +39,7 @@ console = Console(
     theme=custom_theme,
     color_system="256",
     force_terminal=True,
+    record=True,
 )
 if CI_MODE:
     console.update(width=280)
@@ -126,6 +127,16 @@ def get_code(source_dir, app, fname, lineno, variables, max_lines=3, tabbed=Fals
         return "".join(lines), variable_detected, full_path
     else:
         return "", variable_detected, full_path
+
+
+def find_ignorables(app_language, last_location_fname, files_loc_list):
+    ignorables_list = set()
+    for fl in files_loc_list:
+        for igpattern in config.ignorable_paths:
+            if igpattern in fl.lower():
+                ignorables_list.add(fl)
+                break
+    return list(ignorables_list)
 
 
 def get_category_suggestion(category, variable_detected, source_method, sink_method):
@@ -452,8 +463,10 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     f'{location.get("file_name")}:{location.get("line_number")}'
                 )
             loc_line = f'{location.get("file_name")}:{location.get("line_number")}'
+            # Remove erroneous CI prefixes
+            loc_line = unquote(loc_line.replace("D:\\a\\1\\s\\", ""))
             if loc_line not in files_loc_list:
-                files_loc_list.append(unquote(loc_line.replace("D:\\a\\1\\s\\", "")))
+                files_loc_list.append(loc_line)
         if dataflows and dataflows[-1]:
             sink = dataflows[-1].get("location", {})
             if sink and not sink_method:
@@ -564,6 +577,17 @@ Include these detected CHECK methods in your remediation config to suppress this
 - {MD_LIST_MARKER.join(check_methods)}
 """
                 )
+            ignorables_list = find_ignorables(
+                app_language, last_location_fname, files_loc_list
+            )
+            ignorables_suggestion = ""
+            if ignorables_list:
+                if app_language == "csharp":
+                    ignorables_suggestion = f"""To ignore test projects during analysis, pass `-- --ignore-tests` at the end of the `sl analyze` command."""
+                if app_language in ("js", "javascript", "ts", "typescript"):
+                    ignorables_suggestion = f"""To ignore unit tests, samples and built artefacts during analysis, pass `-- --exclude <path-1>,<path-2>,...` at the end of the `sl analyze` command."""
+                if app_language == "python":
+                    ignorables_suggestion = f"""To ignore specific directory from analysis, pass `-- --ignore-paths [<ignore_path_1>] [<ignore_path_2>]` at the end of the `sl analyze` command."""
             # Fallback
             if not best_fix:
                 best_fix = f"""{"This is likely a security best practices type finding" if app_language in ("js", "python") else "This is likely a security best practices type finding or a false positive"}.
@@ -573,6 +597,15 @@ Specify the sink method in your remediation config to suppress this finding.\n
 - {sink_method}
 
 """
+            # Any files to ignore
+            if ignorables_suggestion:
+                best_fix = (
+                    best_fix
+                    + f"""
+**Scan suggestions:**\n
+{ignorables_suggestion}
+"""
+                )
             deep_link = f"""https://app.shiftleft.io/apps/{app["id"]}/vulnerabilities?scan={scan.get("id")}&expanded=true&findingId={afinding.get("id")}"""
             comment_str = "//"
             if app_language == "python":
@@ -800,15 +833,15 @@ def build_args():
         "--report_file",
         dest="report_file",
         help="Report filename",
-        default="ngsast-bestfix-report.csv",
+        default="ngsast-bestfix-report.html",
     )
     parser.add_argument(
         "-f",
         "--format",
         dest="rformat",
         help="Report format",
-        default="csv",
-        choices=["csv"],
+        default="html",
+        choices=["html"],
     )
     return parser.parse_args()
 
@@ -835,8 +868,8 @@ if __name__ == "__main__":
     # Use the app name in the default file name
     if args.app_name:
         app_list.append({"id": args.app_name, "name": args.app_name})
-        if report_file == "ngsast-bestfix-report.csv":
-            report_file = f"ngsast-bestfix-{args.app_name}.csv"
+        if report_file == "ngsast-bestfix-report.html":
+            report_file = f"ngsast-bestfix-{args.app_name}.html"
     source_dir = args.source_dir
     if not source_dir:
         console.print(
@@ -850,3 +883,6 @@ if __name__ == "__main__":
     export_report(org_id, app_list, report_file, args.rformat, source_dir, args.version)
     end_time = time.monotonic_ns()
     total_time_sec = round((end_time - start_time) / 1000000000, 2)
+    if args.rformat == "html":
+        console.save_html(report_file)
+        console.print(f"HTML report saved to {report_file}")
