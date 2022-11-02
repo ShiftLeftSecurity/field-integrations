@@ -170,7 +170,7 @@ def export_csv(app_list, findings, report_file):
 def get_all_findings(client, org_id, app_name, version):
     """Method to retrieve all findings"""
     findings_list = []
-    findings_url = get_findings_url(org_id, app_name, version)
+    findings_url = get_findings_url(org_id, app_name, version, None)
     page_available = True
     while page_available:
         try:

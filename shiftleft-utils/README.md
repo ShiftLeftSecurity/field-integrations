@@ -44,6 +44,12 @@ Collect detailed stats for your organization including sources, sinks, file loca
 python3 stats.py --detailed
 ```
 
+Collect stats for a specific branch across apps
+
+```bash
+python3 stats.py --detailed --branch main
+```
+
 Export findings of an app in csv format
 
 ```bash

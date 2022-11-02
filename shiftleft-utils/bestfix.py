@@ -827,7 +827,8 @@ if __name__ == "__main__":
     args = build_args()
     app_list = []
     report_file = args.report_file
-    if args.app_name:
+    # Use the app name in the default file name
+    if report_file == "ngsast-bestfix-report.csv" and args.app_name:
         app_list.append({"id": args.app_name, "name": args.app_name})
         report_file = f"ngsast-bestfix-{args.app_name}.csv"
     source_dir = args.source_dir

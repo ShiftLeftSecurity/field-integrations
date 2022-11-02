@@ -45,14 +45,16 @@ headers = {
 }
 
 
-def get_findings_counts_url(org_id, app_name, version):
+def get_findings_counts_url(org_id, app_name, version, branch=None):
     version_suffix = f"&version={version}" if version else ""
-    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=oss_vuln&type=package&type=container&type=secret&type=vuln&type=extscan&include_dataflows=false&only_counts=true{version_suffix}"
+    branch_suffix = f"&tags=branch={branch}" if branch else ""
+    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=oss_vuln&type=package&type=container&type=secret&type=vuln&type=extscan&include_dataflows=false&only_counts=true{version_suffix}{branch_suffix}"
 
 
-def get_findings_url(org_id, app_name, version):
+def get_findings_url(org_id, app_name, version, branch=None):
     version_suffix = f"&version={version}" if version else ""
-    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=oss_vuln&type=package&type=container&type=secret&type=vuln&type=extscan&include_dataflows=true{version_suffix}"
+    branch_suffix = f"&tags=branch={branch}" if branch else ""
+    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=oss_vuln&type=package&type=container&type=secret&type=vuln&type=extscan&include_dataflows=true{version_suffix}{branch_suffix}"
 
 
 def get_all_apps(org_id):
@@ -83,7 +85,7 @@ def get_all_findings(org_id, app_name, version):
             f"[green] Collecting findings for {app_name}", start=False
         )
         findings_list = []
-        findings_url = get_findings_url(org_id, app_name, version)
+        findings_url = get_findings_url(org_id, app_name, version, None)
         page_available = True
         while page_available:
             # print (findings_url)

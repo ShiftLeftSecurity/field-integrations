@@ -38,23 +38,23 @@ def to_arr(counts_dict):
     return arr
 
 
-def process_app(progress, task, org_id, report_file, app, detailed):
+def process_app(progress, task, org_id, report_file, app, detailed, branch):
     start = time.time()
     app_id = app.get("id")
     app_name = app.get("name")
     # Stats only considers the first page for performance so the detailed report is based only on the latest 250 findings
     # The various counts, however, are based on the full list of findings so are correct
     findings_url = (
-        get_findings_url(org_id, app_id, None)
+        get_findings_url(org_id, app_id, None, branch)
         if detailed
-        else get_findings_counts_url(org_id, app_id, None)
+        else get_findings_counts_url(org_id, app_id, None, branch)
     )
     r = None
     try:
         client = httpx.Client(http2="win" not in sys.platform)
         r = client.get(findings_url, headers=headers, timeout=config.timeout)
     except httpx.RequestError as exc:
-        console.print(f"""WARN: Unable to retrieve findings for {app_name}""")
+        console.print(f"""\nWARN: Unable to retrieve findings for {app_name}""")
         return []
     if r and r.status_code == 200:
         raw_response = r.json()
@@ -64,7 +64,9 @@ def process_app(progress, task, org_id, report_file, app, detailed):
             scan = response.get("scan")
             # Scan will be None if there are any issues/errors
             if not scan:
-                console.print(f"""INFO: No scans found for {app_name}""")
+                console.print(
+                    f"""\nINFO: No scans found for {app_name} {branch if branch else ""}"""
+                )
                 return []
             tags = app.get("tags")
             app_group = ""
@@ -330,7 +332,7 @@ def write_to_csv(report_file, row):
             reportwriter.writerow(row)
 
 
-def collect_stats_parallel(org_id, report_file, detailed):
+def collect_stats_parallel(org_id, report_file, detailed, branch):
     """Method to collect stats for all apps to a csv"""
     apps_list = get_all_apps(org_id)
     attention_apps = 0
@@ -359,7 +361,7 @@ def collect_stats_parallel(org_id, report_file, detailed):
             rows = []
             for app in capps:
                 row = dask.delayed(process_app)(
-                    progress, task, org_id, report_file, app, detailed
+                    progress, task, org_id, report_file, app, detailed, branch
                 )
                 rows.append(row)
             rows = dask.compute(*rows)
@@ -379,6 +381,13 @@ def build_args():
         dest="report_file",
         help="Report filename",
         default="stats.csv",
+    )
+    parser.add_argument(
+        "-b",
+        "--branch",
+        dest="branch",
+        help="Branch name to use for the apps instead of latest. Eg: master or main or develop",
+        default="None",
     )
     parser.add_argument(
         "--detailed",
@@ -406,7 +415,7 @@ def main():
     console.print(config.ngsast_logo)
     args = build_args()
     report_file = args.report_file
-    collect_stats_parallel(org_id, report_file, args.detailed)
+    collect_stats_parallel(org_id, report_file, args.detailed, args.branch)
 
 
 if __name__ == "__main__":
