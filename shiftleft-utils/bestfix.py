@@ -15,6 +15,7 @@ from urllib.parse import unquote
 
 import httpx
 from json2xml import json2xml
+from packaging.version import parse
 from rich import box
 from rich.console import Console
 from rich.markdown import Markdown
@@ -235,7 +236,7 @@ def find_best_oss_fix(
         group = ""
         tmpA = purl.split("/")
         package_ver = tmpA[-1].split("@")
-        version = package_ver[-1]
+        pversion = package_ver[-1]
         package = package_ver[-2]
         if len(tmpA) > 2:
             group = tmpA[1]
@@ -248,18 +249,21 @@ def find_best_oss_fix(
                 cve_id = cveobj.get("oss_internal_id")
             cveids.add(cve_id)
             if cveobj.get("fix"):
-                fixes_list = (
+                fixes_list = []
+                fixes_str = (
                     cveobj.get("fix")
                     .replace("Upgrade to versions ", "")
                     .replace("Upgrade to ", "")
                     .split(" or ")[0]
                 )
-                if " " in fixes_list:
-                    fixes_list = [fixes_list.split(" ")[-1]]
-                if "," in fixes_list:
-                    fixes_list = fixes_list.split(",")
-                for new_fix_version in fixes_list:
-                    fix_version.add(new_fix_version.strip())
+                if "," in fixes_str:
+                    fixes_list = fixes_str.split(",")
+                else:
+                    fixes_list = [fixes_str]
+                for new_fix_str in fixes_list:
+                    if "." in new_fix_str:
+                        new_fix_version = new_fix_str.strip()
+                        fix_version.add(new_fix_version.split(" ")[-1])
         cveids = sorted(cveids, reverse=True)
         package_str = package
         if group:
@@ -268,12 +272,13 @@ def find_best_oss_fix(
         # If not report all critical and high oss vulnerabilities
         if reachable_oss_count > 0 and reachability != "reachable":
             continue
+        fix_versions = sorted(fix_version, key=parse, reverse=True)
         table.add_row(
             package_str,
             reachability.capitalize() if reachability == "reachable" else "",
-            version,
+            pversion,
             "\n".join(cveids),
-            "\n".join(sorted(fix_version, reverse=True)),
+            "\n".join(fix_versions),
         )
     if data_found:
         console.print("\n\n")

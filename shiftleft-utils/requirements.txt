@@ -8,3 +8,4 @@ httpx[http2]
 dask
 dask[array]
 PyGitHub
+packaging
