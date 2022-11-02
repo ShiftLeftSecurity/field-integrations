@@ -418,6 +418,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     and "(" not in symbol
                     and not symbol.endswith("_0")
                     and not symbol.startswith("$")
+                    and not symbol.endswith("DTO")
                     and symbol
                     not in (
                         "this",
@@ -489,11 +490,14 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
             ):
                 source_sink_cohorts[category][f"{first_location}|{last_location}"] = []
             # Identify cohorts
-            source_cohorts[category][first_location].append(afinding.get("id"))
-            sink_cohorts[category][last_location].append(afinding.get("id"))
-            source_sink_cohorts[category][f"{first_location}|{last_location}"].append(
-                afinding.get("id")
-            )
+            if first_location:
+                source_cohorts[category][first_location].append(afinding.get("id"))
+            if last_location:
+                sink_cohorts[category][last_location].append(afinding.get("id"))
+            if first_location and last_location:
+                source_sink_cohorts[category][
+                    f"{first_location}|{last_location}"
+                ].append(afinding.get("id"))
             tmpA = last_location.split(":")
             tmpB = first_location.split(":")
             last_location_fname = tmpA[0]
