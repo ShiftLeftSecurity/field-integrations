@@ -142,7 +142,7 @@ def find_ignorables(app_language, last_location_fname, files_loc_list):
 def get_category_suggestion(category, variable_detected, source_method, sink_method):
     category_suggestion = ""
     if category == "Remote Code Execution":
-        category_suggestion = f"""Use an allowlist for approved commands and compare `{variable_detected}` and the arguments against this list in a new validation method. Then, specify this validation method name in the remediation config file."""
+        category_suggestion = f"""Use an allowlist for approved commands and compare the variables `{variable_detected}` against this list in a new validation method. Then, specify this validation method name in the remediation config file."""
     elif category == "SQL Injection":
         category_suggestion = f"""Use any alternative SQL method with builtin parameterization capability. Parameterize and validate the variables `{variable_detected}` before invoking the SQL method `{sink_method}`."""
     elif category == "NoSQL Injection":
