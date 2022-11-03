@@ -319,6 +319,10 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
             ideas.append(
                 """Pass the argument `--tag branch=name` to populate the branch name in the UI for this app."""
             )
+        if "branch=" in sl_cmd:
+            ideas.append(
+                """Ensure the branch tag `--tag branch=name` is not empty to populate the branch name in the UI correctly."""
+            )
         if "--cpg" in sl_cmd:
             ideas.append("`--cpg` flag is no longer required for sl analyze.")
         if "--sca" in sl_cmd:
@@ -327,49 +331,80 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
             ideas.append("`--force` flag is no longer required for sl analyze.")
         if "--" in sl_cmd:
             lang_args_used = True
-        if app_language == "go" and "./..." not in sl_cmd:
-            ideas.append(
-                "Pass `./...` to scan this app including all the sub-directories."
-            )
-        if app_language == "csharp":
-            ideas.append(
-                "Ensure the solution is restored or built successfully prior to invoking ShiftLeft."
-            )
-            if ".sln" not in sl_cmd_str:
-                ideas.append("Try scanning the solution instead of a specific csproj.")
-        if app_language == "python":
-            ideas.append(
-                "Ensure the project dependencies are installed with pip install prior to invoking ShiftLeft."
-            )
-            ideas.append(
-                "To include additional module search paths in the analysis, pass `-- --extra-sys-paths [<path>]`."
-            )
-        if app_language == "java":
-            ideas.append("Pass the .war file or a uber jar to get better results.")
-            ideas.append(
-                "If the target directory contains multiple jars, use `jar cvf app.jar -C $TARGET_DIR .` command to create a single larger jar for scanning."
-            )
     if build_machine and app_language in ("java", "csharp", "python", "go"):
         num_cpu = build_machine.get("cpu", {}).get("num", "")
+        memory_total = build_machine.get("memory", {}).get("total", "")
         if num_cpu and int(num_cpu) < 4:
             ideas.append(
-                f"Ensure the build machine has a minimum of 4 CPU cores. Found {num_cpu} cores."
+                f"Ensure the build machine has a minimum of 4 CPU cores to reduce CPG generation time. Found only {num_cpu} cores."
             )
-        memory_total = build_machine.get("memory", {}).get("total", "")
+            if app_language == "java":
+                ideas.append(
+                    "To reduce scan time, pass the argument `--no-cpg` (if permitted by your AppSec team), to generate CPG in the ShiftLeft cloud."
+                )
         if memory_total and int(memory_total) < 4096:
             ideas.append(
-                f"Ensure the build machine has a minimum of 4096MB RAM. Found {memory_total} MB."
+                f"Ensure the build machine has a minimum of 4096MB RAM to reduce CPG generation time. Found only {memory_total} MB."
             )
-    if summary.get("isLibrary"):
-        ideas.append(
-            "This repo could be a library. Ensure only applications are scanned with ShiftLeft."
+    sizes = summary.get("sizes")
+    size_based_reco = False
+    if sizes:
+        files = sizes.get("files", 0)
+        lines = sizes.get("lines", 0)
+        low_findings_count = (
+            lines and int(lines) > 2000 and len(findings) < math.ceil(int(lines) / 1000)
         )
+        if app_language in ("js", "ts", "javascript", "typescript", "python", "go"):
+            low_findings_count = (
+                lines
+                and int(lines) > 2000
+                and len(findings) < math.ceil(int(lines) / 2000)
+            )
+        if files and int(files) < 10:
+            ideas.append(f"This could be a small app. Detected only {files} files.")
+            size_based_reco = True
+        elif lines and int(lines) < 2000:
+            ideas.append(
+                f"This could be a small app. Detected only {lines} lines of code."
+            )
+            size_based_reco = True
+        if low_findings_count:
+            if app_language == "go" and "./..." not in sl_cmd:
+                ideas.append(
+                    "Pass `./...` to scan this go app by including all the sub-projects."
+                )
+            if app_language == "csharp":
+                ideas.append(
+                    "Ensure the solution is restored or built successfully prior to invoking ShiftLeft."
+                )
+                if ".sln" not in sl_cmd_str:
+                    ideas.append(
+                        "Try scanning the solution instead of a specific csproj."
+                    )
+            if app_language == "python":
+                ideas.append(
+                    "Ensure the project dependencies are installed with `pip install` command prior to invoking ShiftLeft."
+                )
+                ideas.append(
+                    "To include additional python module search paths in the analysis, pass `-- --extra-sys-paths [<path>]`."
+                )
+            if app_language == "java":
+                ideas.append(
+                    "Pass the .war file or a uber jar to get better results for Java applications."
+                )
+                ideas.append(
+                    "If the build target directory contains multiple jars, use `jar cvf app.jar -C $TARGET_DIR .` command to create a single larger jar for scanning."
+                )
     methods = summary.get("methods")
-    if methods:
+    if methods and not size_based_reco:
         ios = methods.get("ios", 0)
         sinks = methods.get("sinks", 0)
         total = methods.get("total", 0)
         sources = methods.get("sources", 0)
+        if summary.get("isLibrary") and (not sources or not sinks):
+            ideas.append(
+                "This repo could be a library. Ensure only applications are scanned with ShiftLeft."
+            )
         if (
             not ios
             or not int(ios)
@@ -379,20 +414,10 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
             or not int(sinks)
         ):
             ideas.append(
-                "This app might be using libraries that are not supported yet. Please contact ShiftLeft support."
+                "This app might be using libraries that are not supported yet. Please contact ShiftLeft support to manually review this app."
             )
         if total and int(total) < 20:
             ideas.append(f"This could be a small app. Detected only {total} methods.")
-    sizes = summary.get("sizes")
-    if sizes:
-        files = sizes.get("files", 0)
-        lines = sizes.get("lines", 0)
-        if not files or int(files) < 10:
-            ideas.append(f"This could be a small app. Detected only {files} files.")
-        if not lines or int(lines) < 2000:
-            ideas.append(
-                f"This could be a small app. Detected only {lines} lines of code."
-            )
     token = summary.get("token")
     if token and token.get("name", "") == "Personal Access":
         ideas.append(
@@ -413,7 +438,7 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
         if app_language in ("js", "ts", "javascript", "typescript"):
             sbom_idea = "Ensure the lock files such as package-lock.json or yarn.lock or pnpm-lock.yaml are present. If required perform npm or yarn install to generate the lock files prior to invoking ShiftLeft."
         if app_language == "python":
-            sbom_idea = "Ensure the lock files such as requirements.txt or Pipfile.lock or Poetry.lock are present. If required run `pip freeze > requirements.txt` to generate the requirements file prior to invoking ShiftLeft."
+            sbom_idea = "Ensure the lock files such as requirements.txt or Pipfile.lock or Poetry.lock are present. If required run `pip freeze > requirements.txt` to generate a requirements file prior to invoking ShiftLeft."
         if app_language == "go":
             sbom_idea = "Ensure the package manifest files such as go.mod or go.sum or Gopkg.lock are present in the repo."
         if app_language == "csharp":
@@ -426,7 +451,7 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
         console.print(
             Panel(
                 Markdown(MD_LIST_MARKER + MD_LIST_MARKER.join(ideas)),
-                title=f"Scan Improvements for {app_name}",
+                title=f"Scan Improvements for {app_name} ({app_language})",
                 expand=False,
             )
         )
@@ -970,10 +995,15 @@ def export_report(
                 annotated_findings = find_best_fix(
                     org_id, app, scan, findings, source_dir
                 )
-                if troubleshoot and scan:
-                    troubleshoot_app(
-                        client, org_id, app_name, scan, findings, source_dir
-                    )
+                if troubleshoot:
+                    if scan:
+                        troubleshoot_app(
+                            client, org_id, app_name, scan, findings, source_dir
+                        )
+                    else:
+                        console.print(
+                            f"\nNo scan information found for {app_name}. Please review your build pipeline logs for troubleshooting."
+                        )
                 if rformat == "csv":
                     export_csv([app], annotated_findings, report_file)
                 progress.advance(task)
