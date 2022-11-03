@@ -20,6 +20,7 @@ from packaging.version import parse
 from rich import box
 from rich.console import Console
 from rich.markdown import Markdown
+from rich.panel import Panel
 from rich.progress import Progress
 from rich.syntax import Syntax
 from rich.table import Table
@@ -248,6 +249,8 @@ def find_best_oss_fix(
         group = ""
         tmpA = purl.split("/")
         package_ver = tmpA[-1].split("@")
+        if len(package_ver) != 2:
+            continue
         pversion = package_ver[-1]
         package = package_ver[-2]
         if len(tmpA) > 2:
@@ -299,6 +302,134 @@ def find_best_oss_fix(
     if data_found:
         console.print("\n\n")
         console.print(table)
+
+
+def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
+    ideas = []
+    run_info = get_scan_run(client, org_id, scan, app_name)
+    app_language = scan.get("language", "java")
+    summary = run_info.get("summary", {})
+    environment = summary.get("environment", {})
+    sl_cmd = environment.get("cmd", [])
+    build_machine = environment.get("machine", [])
+    lang_args_used = False
+    if sl_cmd:
+        sl_cmd_str = " ".join(sl_cmd)
+        if "--tag" not in sl_cmd:
+            ideas.append(
+                """Pass the argument `--tag branch=name` to populate the branch name in the UI for this app."""
+            )
+        if "--cpg" in sl_cmd:
+            ideas.append("`--cpg` flag is no longer required for sl analyze.")
+        if "--sca" in sl_cmd:
+            ideas.append("`--sca` flag is no longer required for sl analyze.")
+        if "--force" in sl_cmd:
+            ideas.append("`--force` flag is no longer required for sl analyze.")
+        if "--" in sl_cmd:
+            lang_args_used = True
+        if app_language == "go" and "./..." not in sl_cmd:
+            ideas.append(
+                "Pass `./...` to scan this app including all the sub-directories."
+            )
+        if app_language == "csharp":
+            ideas.append(
+                "Ensure the solution is restored or built successfully prior to invoking ShiftLeft."
+            )
+            if ".sln" not in sl_cmd_str:
+                ideas.append("Try scanning the solution instead of a specific csproj.")
+        if app_language == "python":
+            ideas.append(
+                "Ensure the project dependencies are installed with pip install prior to invoking ShiftLeft."
+            )
+            ideas.append(
+                "To include additional module search paths in the analysis, pass `-- --extra-sys-paths [<path>]`."
+            )
+        if app_language == "java":
+            ideas.append("Pass the .war file or a uber jar to get better results.")
+            ideas.append(
+                "If the target directory contains multiple jars, use `jar cvf app.jar -C $TARGET_DIR .` command to create a single larger jar for scanning."
+            )
+    if build_machine and app_language in ("java", "csharp", "python", "go"):
+        num_cpu = build_machine.get("cpu", {}).get("num", "")
+        if num_cpu and int(num_cpu) < 4:
+            ideas.append(
+                f"Ensure the build machine has a minimum of 4 CPU cores. Found {num_cpu} cores."
+            )
+        memory_total = build_machine.get("memory", {}).get("total", "")
+        if memory_total and int(memory_total) < 4096:
+            ideas.append(
+                f"Ensure the build machine has a minimum of 4096MB RAM. Found {memory_total} MB."
+            )
+    if summary.get("isLibrary"):
+        ideas.append(
+            "This repo could be a library. Ensure only applications are scanned with ShiftLeft."
+        )
+    methods = summary.get("methods")
+    if methods:
+        ios = methods.get("ios", 0)
+        sinks = methods.get("sinks", 0)
+        total = methods.get("total", 0)
+        sources = methods.get("sources", 0)
+        if (
+            not ios
+            or not int(ios)
+            or not sources
+            or not int(sources)
+            or not sinks
+            or not int(sinks)
+        ):
+            ideas.append(
+                "This app might be using libraries that are not supported yet. Please contact ShiftLeft support."
+            )
+        if total and int(total) < 20:
+            ideas.append(f"This could be a small app. Detected only {total} methods.")
+    sizes = summary.get("sizes")
+    if sizes:
+        files = sizes.get("files", 0)
+        lines = sizes.get("lines", 0)
+        if not files or int(files) < 10:
+            ideas.append(f"This could be a small app. Detected only {files} files.")
+        if not lines or int(lines) < 2000:
+            ideas.append(
+                f"This could be a small app. Detected only {lines} lines of code."
+            )
+    token = summary.get("token")
+    if token and token.get("name", "") == "Personal Access":
+        ideas.append(
+            f"""Use a CI integration token to scan apps with ShiftLeft. Currently scanned with `{token.get("owner")}'s` personal access token."""
+        )
+    uploadRequest = summary.get("upload-request", {})
+    metadata_artifact = uploadRequest.get("metadata_artifact", {})
+    if not metadata_artifact and app_language not in (
+        "terraform_hcl",
+        "terraform",
+        "aws",
+        "azure",
+        "kubernetes",
+    ):
+        sbom_idea = ""
+        if app_language == "java":
+            sbom_idea = "Ensure the entire source directory and build tools such as maven, gradle or sbt are available in the build step running ShiftLeft. If required pass the arguments `--oss-project-dir <source path>` to specify the source directory explicitly."
+        if app_language in ("js", "ts", "javascript", "typescript"):
+            sbom_idea = "Ensure the lock files such as package-lock.json or yarn.lock or pnpm-lock.yaml are present. If required perform npm or yarn install to generate the lock files prior to invoking ShiftLeft."
+        if app_language == "python":
+            sbom_idea = "Ensure the lock files such as requirements.txt or Pipfile.lock or Poetry.lock are present. If required run `pip freeze > requirements.txt` to generate the requirements file prior to invoking ShiftLeft."
+        if app_language == "go":
+            sbom_idea = "Ensure the package manifest files such as go.mod or go.sum or Gopkg.lock are present in the repo."
+        if app_language == "csharp":
+            sbom_idea = "Ensure the solution is restored or built successfully prior to invoking ShiftLeft."
+        ideas.append(
+            f"""Software Bill-of-Materials (SBoM) was not generated correctly for this project.\n{sbom_idea}"""
+        )
+    if ideas:
+        console.print("\n")
+        console.print(
+            Panel(
+                Markdown(MD_LIST_MARKER + MD_LIST_MARKER.join(ideas)),
+                title=f"Scan Improvements for {app_name}",
+                expand=False,
+            )
+        )
 
 
 def find_best_fix(org_id, app, scan, findings, source_dir):
@@ -701,7 +832,14 @@ Specify the sink method in your remediation config to suppress this finding.\n
             app["id"], scan.get("id"), source_cohorts, sink_cohorts, source_sink_cohorts
         )
     else:
-        console.print("No critical or high findings found to suggest best fix.")
+        console.print("\n")
+        console.print(
+            Panel(
+                f"""No critical or high findings found to suggest best fixes for {app["id"]}.""",
+                title=f"""Best Fix Suggestions for {app["id"]}""",
+                expand=False,
+            )
+        )
     # Annotate the pull request
     if os.getenv("GITHUB_TOKEN"):
         GitHubLib.annotate(annotated_findings, scan, False)
@@ -720,6 +858,22 @@ def export_csv(app, annotated_findings, report_file):
             for finding in annotated_findings:
                 writer.writerow(finding)
             console.print(f"CSV exported to {report_file}")
+
+
+def get_scan_run(client, org_id, scan, app_name):
+    scan_run_url = f"""https://{config.SHIFTLEFT_API_HOST}/api/v4/private/orgs/{org_id}/apps/{app_name}/scans/{scan.get("id")}/runs?fields=environment,isLibrary,scan_time,scan_duration_ms,sizes,sl,token,upload-request,methods"""
+    try:
+        r = client.get(scan_run_url, headers=headers, timeout=config.timeout)
+        if r.status_code == 200:
+            raw_response = r.json()
+            if raw_response and raw_response.get("response"):
+                response = raw_response.get("response")
+                return response
+    except httpx.ReadTimeout as e:
+        console.print(
+            f"Unable to retrieve scan run info for {app_name} due to timeout after {config.timeout} seconds"
+        )
+    return {}
 
 
 def get_all_findings_with_scan(client, org_id, app_name, version, ratings):
@@ -780,6 +934,7 @@ def export_report(
     source_dir,
     version=None,
     ratings=["critical", "high"],
+    troubleshoot=False,
 ):
     if not app_list:
         app_list = get_all_apps(org_id)
@@ -806,6 +961,8 @@ def export_report(
             for app in app_list:
                 app_id = app.get("id")
                 app_name = app.get("name")
+                if app_name in ("Benchmark"):
+                    continue
                 progress.update(task, description=f"Processing [bold]{app_name}[/bold]")
                 scan, findings = get_all_findings_with_scan(
                     client, org_id, app_id, version, ratings
@@ -813,6 +970,10 @@ def export_report(
                 annotated_findings = find_best_fix(
                     org_id, app, scan, findings, source_dir
                 )
+                if troubleshoot and scan:
+                    troubleshoot_app(
+                        client, org_id, app_name, scan, findings, source_dir
+                    )
                 if rformat == "csv":
                     export_csv([app], annotated_findings, report_file)
                 progress.advance(task)
@@ -854,6 +1015,13 @@ def build_args():
         default="html",
         choices=["html"],
     )
+    parser.add_argument(
+        "--troubleshoot",
+        action=argparse.BooleanOptionalAction,
+        dest="troubleshoot",
+        help="Troubleshoot apps with low findings count",
+        default=False,
+    )
     return parser.parse_args()
 
 
@@ -891,7 +1059,16 @@ if __name__ == "__main__":
             if os.getenv(e):
                 source_dir = os.getenv(e)
                 break
-    export_report(org_id, app_list, report_file, args.rformat, source_dir, args.version)
+    export_report(
+        org_id,
+        app_list,
+        report_file,
+        args.rformat,
+        source_dir,
+        args.version,
+        ["critical", "high"],
+        args.troubleshoot,
+    )
     end_time = time.monotonic_ns()
     total_time_sec = round((end_time - start_time) / 1000000000, 2)
     if args.rformat == "html":

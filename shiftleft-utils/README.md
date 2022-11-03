@@ -83,6 +83,12 @@ Find best fix locations for `vuln-spring` app with the source code under `/mnt/w
 python3 bestfix.py -a vuln-spring -s /mnt/work/HooliCorp/vuln-spring
 ```
 
+To troubleshoot a scan and look for tips to improve the scan results and performance, pass `--troubleshoot` to bestfix.
+
+```
+python3 bestfix.py -a vuln-spring --troubleshoot -s /mnt/work/HooliCorp/vuln-spring
+```
+
 ## License
 
 Apache-2.0
