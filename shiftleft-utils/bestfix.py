@@ -501,9 +501,13 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
             tmpA = last_location.split(":")
             tmpB = first_location.split(":")
             last_location_fname = tmpA[0]
-            last_location_lineno = int(tmpA[-1])
+            last_location_lineno = 1
+            first_location_lineno = 1
+            if tmpA[-1]:
+                last_location_lineno = int(tmpA[-1])
             first_location_fname = tmpB[0]
-            first_location_lineno = int(tmpB[-1])
+            if tmpB[-1]:
+                first_location_lineno = int(tmpB[-1])
             code_snippet, variable_detected, full_path = get_code(
                 source_dir, app, last_location_fname, last_location_lineno, tracked_list
             )

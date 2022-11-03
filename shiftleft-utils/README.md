@@ -14,6 +14,15 @@ cd shiftleft-utils
 pip3 install -r requirements.txt
 ```
 
+On Windows, non-admin users might see the below error. To workaround this, pass `--user` as shown.
+
+`ERROR: Could not install packages due to an OSError: [WinError 5] Access is denied`
+
+```
+python -m pip install --upgrade pip --user
+python -m pip install -r .\requirements.txt --user
+```
+
 Set the ShiftLeft access token as an environment variable SHIFTLEFT_ACCESS_TOKEN.
 
 ```
