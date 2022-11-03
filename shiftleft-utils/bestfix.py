@@ -431,7 +431,7 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
         "aws",
         "azure",
         "kubernetes",
-        "unknown"
+        "unknown",
     ):
         sbom_idea = ""
         if app_language == "java":
