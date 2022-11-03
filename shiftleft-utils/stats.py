@@ -387,7 +387,7 @@ def build_args():
         "--branch",
         dest="branch",
         help="Branch name to use for the apps instead of latest. Eg: master or main or develop",
-        default="None",
+        default=None,
     )
     parser.add_argument(
         "--detailed",
