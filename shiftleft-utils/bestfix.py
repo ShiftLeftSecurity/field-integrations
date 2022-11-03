@@ -103,7 +103,7 @@ def get_code(source_dir, app, fname, lineno, variables, max_lines=3, tabbed=Fals
     :return: strings of code
     """
     if not fname:
-        return ""
+        return "", "", ""
     lines = []
     max_lines = max(max_lines, 1)
     lmin = max(1, lineno - max_lines // 2)
