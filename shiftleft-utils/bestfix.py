@@ -1227,7 +1227,8 @@ if __name__ == "__main__":
         if report_file == "ngsast-bestfix-report.html":
             report_file = f"ngsast-bestfix-{args.app_name}.html"
     report_dir = os.path.dirname(report_file)
-    os.makedirs(report_dir, exist_ok=True)
+    if report_dir:
+        os.makedirs(report_dir, exist_ok=True)
     source_dir = args.source_dir
     if not source_dir:
         console.print(
