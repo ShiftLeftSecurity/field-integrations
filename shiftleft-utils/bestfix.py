@@ -311,6 +311,7 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
     summary = run_info.get("summary", {})
     environment = summary.get("environment", {})
     sl_cmd = environment.get("cmd", [])
+    sl_cmd_str = ""
     build_machine = environment.get("machine", [])
     lang_args_used = False
     if sl_cmd:
@@ -331,6 +332,12 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
             ideas.append("`--force` flag is no longer required for sl analyze.")
         if "--" in sl_cmd:
             lang_args_used = True
+        if app_language == "java" and sl_cmd_str.count(".jar") > 1:
+            ideas.append(
+                "Only a single jar or war file could be passed to `sl analyze` for java applications.\nIf the build target directory contains multiple jars, use `jar cvf app.jar -C $TARGET_DIR .` command to create a single larger jar for scanning."
+            )
+        if sl_cmd_str.count("--wait") > 1:
+            ideas.append("`--wait` argument is specified more than once.")
     if build_machine and app_language in ("java", "csharp", "python", "go"):
         num_cpu = build_machine.get("cpu", {}).get("num", "")
         memory_total = build_machine.get("memory", {}).get("total", "")
@@ -351,9 +358,38 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
     if sizes:
         files = sizes.get("files", 0)
         lines = sizes.get("lines", 0)
+        binsize = sizes.get("binsize", 0)
         low_findings_count = (
             lines and int(lines) > 2000 and len(findings) < math.ceil(int(lines) / 1000)
         )
+        scan_duration_ms = summary.get("scan_duration_ms", 0)
+        if scan_duration_ms > 3 * 60 * 1000:
+            size_suggestion = ""
+            if binsize and app_language == "java":
+                size_suggestion = "Try scanning the jar file containing only the custom code instead of a uber jar or a war file.\nFor apps containing many libraries, please contact ShiftLeft support for further optimizations ideas."
+            if files:
+                if app_language in ("js", "ts", "javascript", "typescript"):
+                    if "--exclude" not in sl_cmd_str:
+                        size_suggestion = "Pass the argument `-- --exclude <path-1>,<path-2>,...` to exclude specified directories during code analysis."
+                    else:
+                        size_suggestion = "Ensure the application is not built prior to invoking ShiftLeft."
+                if app_language == "python":
+                    size_suggestion = "Pass the argument `-- --ignore-paths [<ignore_path_1>] [<ignore_path_2>]` to ignore specified paths during code analysis."
+                if app_language == "csharp":
+                    if ".csproj" not in sl_cmd_str:
+                        size_suggestion = "Scan the required .csproj files instead of the solution to improve speed."
+                    if ".sln" in sl_cmd_str and "--ignore-tests" not in sl_cmd_str:
+                        size_suggestion = "Pass the argument `-- --ignore-tests` to ignore test projects during code analysis."
+                if app_language == "go" and "./..." in sl_cmd_str:
+                    size_suggestion = "Scan only the required module using `.` or `module name` syntax."
+            if size_suggestion:
+                ideas.append(
+                    f"Scan time was over {math.floor(scan_duration_ms / (60 * 1000))} mins.\n{size_suggestion}"
+                )
+            if "--wait" in sl_cmd_str:
+                ideas.append(
+                    "Remove `--wait` argument and any subsequent invocation of `sl check-analysis` to perform scans in asynchronous mode."
+                )
         if app_language in ("js", "ts", "javascript", "typescript", "python", "go"):
             low_findings_count = (
                 lines
@@ -361,12 +397,10 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
                 and len(findings) < math.ceil(int(lines) / 2000)
             )
         if files and int(files) < 10:
-            ideas.append(f"This could be a small app. Detected only {files} files.")
+            ideas.append(f"This is a small app with only {files} files.")
             size_based_reco = True
         elif lines and int(lines) < 2000:
-            ideas.append(
-                f"This could be a small app. Detected only {lines} lines of code."
-            )
+            ideas.append(f"This is a small app with only {lines} lines of code.")
             size_based_reco = True
         if low_findings_count:
             if app_language == "go" and "./..." not in sl_cmd:
@@ -388,6 +422,9 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
                 ideas.append(
                     "To include additional python module search paths in the analysis, pass `-- --extra-sys-paths [<path>]`."
                 )
+                ideas.append(
+                    "For monorepos, scan the individual apps or microservices separately using multiple invocation of `sl analyze` command. Pass `--tag app.group=groupname` to the `sl analyze` command to group the individual apps in the UI."
+                )
             if app_language == "java":
                 ideas.append(
                     "Pass the .war file or a uber jar to get better results for Java applications."
@@ -395,13 +432,18 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
                 ideas.append(
                     "If the build target directory contains multiple jars, use `jar cvf app.jar -C $TARGET_DIR .` command to create a single larger jar for scanning."
                 )
+            if app_language in ("js", "ts", "javascript", "typescript"):
+                if "ui" in app_name:
+                    ideas.append(
+                        "Ensure only applications and not UI toolkits are scanned with ShiftLeft."
+                    )
     methods = summary.get("methods")
     if methods and not size_based_reco:
         ios = methods.get("ios", 0)
         sinks = methods.get("sinks", 0)
         total = methods.get("total", 0)
         sources = methods.get("sources", 0)
-        if summary.get("isLibrary") and (not sources or not sinks):
+        if summary.get("isLibrary") and (not sources and sinks):
             ideas.append(
                 "This repo could be a library. Ensure only applications are scanned with ShiftLeft."
             )
@@ -417,7 +459,7 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
                 "This app might be using libraries that are not supported yet. Please contact ShiftLeft support to manually review this app."
             )
         if total and int(total) < 20:
-            ideas.append(f"This could be a small app. Detected only {total} methods.")
+            ideas.append(f"This is a small app with only {total} methods.")
     token = summary.get("token")
     if token and token.get("name", "") == "Personal Access":
         ideas.append(
@@ -435,7 +477,7 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
     ):
         sbom_idea = ""
         if app_language == "java":
-            sbom_idea = "Ensure the entire source directory and build tools such as maven, gradle or sbt are available in the build step running ShiftLeft. If required pass the arguments `--oss-project-dir <source path>` to specify the source directory explicitly."
+            sbom_idea = "Ensure the entire source directory and build tools such as maven, gradle or sbt are available in the build step running ShiftLeft. If required, pass the arguments `--oss-project-dir <source path>` to specify the source directory explicitly."
         if app_language in ("js", "ts", "javascript", "typescript"):
             sbom_idea = "Ensure the lock files such as package-lock.json or yarn.lock or pnpm-lock.yaml are present. If required perform npm or yarn install to generate the lock files prior to invoking ShiftLeft."
         if app_language == "python":
@@ -964,6 +1006,8 @@ def export_report(
 ):
     if not app_list:
         app_list = get_all_apps(org_id)
+        if not app_list:
+            return
     work_dir = os.getcwd()
     for e in ["GITHUB_WORKSPACE", "WORKSPACE"]:
         if os.getenv(e):
@@ -1051,7 +1095,7 @@ def build_args():
         action=argparse.BooleanOptionalAction,
         dest="troubleshoot",
         help="Troubleshoot apps with low findings count",
-        default=False,
+        default=True,
     )
     return parser.parse_args()
 
