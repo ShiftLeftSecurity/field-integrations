@@ -318,51 +318,86 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
         sl_cmd_str = " ".join(sl_cmd)
         if "--tag" not in sl_cmd:
             ideas.append(
-                """Pass the argument `--tag branch=name` to populate the branch name in the UI for this app."""
+                """**CLI:** Pass the argument `--tag branch=name` to populate the branch name in the UI for this app."""
             )
         if "branch=" in sl_cmd:
             ideas.append(
-                """Ensure the branch tag `--tag branch=name` is not empty to populate the branch name in the UI correctly."""
+                """**CLI:** Ensure the branch tag `--tag branch=name` is not empty to populate the branch name in the UI correctly."""
             )
         if "--cpg" in sl_cmd:
-            ideas.append("`--cpg` flag is no longer required for sl analyze.")
+            ideas.append(
+                "**CLI:** `--cpg` flag is no longer required for the `sl analyze` command."
+            )
         if "--sca" in sl_cmd:
-            ideas.append("`--sca` flag is no longer required for sl analyze.")
+            ideas.append(
+                "**CLI:** `--sca` flag is no longer required for the `sl analyze` command."
+            )
         if "--oss-recursive" in sl_cmd:
             ideas.append(
-                "`--oss-recursive` flag is set to true by default and is no longer required for sl analyze."
+                "**CLI:** `--oss-recursive` flag is set to true by default and is no longer required for the `sl analyze` command."
             )
         if "--force" in sl_cmd:
             ideas.append(
-                "`--force` functionality is removed and the flag is no longer required for sl analyze."
+                "**CLI:** `--force` functionality is removed and the flag is no longer required for the `sl analyze` command."
             )
         if "--" in sl_cmd:
             lang_args_used = True
         if app_language == "java":
             if sl_cmd_str.count(".jar") > 1:
                 ideas.append(
-                    "Only a single jar or war file could be passed to `sl analyze` for java applications.\nIf the build target directory contains multiple jars, use `jar cvf app.jar -C $TARGET_DIR .` command to create a single larger jar for scanning."
+                    "**CLI:** Only a single jar or war file could be passed to `sl analyze` for java applications.\nIf the build target directory contains multiple jars, use `jar cvf app.jar -C $TARGET_DIR .` command to create a single larger jar for scanning."
                 )
             if "--vcs-prefix-correction" not in sl_cmd_str:
                 ideas.append(
-                    """Pass the argument `--vcs-prefix-correction "*=src/main/java"` to make the Source Code View work correctly in the UI."""
+                    """**CLI:** Pass the argument `--vcs-prefix-correction "*=src/main/java"` to make the Source Code View work correctly in the UI."""
                 )
         if sl_cmd_str.count("--wait") > 1:
-            ideas.append("`--wait` argument is specified more than once.")
+            ideas.append("**CLI:** `--wait` argument is specified more than once.")
+    os_release = environment.get("os-release", {}).get("os-release", "").lower()
+    if os_release:
+        if "ubuntu 18.04" in os_release:
+            if app_language in (
+                "python",
+                "terraform_hcl",
+                "terraform",
+                "aws",
+                "azure",
+                "kubernetes",
+            ):
+                ideas.append(
+                    "**OS:** Build machine appears to be using Ubuntu 18.04 which is not supported for this language. Upgrade to Ubuntu 20.04 or higher."
+                )
+            else:
+                ideas.append(
+                    "**OS:** Build machine appears to be using Ubuntu 18.04. To improve performance, upgrade to Ubuntu 20.04 or higher."
+                )
+        if "alpine" in os_release:
+            if app_language in (
+                "csharp",
+                "python",
+                "terraform_hcl",
+                "terraform",
+                "aws",
+                "azure",
+                "kubernetes",
+            ):
+                ideas.append(
+                    "**OS:** Build machine appears to be using Alpine linux which is not supported for this language. Consider switching to a supported flavour of linux such as Ubuntu or Debian."
+                )
     if build_machine and app_language in ("java", "csharp", "python", "go"):
         num_cpu = build_machine.get("cpu", {}).get("num", "")
         memory_total = build_machine.get("memory", {}).get("total", "")
         if num_cpu and int(num_cpu) < 4:
             ideas.append(
-                f"Ensure the build machine has a minimum of 4 CPU cores to reduce CPG generation time. Found only {num_cpu} cores."
+                f"**CI:** Ensure the build machine has a minimum of 4 CPU cores to reduce CPG generation time. Found only {num_cpu} cores."
             )
             if app_language == "java":
                 ideas.append(
-                    "To reduce scan time, pass the argument `--no-cpg` (if permitted by your AppSec team), to generate CPG in the ShiftLeft cloud."
+                    "Alternatively, to reduce scan time, pass the argument `--no-cpg` (if permitted by your AppSec team), to generate CPG in the ShiftLeft cloud."
                 )
         if memory_total and int(memory_total) < 4096:
             ideas.append(
-                f"Ensure the build machine has a minimum of 4096 MB RAM to reduce CPG generation time. Found only {memory_total} MB."
+                f"**CI:** Ensure the build machine has a minimum of 4096 MB RAM to reduce CPG generation time. Found only {memory_total} MB."
             )
     sizes = summary.get("sizes")
     size_based_reco = False
@@ -375,10 +410,10 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
         )
         if app_language == "java" and binsize and int(binsize) < 4000:
             ideas.append(
-                "Pass the .war file or a uber jar to get better results for Java applications."
+                "**CLI:** Pass the .war file or a uber jar to get better results for Java applications."
             )
             ideas.append(
-                "If the build target directory contains multiple jars, use `jar cvf app.jar -C $TARGET_DIR .` command to create a single larger jar for scanning."
+                "**CLI:** If the build target directory contains multiple jars, use `jar cvf app.jar -C $TARGET_DIR .` command to create a single larger jar for scanning."
             )
             size_based_reco = True
         scan_duration_ms = summary.get("scan_duration_ms", 0)
@@ -463,11 +498,17 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
         sinks = methods.get("sinks", 0)
         total = methods.get("total", 0)
         sources = methods.get("sources", 0)
-        if summary.get("isLibrary") and (not sources and sinks):
-            library_reco = True
-            ideas.append(
-                "This repo could be a library. Ensure only applications are scanned with ShiftLeft."
-            )
+        if summary.get("isLibrary"):
+            if not sources and sinks:
+                library_reco = True
+                ideas.append(
+                    "**APP:** This repo could be a library. Ensure only applications are scanned with ShiftLeft."
+                )
+            if sources and not sinks and "lib" in app_name:
+                library_reco = True
+                ideas.append(
+                    "**APP:** This repo is a library. Ensure only applications are scanned with ShiftLeft."
+                )
         if (
             not ios
             or not int(ios)
@@ -478,18 +519,18 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
         ):
             if not library_reco:
                 ideas.append(
-                    "This app might be using libraries that are not supported yet. Please contact ShiftLeft support to manually review this app."
+                    "**SUPPORT:** This app might be using libraries that are not supported yet. Please contact ShiftLeft support to manually review this app."
                 )
-            else:
+            elif "lib" not in app_name:
                 ideas.append(
-                    "Alternatively, this app might be using private dependencies or third-party libraries that are not supported yet. Please contact ShiftLeft support to manually review this app."
+                    "**SUPPORT:** Alternatively, this app might be using private dependencies or third-party libraries that are not supported yet. Please contact ShiftLeft support to manually review this app."
                 )
         if total and int(total) < 20:
             ideas.append(f"This is a small app with only {total} methods.")
     token = summary.get("token")
     if token and token.get("name", "") == "Personal Access":
         ideas.append(
-            f"""Use a CI integration token to scan apps with ShiftLeft. Currently scanned with `{token.get("owner")}'s` personal access token."""
+            f"""**TOKEN:** Use a CI integration token to scan apps with ShiftLeft. Currently scanned with `{token.get("owner")}'s` personal access token."""
         )
     uploadRequest = summary.get("upload-request", {})
     metadata_artifact = uploadRequest.get("metadata_artifact", {})
@@ -515,7 +556,7 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
         if app_language == "csharp":
             sbom_idea = "Ensure the solution is restored or built successfully prior to invoking ShiftLeft."
         ideas.append(
-            f"""Software Bill-of-Materials (SBoM) was not generated correctly for this project.\n{sbom_idea}"""
+            f"""**iSCA:** Software Bill-of-Materials (SBoM) was not generated correctly for this project.\n{sbom_idea}"""
         )
     if ideas:
         console.print("\n")
