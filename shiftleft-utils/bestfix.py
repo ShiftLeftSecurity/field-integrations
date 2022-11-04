@@ -405,21 +405,6 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
                 ideas.append(
                     "**OS:** Build machine appears to be using `Alpine Linux` which is not supported for this language. Consider switching to a supported flavour of linux such as Ubuntu or Debian."
                 )
-    if build_machine and app_language in ("java", "csharp", "python", "go"):
-        num_cpu = build_machine.get("cpu", {}).get("num", "")
-        memory_total = build_machine.get("memory", {}).get("total", "")
-        if num_cpu and int(num_cpu) < 4:
-            ideas.append(
-                f"**CI:** Ensure the build machine has a minimum of 4 CPU cores to reduce CPG generation time. Found only {num_cpu} cores."
-            )
-            if app_language == "java":
-                ideas.append(
-                    "Alternatively, to reduce scan time, pass the argument `--no-cpg` (if permitted by your AppSec team), to generate CPG in the ShiftLeft cloud."
-                )
-        if memory_total and int(memory_total) < 4096:
-            ideas.append(
-                f"**CI:** Ensure the build machine has a minimum of 4096 MB RAM to reduce CPG generation time. Found only {memory_total} MB."
-            )
     sizes = summary.get("sizes")
     size_based_reco = False
     if sizes:
@@ -515,6 +500,25 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
                     ideas.append(
                         "**UI:** Ensure only applications and not UI toolkits are scanned with ShiftLeft."
                     )
+    if (
+        build_machine
+        and app_language in ("java", "csharp", "python", "go")
+        and not size_based_reco
+    ):
+        num_cpu = build_machine.get("cpu", {}).get("num", "")
+        memory_total = build_machine.get("memory", {}).get("total", "")
+        if num_cpu and int(num_cpu) < 4:
+            ideas.append(
+                f"**CI:** Ensure the build machine has a minimum of 4 CPU cores to reduce CPG generation time. Found only {num_cpu} cores."
+            )
+            if app_language == "java":
+                ideas.append(
+                    "Alternatively, to reduce scan time, pass the argument `--no-cpg` (if permitted by your AppSec team), to generate CPG in the ShiftLeft cloud."
+                )
+        if memory_total and int(memory_total) < 4096:
+            ideas.append(
+                f"**CI:** Ensure the build machine has a minimum of 4096 MB RAM to reduce CPG generation time. Found only {memory_total} MB."
+            )
     methods = summary.get("methods")
     uploadRequest = summary.get("upload-request", {})
     metadata_artifact = uploadRequest.get("metadata_artifact", {})
