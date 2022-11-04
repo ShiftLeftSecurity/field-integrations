@@ -34,16 +34,27 @@ from common import extract_org_id, get_all_apps, get_dataflow, get_findings_url,
 CI_MODE = os.getenv("CI") in ("true", "1") or os.getenv("AGENT_OS") is not None
 
 custom_theme = Theme({"info": "cyan", "warning": "purple4", "danger": "bold red"})
-console = Console(
-    log_time=False,
-    log_path=False,
-    theme=custom_theme,
-    color_system="256",
-    force_terminal=True,
-    record=True,
-)
+console = None
 if CI_MODE:
-    console.update(width=280)
+    console = Console(
+        log_time=False,
+        log_path=False,
+        theme=custom_theme,
+        color_system="256",
+        force_terminal=True,
+        width=280,
+        record=True,
+    )
+else:
+    console = Console(
+        log_time=False,
+        log_path=False,
+        theme=custom_theme,
+        color_system="256",
+        force_terminal=True,
+        record=True,
+    )
+
 MD_LIST_MARKER = "\n- "
 
 
