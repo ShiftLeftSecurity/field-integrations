@@ -369,11 +369,11 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
                 "kubernetes",
             ):
                 ideas.append(
-                    "**OS:** Build machine appears to be using Ubuntu 18.04 which is not supported for this language. Upgrade to Ubuntu 20.04 or higher."
+                    "**OS:** Build machine is using `Ubuntu 18.04` which is not supported for this language. Upgrade to `Ubuntu 20.04` or higher."
                 )
             else:
                 ideas.append(
-                    "**OS:** Build machine appears to be using Ubuntu 18.04. To improve performance, upgrade to Ubuntu 20.04 or higher."
+                    "**OS:** Build machine is using `Ubuntu 18.04`. To improve performance, upgrade to `Ubuntu 20.04` or higher."
                 )
         if "alpine" in os_release:
             if app_language in (
@@ -386,7 +386,7 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
                 "kubernetes",
             ):
                 ideas.append(
-                    "**OS:** Build machine appears to be using Alpine linux which is not supported for this language. Consider switching to a supported flavour of linux such as Ubuntu or Debian."
+                    "**OS:** Build machine appears to be using `Alpine Linux` which is not supported for this language. Consider switching to a supported flavour of linux such as Ubuntu or Debian."
                 )
     if build_machine and app_language in ("java", "csharp", "python", "go"):
         num_cpu = build_machine.get("cpu", {}).get("num", "")
