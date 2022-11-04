@@ -1195,7 +1195,7 @@ def build_args():
     )
     parser.add_argument(
         "--troubleshoot",
-        action=argparse.BooleanOptionalAction,
+        action="store_true",
         dest="troubleshoot",
         help="Troubleshoot apps with low findings count",
         default=True,
