@@ -314,6 +314,7 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
     sl_cmd_str = ""
     build_machine = environment.get("machine", [])
     lang_args_used = False
+    verbose_used = False
     if sl_cmd:
         sl_cmd_str = " ".join(sl_cmd)
         if "--tag" not in sl_cmd:
@@ -338,18 +339,21 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
             )
         if "--force" in sl_cmd:
             ideas.append(
-                "**CLI:** `--force` functionality is removed and the flag is no longer required for the `sl analyze` command."
+                "**CLI:** `--force` functionality is no longer available. This flag could be removed from the `sl analyze` command."
             )
         if "--" in sl_cmd:
             lang_args_used = True
+        if "--verbose" in sl_cmd or "--trace-all" in sl_cmd:
+            verbose_used = True
         if app_language == "java":
             if sl_cmd_str.count(".jar") > 1:
                 ideas.append(
                     "**CLI:** Only a single jar or war file could be passed to `sl analyze` for java applications.\nIf the build target directory contains multiple jars, use `jar cvf app.jar -C $TARGET_DIR .` command to create a single larger jar for scanning."
                 )
             if "--vcs-prefix-correction" not in sl_cmd_str:
+                lang = "scala" if "scala" in sl_cmd_str else "java"
                 ideas.append(
-                    """**CLI:** Pass the argument `--vcs-prefix-correction "*=src/main/java"` to make the Source Code View work correctly in the UI."""
+                    f"""**CLI:** Pass the argument `--vcs-prefix-correction "*=src/main/{lang}"` to make the Source Code View work correctly in the UI."""
                 )
         if sl_cmd_str.count("--wait") > 1:
             ideas.append("**CLI:** `--wait` argument is specified more than once.")
@@ -438,11 +442,11 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
                     size_suggestion = "Scan only the required module using `.` or `module name` syntax."
             if size_suggestion:
                 ideas.append(
-                    f"Scan time was over {math.floor(scan_duration_ms / (60 * 1000))} mins.\n{size_suggestion}"
+                    f"**PERF:** Scan time was over {math.floor(scan_duration_ms / (60 * 1000))} mins.\n{size_suggestion}"
                 )
             if "--wait" in sl_cmd_str:
                 ideas.append(
-                    "Remove `--wait` argument and any subsequent invocation of `sl check-analysis` to perform scans in asynchronous mode."
+                    "**PERF:** Remove `--wait` argument and any subsequent invocation of `sl check-analysis` to perform scans in asynchronous mode."
                 )
         if app_language in ("js", "ts", "javascript", "typescript", "python", "go"):
             low_findings_count = (
@@ -451,17 +455,19 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
                 and len(findings) < math.ceil(int(lines) / 2000)
             )
         if files and int(files) < 10:
-            ideas.append(f"This is a small app with only {files} files.")
+            ideas.append(f"**APP:** This is a small app with only `{files}` files.")
             size_based_reco = True
         elif lines and int(lines) < 2000:
-            ideas.append(f"This is a small app with only {lines} lines of code.")
+            ideas.append(
+                f"**APP:** This is a small app with only `{lines}` lines of code."
+            )
             size_based_reco = True
         if low_findings_count:
             if app_language == "go" and "./..." not in sl_cmd:
                 ideas.append(
                     "Pass `./...` to scan this go app by including all the sub-projects."
                 )
-            if app_language == "csharp":
+            if app_language == "csharp" and not verbose_used:
                 ideas.append(
                     "Ensure the solution is restored or built successfully prior to invoking ShiftLeft."
                 )
@@ -470,9 +476,10 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
                         "Try scanning the solution instead of a specific csproj."
                     )
             if app_language == "python":
-                ideas.append(
-                    "Ensure the project dependencies are installed with `pip install` command prior to invoking ShiftLeft."
-                )
+                if not verbose_used:
+                    ideas.append(
+                        "Ensure the project dependencies are installed with `pip install` command prior to invoking ShiftLeft."
+                    )
                 ideas.append(
                     "To include additional python module search paths in the analysis, pass `-- --extra-sys-paths [<path>]`."
                 )
@@ -489,9 +496,11 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
             if app_language in ("js", "ts", "javascript", "typescript"):
                 if "ui" in app_name:
                     ideas.append(
-                        "Ensure only applications and not UI toolkits are scanned with ShiftLeft."
+                        "**UI:** Ensure only applications and not UI toolkits are scanned with ShiftLeft."
                     )
     methods = summary.get("methods")
+    uploadRequest = summary.get("upload-request", {})
+    metadata_artifact = uploadRequest.get("metadata_artifact", {})
     library_reco = False
     if methods and not size_based_reco:
         ios = methods.get("ios", 0)
@@ -517,11 +526,11 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
             or not sinks
             or not int(sinks)
         ):
-            if not library_reco:
+            if not library_reco and metadata_artifact:
                 ideas.append(
                     "**SUPPORT:** This app might be using libraries that are not supported yet. Please contact ShiftLeft support to manually review this app."
                 )
-            elif "lib" not in app_name:
+            elif "lib" not in app_name and metadata_artifact:
                 ideas.append(
                     "**SUPPORT:** Alternatively, this app might be using private dependencies or third-party libraries that are not supported yet. Please contact ShiftLeft support to manually review this app."
                 )
@@ -532,8 +541,6 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
         ideas.append(
             f"""**TOKEN:** Use a CI integration token to scan apps with ShiftLeft. Currently scanned with `{token.get("owner")}'s` personal access token."""
         )
-    uploadRequest = summary.get("upload-request", {})
-    metadata_artifact = uploadRequest.get("metadata_artifact", {})
     if not metadata_artifact and app_language not in (
         "terraform_hcl",
         "terraform",
