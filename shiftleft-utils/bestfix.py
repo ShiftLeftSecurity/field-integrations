@@ -1226,6 +1226,8 @@ if __name__ == "__main__":
         app_list.append({"id": args.app_name, "name": args.app_name})
         if report_file == "ngsast-bestfix-report.html":
             report_file = f"ngsast-bestfix-{args.app_name}.html"
+    report_dir = os.path.dirname(report_file)
+    os.makedirs(report_dir, exist_ok=True)
     source_dir = args.source_dir
     if not source_dir:
         console.print(
