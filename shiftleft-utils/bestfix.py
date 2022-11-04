@@ -130,6 +130,13 @@ def get_code(source_dir, app, fname, lineno, variables, max_lines=3, tabbed=Fals
         return "", variable_detected, full_path
 
 
+def to_local_path(full_path_prefix, fl):
+    full_file_path = f"{full_path_prefix}{fl}"
+    if "win" in sys.platform:
+        full_file_path = "/" + full_file_path.replace("\\", "/")
+    return f"file://{full_file_path}"
+
+
 def find_ignorables(app_language, last_location_fname, files_loc_list):
     ignorables_list = set()
     for fl in files_loc_list:
@@ -590,7 +597,11 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
     )
     table.add_column("ID", justify="right", style="cyan")
     table.add_column("Category")
-    table.add_column("Locations", overflow="fold", max_width=50)
+    table.add_column(
+        "Locations",
+        overflow="fold",
+        max_width=160 if "win" in sys.platform and not CI_MODE else 50,
+    )
     table.add_column("Code Snippet", overflow="fold")
     table.add_column("Comment", overflow="fold")
     source_cohorts = defaultdict(dict)
@@ -903,18 +914,23 @@ Specify the sink method in your remediation config to suppress this finding.\n
                     f"{comment_str} {last_location_fname}\n\n" + code_snippet,
                     app_language,
                 )
+            file_locations_md = Markdown(
+                MD_LIST_MARKER
+                + MD_LIST_MARKER.join(
+                    [
+                        f"[{fl}]({to_local_path(full_path_prefix, fl)})"
+                        for fl in files_loc_list
+                    ]
+                )
+            )
+            if "win" in sys.platform and not CI_MODE:
+                file_locations_md = "\n\n".join(
+                    [f"{to_local_path(full_path_prefix, fl)}" for fl in files_loc_list]
+                )
             table.add_row(
                 f"""[link={deep_link}]{afinding.get("id")}[/link]""",
                 afinding.get("category"),
-                Markdown(
-                    MD_LIST_MARKER
-                    + MD_LIST_MARKER.join(
-                        [
-                            f"[{fl}](file://{full_path_prefix}{fl})"
-                            for fl in files_loc_list
-                        ]
-                    )
-                ),
+                file_locations_md,
                 fmt_code_snippet,
                 Markdown(best_fix),
             )
