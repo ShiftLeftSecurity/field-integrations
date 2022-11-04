@@ -42,6 +42,7 @@ if CI_MODE:
         theme=custom_theme,
         color_system="256",
         force_terminal=True,
+        width=260,
         record=True,
     )
 else:
