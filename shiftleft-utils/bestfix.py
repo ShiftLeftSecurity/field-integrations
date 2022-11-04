@@ -328,14 +328,25 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
             ideas.append("`--cpg` flag is no longer required for sl analyze.")
         if "--sca" in sl_cmd:
             ideas.append("`--sca` flag is no longer required for sl analyze.")
+        if "--oss-recursive" in sl_cmd:
+            ideas.append(
+                "`--oss-recursive` flag is set to true by default and is no longer required for sl analyze."
+            )
         if "--force" in sl_cmd:
-            ideas.append("`--force` flag is no longer required for sl analyze.")
+            ideas.append(
+                "`--force` functionality is removed and the flag is no longer required for sl analyze."
+            )
         if "--" in sl_cmd:
             lang_args_used = True
-        if app_language == "java" and sl_cmd_str.count(".jar") > 1:
-            ideas.append(
-                "Only a single jar or war file could be passed to `sl analyze` for java applications.\nIf the build target directory contains multiple jars, use `jar cvf app.jar -C $TARGET_DIR .` command to create a single larger jar for scanning."
-            )
+        if app_language == "java":
+            if sl_cmd_str.count(".jar") > 1:
+                ideas.append(
+                    "Only a single jar or war file could be passed to `sl analyze` for java applications.\nIf the build target directory contains multiple jars, use `jar cvf app.jar -C $TARGET_DIR .` command to create a single larger jar for scanning."
+                )
+            if "--vcs-prefix-correction" not in sl_cmd_str:
+                ideas.append(
+                    """Pass the argument `--vcs-prefix-correction "*=src/main/java"` to make the Source Code View work correctly in the UI."""
+                )
         if sl_cmd_str.count("--wait") > 1:
             ideas.append("`--wait` argument is specified more than once.")
     if build_machine and app_language in ("java", "csharp", "python", "go"):
@@ -351,7 +362,7 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
                 )
         if memory_total and int(memory_total) < 4096:
             ideas.append(
-                f"Ensure the build machine has a minimum of 4096MB RAM to reduce CPG generation time. Found only {memory_total} MB."
+                f"Ensure the build machine has a minimum of 4096 MB RAM to reduce CPG generation time. Found only {memory_total} MB."
             )
     sizes = summary.get("sizes")
     size_based_reco = False
@@ -362,6 +373,14 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
         low_findings_count = (
             lines and int(lines) > 2000 and len(findings) < math.ceil(int(lines) / 1000)
         )
+        if app_language == "java" and binsize and int(binsize) < 4000:
+            ideas.append(
+                "Pass the .war file or a uber jar to get better results for Java applications."
+            )
+            ideas.append(
+                "If the build target directory contains multiple jars, use `jar cvf app.jar -C $TARGET_DIR .` command to create a single larger jar for scanning."
+            )
+            size_based_reco = True
         scan_duration_ms = summary.get("scan_duration_ms", 0)
         if scan_duration_ms > 3 * 60 * 1000:
             size_suggestion = ""
@@ -438,12 +457,14 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
                         "Ensure only applications and not UI toolkits are scanned with ShiftLeft."
                     )
     methods = summary.get("methods")
+    library_reco = False
     if methods and not size_based_reco:
         ios = methods.get("ios", 0)
         sinks = methods.get("sinks", 0)
         total = methods.get("total", 0)
         sources = methods.get("sources", 0)
         if summary.get("isLibrary") and (not sources and sinks):
+            library_reco = True
             ideas.append(
                 "This repo could be a library. Ensure only applications are scanned with ShiftLeft."
             )
@@ -455,9 +476,14 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
             or not sinks
             or not int(sinks)
         ):
-            ideas.append(
-                "This app might be using libraries that are not supported yet. Please contact ShiftLeft support to manually review this app."
-            )
+            if not library_reco:
+                ideas.append(
+                    "This app might be using libraries that are not supported yet. Please contact ShiftLeft support to manually review this app."
+                )
+            else:
+                ideas.append(
+                    "Alternatively, this app might be using private dependencies or third-party libraries that are not supported yet. Please contact ShiftLeft support to manually review this app."
+                )
         if total and int(total) < 20:
             ideas.append(f"This is a small app with only {total} methods.")
     token = summary.get("token")
@@ -477,7 +503,9 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
     ):
         sbom_idea = ""
         if app_language == "java":
-            sbom_idea = "Ensure the entire source directory and build tools such as maven, gradle or sbt are available in the build step running ShiftLeft. If required, pass the arguments `--oss-project-dir <source path>` to specify the source directory explicitly."
+            sbom_idea = "Ensure the entire source directory and build tools such as maven, gradle or sbt are available in the build step running ShiftLeft."
+            if "--oss-project-dir" not in sl_cmd_str:
+                sbom_idea += " Use the argument `--oss-project-dir <source path>` to specify the source directory explicitly."
         if app_language in ("js", "ts", "javascript", "typescript"):
             sbom_idea = "Ensure the lock files such as package-lock.json or yarn.lock or pnpm-lock.yaml are present. If required perform npm or yarn install to generate the lock files prior to invoking ShiftLeft."
         if app_language == "python":
