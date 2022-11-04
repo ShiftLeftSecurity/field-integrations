@@ -39,10 +39,9 @@ if CI_MODE:
     console = Console(
         log_time=False,
         log_path=False,
-        theme=custom_theme,
         color_system="256",
         force_terminal=True,
-        width=260,
+        width=int(os.getenv("COLUMNS", 270)),
         record=True,
     )
 else:
@@ -50,7 +49,7 @@ else:
         log_time=False,
         log_path=False,
         theme=custom_theme,
-        color_system="256",
+        color_system="auto",
         force_terminal=True,
         record=True,
     )
