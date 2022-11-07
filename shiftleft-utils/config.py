@@ -47,6 +47,7 @@ ignorable_paths = (
     "scripts/",
     ".nuxt/",
     ".next/",
+    ".html",
 )
 
 check_labels_list = (

@@ -174,7 +174,10 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
         "Server-Side Request Forgery",
         "Potential Server-Side Request Forgery",
     ):
-        category_suggestion = f"""Validate and ensure `{variable_detected}` does not contain URLs and other malicious input. For externally injected values, compare `{variable_detected}` against an allowlist of approved URL domains or service IP addresses. Then, specify this validation method name or the source method `{source_method}` in the remediation config file to suppress this finding."""
+        if "__POLYMORPHIC__" in sink_method:
+            category_suggestion = f"""This is likely a false positive since the code could be performing an internal redirection or an API call. Specify `{sink_method}` in your remediation config to suppress this finding."""
+        else:
+            category_suggestion = f"""Validate and ensure `{variable_detected}` does not contain URLs and other malicious input. For externally injected values, compare `{variable_detected}` against an allowlist of approved URL domains or service IP addresses. Then, specify this validation method name or the source method `{source_method}` in the remediation config file to suppress this finding."""
     elif category == "XML External Entities":
         category_suggestion = f"""Follow security best practices to configure and use the XML library in a safe manner."""
     elif category in ("Cross-Site Scripting", "XSS"):
@@ -187,8 +190,12 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
     elif category in ("Hardcoded Credentials", "Weak Hash"):
         if '"' in variable_detected:
             category_suggestion = f"""Ensure `{variable_detected}` is the correct value in this context before invoking the sink method `{sink_method}`."""
-        else:
+        elif variable_detected:
             category_suggestion = f"""Ensure `{variable_detected}` has the required value for this application or context before invoking the sink method `{sink_method}`."""
+        else:
+            category_suggestion = (
+                f"""Ensure the inputs to the sink method `{sink_method}` are valid."""
+            )
     elif category == "Prototype Pollution":
         if '"' in variable_detected or "=" in variable_detected:
             category_suggestion = "This is a false positive."
@@ -748,10 +755,9 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     symbol = parameter.get("symbol")
                 if member and member.get("symbol"):
                     msymbol = member.get("symbol")
-                    if (
-                        "(" in msymbol or ")" in msymbol
-                    ) and msymbol not in snippet_list:
-                        snippet_list.append(msymbol)
+                    if "(" in msymbol or ")" in msymbol or "{" in msymbol:
+                        if msymbol not in snippet_list:
+                            snippet_list.append(msymbol)
                     else:
                         symbol = msymbol.split(".")[-1]
                 if local and local.get("symbol"):
@@ -766,8 +772,9 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     and not symbol.endswith("DTO")
                     and symbol not in ("this", "req", "res", "p1", "env")
                 ):
-                    if ("(" in symbol or ")" in symbol) and symbol not in snippet_list:
-                        snippet_list.append(symbol)
+                    if "(" in symbol or ")" in symbol or "{" in symbol:
+                        if symbol not in snippet_list:
+                            snippet_list.append(symbol)
                     elif ".cs" in location.get("file_name"):
                         if "Dto" not in symbol and symbol not in tracked_list:
                             tracked_list.append(symbol)
@@ -889,11 +896,15 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 if (
                     not http_routes
                     and "lambda" not in source_method
-                    and not variable_detected == "event"
+                    and not variable_detected in ("event", "ctx")
                 ):
                     taint_suggestion = (
                         "There are no attacker-reachable HTTP routes for this finding."
                     )
+                    if not category_suggestion and variable_detected:
+                        taint_suggestion += (
+                            f" **Taint:** Parameter `{variable_detected}`."
+                        )
                 elif variable_detected:
                     taint_suggestion = f"**Taint:** Parameter `{variable_detected}`"
                 suppressable_finding = True
