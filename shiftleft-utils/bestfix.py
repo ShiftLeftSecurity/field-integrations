@@ -56,7 +56,6 @@ else:
 
 MD_LIST_MARKER = "\n- "
 
-
 def _get_code_line(source_dir, app, fname, line, variables=[]):
     """Return the given line from the file. Handles any utf8 error from tokenize
 
@@ -190,8 +189,8 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
         else:
             category_suggestion = f"""Ensure `{variable_detected}` has the required value for this application or context before invoking the sink method `{sink_method}`."""
     elif category == "Prototype Pollution":
-        if sink_method == "Object.assign":
-            category_suggestion = f"""This is likely a false positive since the sink method `Object.assign` is safe by default."""
+        if sink_method in ("Object.assign", "JSON.parse"):
+            category_suggestion = f"""This is likely a false positive since the sink method `{sink_method}` is safe by default."""
         else:
             category_suggestion = f"""This could be a false positive depending on the sink method `{sink_method}`. Look for the use of recursive functions that performs any object-level assignment."""
     elif category == "Timing Attack":
@@ -199,6 +198,8 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
             category_suggestion = "This is a false positive."
         else:
             category_suggestion = f"""This finding is relevant only if the variable `{variable_detected}` holds security-sensitive value. Ignore this finding otherwise."""
+    elif category == "Mail Injection":
+        category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before invoking the Email service."""
     return category_suggestion
 
 
@@ -617,6 +618,7 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
                 expand=False,
             )
         )
+        console.print(f"Internal id for this scan: {scan.get('internal_id')}\n")
 
 
 def find_best_fix(org_id, app, scan, findings, source_dir):
@@ -657,6 +659,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
             continue
         files_loc_list = []
         tracked_list = []
+        snippet_list = []
         source_method = ""
         sink_method = ""
         cvss_31_severity_rating = ""
@@ -668,6 +671,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
         tags = afinding.get("tags")
         methods_list = []
         check_methods = set()
+        http_routes = set()
         package_url = ""
         cve = ""
         oss_internal_id = ""
@@ -717,6 +721,16 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 variableInfo = variableInfo.get("variable")
             if variableInfo.get("Variable"):
                 variableInfo = variableInfo.get("Variable")
+            # Identify http routes
+            method_tags = df.get("method_tags", [])
+            mtags = [
+                mt.get("value")
+                for mt in method_tags
+                if mt.get("key", "") in ("EXPOSED_METHOD_ROUTE", 30) and mt.get("value")
+            ]
+            route_value = mtags[0] if mtags else None
+            if route_value:
+                http_routes.add(route_value)
             if variableInfo:
                 parameter = variableInfo.get("Parameter")
                 if not parameter:
@@ -730,7 +744,13 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 if parameter and parameter.get("symbol"):
                     symbol = parameter.get("symbol")
                 if member and member.get("symbol"):
-                    symbol = member.get("symbol").split(".")[-1]
+                    msymbol = member.get("symbol")
+                    if (
+                        "(" in msymbol or ")" in msymbol
+                    ) and msymbol not in snippet_list:
+                        snippet_list.append(msymbol)
+                    else:
+                        symbol = msymbol.split(".")[-1]
                 if local and local.get("symbol"):
                     symbol = local.get("symbol")
                 if (
@@ -738,14 +758,14 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     and symbol not in tracked_list
                     and "____obj" not in symbol
                     and "_tmp_" not in symbol
-                    and "(" not in symbol
-                    and ")" not in symbol
                     and not symbol.endswith("_0")
                     and not symbol.startswith("$")
                     and not symbol.endswith("DTO")
                     and symbol not in ("this", "req", "res", "p1", "env")
                 ):
-                    if ".cs" in location.get("file_name"):
+                    if ("(" in symbol or ")" in symbol) and symbol not in snippet_list:
+                        snippet_list.append(symbol)
+                    elif ".cs" in location.get("file_name"):
                         if "Dto" not in symbol and symbol not in tracked_list:
                             tracked_list.append(symbol)
                     else:
@@ -765,6 +785,10 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     )
                     if short_method_name == "program":
                         short_method_name = method_name.split("::")[0] + ":program"
+                elif "_callee" in short_method_name:
+                    short_method_name = (
+                        method_name.split(":_callee")[0].split("::")[-1].split(":")[-1]
+                    )
                 methods_list.append(short_method_name)
                 for check_labels in config.check_labels_list:
                     if check_labels in short_method_name.lower():
@@ -849,14 +873,29 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     location_suggestion
                     + f"\n- After line {first_location_lineno} in {first_location_fname}"
                 )
-            if source_method == sink_method:
+            http_routes = list(http_routes)
+            if (
+                source_method == sink_method or not http_routes
+            ) and "lambda" not in source_method:
                 if not variable_detected and tracked_list:
                     variable_detected = tracked_list[-1]
                 category_suggestion = get_category_suggestion(
                     category, variable_detected, source_method, sink_method
                 )
+                taint_suggestion = ""
+                if (
+                    not http_routes
+                    and "lambda" not in source_method
+                    and not variable_detected == "event"
+                ):
+                    taint_suggestion = (
+                        "There are no attacker-reachable HTTP routes for this finding."
+                    )
+                elif variable_detected:
+                    taint_suggestion = f"**Taint:** Parameter `{variable_detected}`"
                 suppressable_finding = True
                 best_fix = f"""This is likely a security best practices type finding or a false positive.
+{taint_suggestion}
 {category_suggestion}
 
 **Fix locations:**\n
@@ -928,6 +967,9 @@ Specify the sink method in your remediation config to suppress this finding.\n
 - {sink_method}
 
 """
+            # Show code snippet if available
+            if snippet_list and not code_snippet:
+                code_snippet = snippet_list[-1]
             # Any files to ignore
             if ignorables_suggestion:
                 best_fix = (
