@@ -38,7 +38,7 @@ timeout = 180
 # How many chunks of apps to process for stats
 app_chunk_size = 20
 
-ignorable_paths = ("test", "sample", "build", "docs", "dist")
+ignorable_paths = ("test", "sample", "build", "docs", "dist", "scripts/")
 
 check_labels_list = (
     "check",

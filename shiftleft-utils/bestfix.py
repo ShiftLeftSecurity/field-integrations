@@ -177,6 +177,16 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
         category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before returning via HTML or API response."""
     elif category == "LDAP Injection":
         category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before invoking the LDAP method `{sink_method}`."""
+    elif category in ("Hardcoded Credentials", "Weak Hash"):
+        if '"' in variable_detected:
+            category_suggestion = f"""Ensure `{variable_detected}` is the correct value in this context before invoking the sink method `{sink_method}`."""
+        else:
+            category_suggestion = f"""Ensure `{variable_detected}` has the required value for this application or context before invoking the sink method `{sink_method}`."""
+    elif category == "Prototype Pollution":
+        if sink_method == "Object.assign":
+            category_suggestion = f"""This is likely a false positive as the sink method `Object.assign` is safe by default."""
+        else:
+            category_suggestion = f"""This could be a false positive depending on the sink method `{sink_method}`."""
     return category_suggestion
 
 
@@ -715,17 +725,13 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     symbol
                     and symbol not in tracked_list
                     and "____obj" not in symbol
+                    and "_tmp_" not in symbol
                     and "(" not in symbol
+                    and ")" not in symbol
                     and not symbol.endswith("_0")
                     and not symbol.startswith("$")
                     and not symbol.endswith("DTO")
-                    and symbol
-                    not in (
-                        "this",
-                        "req",
-                        "res",
-                        "p1",
-                    )
+                    and symbol not in ("this", "req", "res", "p1", "env")
                 ):
                     if ".cs" in location.get("file_name"):
                         if "Dto" not in symbol and symbol not in tracked_list:
@@ -745,6 +751,8 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                         .split("::")[-1]
                         .split(":")[-1]
                     )
+                    if short_method_name == "program":
+                        short_method_name = method_name.split("::")[0] + ":program"
                 methods_list.append(short_method_name)
                 for check_labels in config.check_labels_list:
                     if check_labels in short_method_name.lower():
@@ -1203,6 +1211,13 @@ def build_args():
         help="Troubleshoot apps with low findings count",
         default=True,
     )
+    parser.add_argument(
+        "--all-ratings",
+        action="store_true",
+        dest="all_ratings",
+        help="Report for all CVSS 3.1 ratings. Default is critical and high only.",
+        default=False,
+    )
     return parser.parse_args()
 
 
@@ -1250,7 +1265,9 @@ if __name__ == "__main__":
         args.rformat,
         source_dir,
         args.version,
-        ["critical", "high"],
+        ["critical", "high", "medium", "low"]
+        if args.all_ratings
+        else ["critical", "high"],
         args.troubleshoot,
     )
     end_time = time.monotonic_ns()
