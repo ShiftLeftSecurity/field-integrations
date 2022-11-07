@@ -56,6 +56,7 @@ else:
 
 MD_LIST_MARKER = "\n- "
 
+
 def _get_code_line(source_dir, app, fname, line, variables=[]):
     """Return the given line from the file. Handles any utf8 error from tokenize
 
@@ -189,7 +190,9 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
         else:
             category_suggestion = f"""Ensure `{variable_detected}` has the required value for this application or context before invoking the sink method `{sink_method}`."""
     elif category == "Prototype Pollution":
-        if sink_method in ("Object.assign", "JSON.parse"):
+        if '"' in variable_detected or "=" in variable_detected:
+            category_suggestion = "This is a false positive."
+        elif sink_method in ("Object.assign", "JSON.parse"):
             category_suggestion = f"""This is likely a false positive since the sink method `{sink_method}` is safe by default."""
         else:
             category_suggestion = f"""This could be a false positive depending on the sink method `{sink_method}`. Look for the use of recursive functions that performs any object-level assignment."""
