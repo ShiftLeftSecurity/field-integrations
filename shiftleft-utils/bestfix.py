@@ -169,12 +169,19 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
         category_suggestion = f"""Use an allowlist of safe file or URL locations and compare `{variable_detected}` against this list before invoking the method `{sink_method}`."""
     elif category == "Deserialization":
         category_suggestion = f"""Follow security best practices to configure and use the deserialization library in a safe manner."""
-    elif category in ("SSRF", "Server-Side Request Forgery"):
+    elif category in (
+        "SSRF",
+        "Server-Side Request Forgery",
+        "Potential Server-Side Request Forgery",
+    ):
         category_suggestion = f"""Validate and ensure `{variable_detected}` does not contain URLs and other malicious input. For externally injected values, compare `{variable_detected}` against an allowlist of approved URL domains or service IP addresses. Then, specify this validation method name or the source method `{source_method}` in the remediation config file to suppress this finding."""
     elif category == "XML External Entities":
         category_suggestion = f"""Follow security best practices to configure and use the XML library in a safe manner."""
-    elif category == "XSS":
-        category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before returning via HTML or API response."""
+    elif category in ("Cross-Site Scripting", "XSS"):
+        if source_method == "^__node^.process.%env":
+            category_suggestion = f"""This is likely a false positive since reading an environment variable using `process.env` is safe by default."""
+        else:
+            category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before returning via HTML or API response."""
     elif category == "LDAP Injection":
         category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before invoking the LDAP method `{sink_method}`."""
     elif category in ("Hardcoded Credentials", "Weak Hash"):
@@ -184,9 +191,14 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
             category_suggestion = f"""Ensure `{variable_detected}` has the required value for this application or context before invoking the sink method `{sink_method}`."""
     elif category == "Prototype Pollution":
         if sink_method == "Object.assign":
-            category_suggestion = f"""This is likely a false positive as the sink method `Object.assign` is safe by default."""
+            category_suggestion = f"""This is likely a false positive since the sink method `Object.assign` is safe by default."""
         else:
-            category_suggestion = f"""This could be a false positive depending on the sink method `{sink_method}`."""
+            category_suggestion = f"""This could be a false positive depending on the sink method `{sink_method}`. Look for the use of recursive functions that performs any object-level assignment."""
+    elif category == "Timing Attack":
+        if '"' in variable_detected or "=" in variable_detected:
+            category_suggestion = "This is a false positive."
+        else:
+            category_suggestion = f"""This finding is relevant only if the variable `{variable_detected}` holds security-sensitive value. Ignore this finding otherwise."""
     return category_suggestion
 
 
