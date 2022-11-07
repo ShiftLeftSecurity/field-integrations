@@ -915,7 +915,10 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 elif variable_detected:
                     taint_suggestion = f"**Taint:** Parameter `{variable_detected}`"
                 suppressable_finding = True
-                best_fix = f"""This is likely a security best practices type finding or a false positive.
+                preface_text = "This is likely a security best practices type finding or a false positive."
+                if snippet_list:
+                    preface_text = "This is a security best practices type finding."
+                best_fix = f"""{preface_text}
 {taint_suggestion}
 {category_suggestion}
 
@@ -981,7 +984,7 @@ Include these detected CHECK methods in your remediation config to suppress this
                     ignorables_suggestion = f"""To ignore specific directory from analysis, pass `-- --ignore-paths [<ignore_path_1>] [<ignore_path_2>]` at the end of the `sl analyze` command."""
             # Fallback
             if not best_fix:
-                best_fix = f"""{"This is likely a security best practices type finding" if app_language in ("js", "python") else "This is likely a security best practices type finding or a false positive"}.
+                best_fix = f"""{"This is likely a security best practices type finding." if app_language in ("js", "python") else "This is likely a security best practices type finding or a false positive."}.
 
 **Remediation suggestions:**\n
 Specify the sink method in your remediation config to suppress this finding.\n
