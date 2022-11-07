@@ -210,6 +210,8 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
             category_suggestion = f"""This finding is relevant only if the variable `{variable_detected}` holds security-sensitive value. Ignore this finding otherwise."""
     elif category == "Mail Injection":
         category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before invoking the Email service."""
+    elif category == "Deprecated Function Use":
+        category_suggestion = f"Ensure the sink method `{sink_method}` is appropriate for use in this context."
     return category_suggestion
 
 
@@ -755,7 +757,12 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     symbol = parameter.get("symbol")
                 if member and member.get("symbol"):
                     msymbol = member.get("symbol")
-                    if "(" in msymbol or ")" in msymbol or "{" in msymbol:
+                    if (
+                        "(" in msymbol
+                        or ")" in msymbol
+                        or "{" in msymbol
+                        or " " in msymbol
+                    ):
                         if msymbol not in snippet_list:
                             snippet_list.append(msymbol)
                     else:
@@ -772,7 +779,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     and not symbol.endswith("DTO")
                     and symbol not in ("this", "req", "res", "p1", "env")
                 ):
-                    if "(" in symbol or ")" in symbol or "{" in symbol:
+                    if "(" in symbol or ")" in symbol or "{" in symbol or " " in symbol:
                         if symbol not in snippet_list:
                             snippet_list.append(symbol)
                     elif ".cs" in location.get("file_name"):
