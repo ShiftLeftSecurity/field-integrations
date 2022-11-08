@@ -171,7 +171,7 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
         category_suggestion = f"""Use any alternative SDK method with builtin parameterization capability. Parameterize and validate the variables `{variable_detected}` before invoking the NoSQL method `{sink_method}`."""
     elif category == "Directory Traversal":
         category_suggestion = f"""Use an allowlist of safe file or URL locations and compare `{variable_detected}` against this list before invoking the method `{sink_method}`."""
-    elif category == "Deserialization":
+    elif category in ("Deserialization", "Deserialization of HTTP data"):
         if sink_method in ("json.loads"):
             category_suggestion = f"""This is likely a false positive since the sink method `{sink_method}` is safe by default."""
             suppressable_finding = True
@@ -837,11 +837,14 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     else:
                         cleaned_symbol = symbol.replace("val$", "")
                         # Clean $ suffixed variables in scala
-                        if ".scala" in file_name and "$" in cleaned_symbol:
+                        if file_name.endswith(".scala") and "$" in cleaned_symbol:
                             cleaned_symbol = cleaned_symbol.split("$")[0]
                         if cleaned_symbol not in tracked_list:
                             tracked_list.append(cleaned_symbol)
             if short_method_name and not "empty" in short_method_name:
+                if "$" in short_method_name and app_language == "java":
+                    short_method_name = short_method_name.replace("lambda$", "")
+                    short_method_name = short_method_name.split("$")[0]
                 # For JavaScript/TypeScript short method name is mostly anonymous
                 if "anonymous" in short_method_name:
                     short_method_name = (
@@ -958,6 +961,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     and not variable_detected in ("event", "ctx", "request", "headers")
                     and not source_variable in ("event", "ctx", "request", "headers")
                     and app_language not in ("python")
+                    and not last_location_fname.endswith(".scala")
                 ):
                     taint_suggestion = (
                         (
