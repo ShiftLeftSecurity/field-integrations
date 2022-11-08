@@ -197,7 +197,7 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
             category_suggestion = f"""This is likely a false positive since reading an environment variable using `process.env` is safe by default."""
             suppressable_finding = True
         else:
-            category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before returning via HTML or API response. Some browsers and API client applications might include built-in sanitization features, thus making this vulnerability difficult to exploit."""
+            category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before returning via HTML or API response."""
     elif category == "LDAP Injection":
         category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before invoking the LDAP method `{sink_method}`."""
     elif category in ("Hardcoded Credentials", "Weak Hash"):
@@ -219,7 +219,11 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
         else:
             category_suggestion = f"""This could be a false positive depending on the sink method `{sink_method}`. Look for the use of recursive functions that performs any object-level assignment."""
     elif category == "Timing Attack":
-        if '"' in variable_detected or "=" in variable_detected:
+        if (
+            '"' in variable_detected
+            or "=" in variable_detected
+            or not variable_detected
+        ):
             category_suggestion = "This is a false positive."
             suppressable_finding = True
         else:
