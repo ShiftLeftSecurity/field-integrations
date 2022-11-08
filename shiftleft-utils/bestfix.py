@@ -228,8 +228,16 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
         category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before invoking the Email service."""
     elif category == "Deprecated Function Use":
         category_suggestion = f"Ensure the sink method `{sink_method}` is appropriate for use in this context."
-    elif category == "Security Best Practices":
-        category_suggestion = f"This finding is based on best practices. Please refer to the description for further information."
+    elif category in (
+        "Security Best Practices",
+        "Race Condition",
+        "Security Misconfiguration",
+        "Invalid Certificate Validation",
+    ):
+        if variable_detected:
+            category_suggestion = f"""This finding is based on best practices. Validate `{variable_detected}` for this context before invoking the sink method `{sink_method}`."""
+        else:
+            category_suggestion = f"This finding is based on best practices. Please refer to the description for further information."
         suppressable_finding = True
     elif category in ("CRLF Injection", "Header Injection"):
         category_suggestion = f"""Validate and ensure `{variable_detected}` does not contain any malicious input prior to invoking the sink `{sink_method}`."""
