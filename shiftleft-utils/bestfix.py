@@ -183,7 +183,7 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
         "Potential Server-Side Request Forgery",
     ):
         if variable_detected == variable_detected.upper():
-            category_suggestion = f"""This is likely a false positive since the variable `{variable_detected}` could belong to a trusted microservice or an endpoint."""
+            category_suggestion = f"""This is likely a false positive since the variable `{variable_detected}` could either be a constant or belong to a trusted endpoint."""
             suppressable_finding = True
         elif "__POLYMORPHIC__" in sink_method:
             category_suggestion = f"""This is likely a false positive since the code could be performing an internal redirection or an API call. Specify `{sink_method}` in your remediation config to suppress this finding."""
@@ -332,8 +332,14 @@ def find_best_oss_fix(
                 cve_id = cveobj.get("oss_internal_id")
             cveids.add(cve_id)
             orig_fix_str = cveobj.get("fix", "").lower()
+            orig_fix_wc = len(orig_fix_str.split(" "))
             # Ignore fix strings that do not contain versions
-            if orig_fix_str and "unfortunately" not in orig_fix_str:
+            if (
+                orig_fix_str
+                and "unfortunately" not in orig_fix_str
+                and "maintained" not in orig_fix_str
+                and orig_fix_wc < 10
+            ):
                 fixes_list = []
                 fixes_str = (
                     orig_fix_str.replace("Upgrade to versions ", "")
