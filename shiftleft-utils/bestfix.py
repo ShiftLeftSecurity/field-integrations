@@ -961,7 +961,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 ):
                     taint_suggestion = (
                         (
-                            f"There are no attacker-reachable HTTP routes for this finding {source_variable}."
+                            f"There are no attacker-reachable HTTP routes for this finding."
                         )
                         if not suppressable_finding
                         else ""
