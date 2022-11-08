@@ -91,7 +91,7 @@ def _get_code_line(source_dir, app, fname, line, variables=[]):
             if line < len(all_lines):
                 text = all_lines[line]
     variable_detected = ""
-    for var in variables:
+    for var in variables[::-1]:
         if var in text:
             if "$" not in var and var not in ("this", "self", "req", "res", "p1"):
                 variable_detected = var
@@ -100,6 +100,7 @@ def _get_code_line(source_dir, app, fname, line, variables=[]):
                     .replace(f"{var})", f" {var} )")
                     .replace(f",{var}", f", {var} ")
                     .replace(f"{var},", f" {var} ,")
+                    .replace(f"+{var}", f"+ {var} ")
                 )
                 break
     return text, variable_detected, full_path
