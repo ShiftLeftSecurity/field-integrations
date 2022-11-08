@@ -440,7 +440,13 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
                     "**CLI:** Only a single jar or war file could be passed to `sl analyze` for java applications.\nIf the build target directory contains multiple jars, use `jar cvf app.jar -C $TARGET_DIR .` command to create a single larger jar for scanning."
                 )
             if "--vcs-prefix-correction" not in sl_cmd_str:
-                lang = "scala" if "scala" in sl_cmd_str else "java"
+                lang = (
+                    "scala"
+                    if ("scala" in sl_cmd_str or "sbt" in sl_cmd_str)
+                    else "java"
+                )
+                if app_language == "java" and "assembly" in sl_cmd_str:
+                    lang = "scala"
                 ideas.append(
                     f"""**CLI:** Pass the argument `--vcs-prefix-correction "*=src/main/{lang}"` to make the Source Code View work correctly in the UI."""
                 )
