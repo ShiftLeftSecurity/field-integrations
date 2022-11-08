@@ -176,7 +176,7 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
             category_suggestion = f"""This is likely a false positive since the sink method `{sink_method}` is safe by default."""
             suppressable_finding = True
         else:
-            category_suggestion = f"""Follow security best practices to configure and use the deserialization library in a safe manner."""
+            category_suggestion = f"""Follow security best practices to configure and use the deserialization library in a safe manner. Depending on the library used, this vulnerability could be difficult to exploit."""
     elif category in (
         "SSRF",
         "Server-Side Request Forgery",
@@ -197,7 +197,7 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
             category_suggestion = f"""This is likely a false positive since reading an environment variable using `process.env` is safe by default."""
             suppressable_finding = True
         else:
-            category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before returning via HTML or API response."""
+            category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before returning via HTML or API response. Some browsers and API client applications might include built-in sanitization features, thus making this vulnerability difficult to exploit."""
     elif category == "LDAP Injection":
         category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before invoking the LDAP method `{sink_method}`."""
     elif category in ("Hardcoded Credentials", "Weak Hash"):
@@ -228,6 +228,13 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
         category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before invoking the Email service."""
     elif category == "Deprecated Function Use":
         category_suggestion = f"Ensure the sink method `{sink_method}` is appropriate for use in this context."
+    elif category == "Security Best Practices":
+        category_suggestion = f"This finding is based on best practices. Please refer to the description for further information."
+        suppressable_finding = True
+    elif category in ("CRLF Injection", "Header Injection"):
+        category_suggestion = f"""Validate and ensure `{variable_detected}` does not contain any malicious input prior to invoking the sink `{sink_method}`."""
+    elif category == "Open Redirect":
+        category_suggestion = f"""Validate and ensure `{variable_detected}` does not contain any malicious URL or protocol prior to invoking the sink `{sink_method}`. Use an allowlist to verify the URL redirection domains."""
     return category_suggestion, suppressable_finding
 
 
@@ -702,9 +709,10 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
         details = afinding.get("details", {})
         source_method = details.get("source_method", "")
         sink_method = details.get("sink_method", "")
-        # Simplify method names for python
-        if app_language == "python":
+        # Simplify method names
+        if source_method:
             source_method = source_method.split(":")[0]
+        if sink_method:
             sink_method = sink_method.split(":")[0]
         tags = afinding.get("tags")
         methods_list = []
@@ -737,8 +745,8 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
             location = df.get("location", {})
             file_name = location.get("file_name")
             method_name = location.get("method_name")
-            # Python has verbose method names which could be simplified
-            if app_language == "python":
+            # Simplify method names
+            if method_name:
                 method_name = method_name.split(":")[0]
             short_method_name = location.get("short_method_name")
             if file_name == "N/A" or not location.get("line_number"):
@@ -936,7 +944,11 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     and app_language not in ("python")
                 ):
                     taint_suggestion = (
-                        "There are no attacker-reachable HTTP routes for this finding."
+                        (
+                            "There are no attacker-reachable HTTP routes for this finding."
+                        )
+                        if not suppressable_finding
+                        else ""
                     )
                     if not category_suggestion and variable_detected:
                         taint_suggestion += (
