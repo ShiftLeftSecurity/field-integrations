@@ -9,7 +9,7 @@ Install python 3.9 or above on the machine or vm running the scripts.
 Clone the repo and install the dependencies.
 
 ```bash
-git clone https://github.com/ShiftLeftSecurity/field-integrations
+git clone https://github.com/ShiftLeftSecurity/field-integrations.git
 cd shiftleft-utils
 pip3 install -r requirements.txt
 ```
@@ -22,6 +22,8 @@ On Windows, non-admin users might see the below error. To workaround this, pass 
 python -m pip install --upgrade pip --user
 python -m pip install -r .\requirements.txt --user
 ```
+
+On a Mac, use of [pyenv](https://github.com/pyenv/pyenv) is recommended.
 
 Set the ShiftLeft access token as an environment variable SHIFTLEFT_ACCESS_TOKEN.
 

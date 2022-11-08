@@ -3,7 +3,6 @@
 import argparse
 import csv
 import io
-import json
 import linecache
 import math
 import os
@@ -158,9 +157,14 @@ def find_ignorables(app_language, last_location_fname, files_loc_list):
 
 
 def get_category_suggestion(category, variable_detected, source_method, sink_method):
+    suppressable_finding = False
     category_suggestion = ""
-    if category == "Remote Code Execution":
-        category_suggestion = f"""Use an allowlist for approved commands and compare the variables `{variable_detected}` against this list in a new validation method. Then, specify this validation method name in the remediation config file."""
+    if category in ("Remote Code Execution", "Potential Remote Code Execution"):
+        if variable_detected:
+            category_suggestion = f"""Use an allowlist for approved commands and compare the variables `{variable_detected}` against this list in a new validation method. Then, specify this validation method name in the remediation config file."""
+        else:
+            category_suggestion = "This is a false positive."
+            suppressable_finding = True
     elif category == "SQL Injection":
         category_suggestion = f"""Use any alternative SQL method with builtin parameterization capability. Parameterize and validate the variables `{variable_detected}` before invoking the SQL method `{sink_method}`."""
     elif category == "NoSQL Injection":
@@ -168,14 +172,22 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
     elif category == "Directory Traversal":
         category_suggestion = f"""Use an allowlist of safe file or URL locations and compare `{variable_detected}` against this list before invoking the method `{sink_method}`."""
     elif category == "Deserialization":
-        category_suggestion = f"""Follow security best practices to configure and use the deserialization library in a safe manner."""
+        if sink_method in ("json.loads"):
+            category_suggestion = f"""This is likely a false positive since the sink method `{sink_method}` is safe by default."""
+            suppressable_finding = True
+        else:
+            category_suggestion = f"""Follow security best practices to configure and use the deserialization library in a safe manner."""
     elif category in (
         "SSRF",
         "Server-Side Request Forgery",
         "Potential Server-Side Request Forgery",
     ):
-        if "__POLYMORPHIC__" in sink_method:
+        if variable_detected == variable_detected.upper():
+            category_suggestion = f"""This is likely a false positive since the variable `{variable_detected}` could belong to a trusted microservice or an endpoint."""
+            suppressable_finding = True
+        elif "__POLYMORPHIC__" in sink_method:
             category_suggestion = f"""This is likely a false positive since the code could be performing an internal redirection or an API call. Specify `{sink_method}` in your remediation config to suppress this finding."""
+            suppressable_finding = True
         else:
             category_suggestion = f"""Validate and ensure `{variable_detected}` does not contain URLs and other malicious input. For externally injected values, compare `{variable_detected}` against an allowlist of approved URL domains or service IP addresses. Then, specify this validation method name or the source method `{source_method}` in the remediation config file to suppress this finding."""
     elif category == "XML External Entities":
@@ -183,6 +195,7 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
     elif category in ("Cross-Site Scripting", "XSS"):
         if source_method == "^__node^.process.%env":
             category_suggestion = f"""This is likely a false positive since reading an environment variable using `process.env` is safe by default."""
+            suppressable_finding = True
         else:
             category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before returning via HTML or API response."""
     elif category == "LDAP Injection":
@@ -199,20 +212,23 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
     elif category == "Prototype Pollution":
         if '"' in variable_detected or "=" in variable_detected:
             category_suggestion = "This is a false positive."
+            suppressable_finding = True
         elif sink_method in ("Object.assign", "JSON.parse"):
             category_suggestion = f"""This is likely a false positive since the sink method `{sink_method}` is safe by default."""
+            suppressable_finding = True
         else:
             category_suggestion = f"""This could be a false positive depending on the sink method `{sink_method}`. Look for the use of recursive functions that performs any object-level assignment."""
     elif category == "Timing Attack":
         if '"' in variable_detected or "=" in variable_detected:
             category_suggestion = "This is a false positive."
+            suppressable_finding = True
         else:
             category_suggestion = f"""This finding is relevant only if the variable `{variable_detected}` holds security-sensitive value. Ignore this finding otherwise."""
     elif category == "Mail Injection":
         category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before invoking the Email service."""
     elif category == "Deprecated Function Use":
         category_suggestion = f"Ensure the sink method `{sink_method}` is appropriate for use in this context."
-    return category_suggestion
+    return category_suggestion, suppressable_finding
 
 
 def cohort_analysis(app_id, scan_id, source_cohorts, sink_cohorts, source_sink_cohorts):
@@ -680,6 +696,10 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
         details = afinding.get("details", {})
         source_method = details.get("source_method", "")
         sink_method = details.get("sink_method", "")
+        # Simplify method names for python
+        if app_language == "python":
+            source_method = source_method.split(":")[0]
+            sink_method = sink_method.split(":")[0]
         tags = afinding.get("tags")
         methods_list = []
         check_methods = set()
@@ -711,6 +731,9 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
             location = df.get("location", {})
             file_name = location.get("file_name")
             method_name = location.get("method_name")
+            # Python has verbose method names which could be simplified
+            if app_language == "python":
+                method_name = method_name.split(":")[0]
             short_method_name = location.get("short_method_name")
             if file_name == "N/A" or not location.get("line_number"):
                 continue
@@ -811,7 +834,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     if check_labels in short_method_name.lower():
                         check_methods.add(method_name)
                 # Methods that start with is are usually validation methods
-                if re.match(r"^is[A-Z]", short_method_name):
+                if re.match(r"^is[_A-Z]", short_method_name):
                     check_methods.add(method_name)
             if not source_method:
                 source_method = (
@@ -896,7 +919,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
             ) and "lambda" not in source_method:
                 if not variable_detected and tracked_list:
                     variable_detected = tracked_list[-1]
-                category_suggestion = get_category_suggestion(
+                category_suggestion, suppressable_finding = get_category_suggestion(
                     category, variable_detected, source_method, sink_method
                 )
                 taint_suggestion = ""
@@ -904,18 +927,22 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     not http_routes
                     and "lambda" not in source_method
                     and not variable_detected in ("event", "ctx")
+                    and app_language not in ("python")
                 ):
                     taint_suggestion = (
                         "There are no attacker-reachable HTTP routes for this finding."
                     )
                     if not category_suggestion and variable_detected:
                         taint_suggestion += (
-                            f" **Taint:** Parameter `{variable_detected}`."
+                            f" **Taint:** Variable `{variable_detected}`."
                         )
                 elif variable_detected:
-                    taint_suggestion = f"**Taint:** Parameter `{variable_detected}`"
-                suppressable_finding = True
-                preface_text = "This is likely a security best practices type finding or a false positive."
+                    taint_suggestion = f"**Taint:** Variable `{variable_detected}`."
+                preface_text = (
+                    "This is likely a security best practices type finding or a false positive."
+                    if not suppressable_finding
+                    else ""
+                )
                 if snippet_list:
                     preface_text = "This is a security best practices type finding."
                 best_fix = f"""{preface_text}
@@ -931,7 +958,7 @@ Specify the sink method in your remediation config to suppress this finding.\n
 
 """
             elif variable_detected:
-                category_suggestion = get_category_suggestion(
+                category_suggestion, suppressable_finding = get_category_suggestion(
                     category, variable_detected, source_method, sink_method
                 )
                 best_fix = f"""**Taint:** Parameter `{variable_detected}` in the method `{methods_list[-1]}`\n
@@ -949,7 +976,7 @@ Specify the sink method in your remediation config to suppress this finding.\n
                         f"{tracked_list[0]}, {tracked_list[-2]} and {tracked_list[-1]}"
                     )
                     Parameter_str = "Variables"
-                category_suggestion = get_category_suggestion(
+                category_suggestion, suppressable_finding = get_category_suggestion(
                     category, variable_detected, source_method, sink_method
                 )
                 best_fix = f"""**Taint:** {Parameter_str} `{variable_detected}` in the method `{methods_list[-1]}`\n
@@ -959,7 +986,11 @@ Specify the sink method in your remediation config to suppress this finding.\n
 {location_suggestion}
 """
             if check_methods:
-                if not variable_detected and not tracked_list:
+                if (
+                    not variable_detected
+                    and not tracked_list
+                    and not category_suggestion
+                ):
                     best_fix = f"""Validate or Sanitize user provided input before invoking the sink method `{sink_method}`
 """
                 if not suppressable_finding:
