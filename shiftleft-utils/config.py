@@ -59,4 +59,6 @@ check_labels_list = (
     "safe",
     "serialize",
     "convert",
+    "authenticate",
+    "authorize",
 )

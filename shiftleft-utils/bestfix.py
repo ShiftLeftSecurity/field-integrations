@@ -176,7 +176,7 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
             category_suggestion = f"""This is likely a false positive since the sink method `{sink_method}` is safe by default."""
             suppressable_finding = True
         else:
-            category_suggestion = f"""Follow security best practices to configure and use the deserialization library in a safe manner. Depending on the library used, this vulnerability could be difficult to exploit."""
+            category_suggestion = f"""Follow security best practices to configure and use the deserialization library in a safe manner. Depending on the version of the library used, this vulnerability could be difficult to exploit."""
     elif category in (
         "SSRF",
         "Server-Side Request Forgery",
@@ -518,6 +518,10 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
                 ideas.append(
                     f"**PERF:** Scan time was over {math.floor(scan_duration_ms / (60 * 1000))} mins.\n{size_suggestion}"
                 )
+                if app_language in ("java"):
+                    ideas.append(
+                        f"**PERF:** Customize the sensitive data dictionary or consider disabling it (if permitted by AppSec) to improve performance."
+                    )
             if "--wait" in sl_cmd_str:
                 ideas.append(
                     "**PERF:** Remove `--wait` argument and any subsequent invocation of `sl check-analysis` to perform scans in asynchronous mode."
@@ -606,7 +610,7 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
                 ideas.append(
                     "**APP:** This repo could be a library. Ensure only applications are scanned with ShiftLeft."
                 )
-            if sources and not sinks and "lib" in app_name:
+            if ("lib" in app_name or "common" in app_name) and not sinks:
                 library_reco = True
                 ideas.append(
                     "**APP:** This repo is a library. Ensure only applications are scanned with ShiftLeft."
@@ -936,6 +940,9 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     + f"\n- After line {first_location_lineno} in {first_location_fname}"
                 )
             http_routes = list(http_routes)
+            source_variable = ""
+            if tracked_list:
+                source_variable = tracked_list[0]
             if (
                 source_method == sink_method or not http_routes
             ) and "lambda" not in source_method:
@@ -948,12 +955,13 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 if (
                     not http_routes
                     and "lambda" not in source_method
-                    and not variable_detected in ("event", "ctx")
+                    and not variable_detected in ("event", "ctx", "request", "headers")
+                    and not source_variable in ("event", "ctx", "request", "headers")
                     and app_language not in ("python")
                 ):
                     taint_suggestion = (
                         (
-                            "There are no attacker-reachable HTTP routes for this finding."
+                            f"There are no attacker-reachable HTTP routes for this finding {source_variable}."
                         )
                         if not suppressable_finding
                         else ""
