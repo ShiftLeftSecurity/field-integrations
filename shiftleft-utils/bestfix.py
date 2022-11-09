@@ -167,7 +167,7 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
         if variable_detected:
             category_suggestion = f"""Use an allowlist for approved commands and compare the variables `{variable_detected}` against this list in a new validation method. Then, specify this validation method name in the remediation config file."""
         else:
-            category_suggestion = "This is a false positive."
+            category_suggestion = "This is an informational finding."
             suppressable_finding = True
     elif category == "SQL Injection":
         category_suggestion = f"""Use any alternative SQL method with builtin parameterization capability. Parameterize and validate the variables `{variable_detected}` before invoking the SQL method `{sink_method}`."""
@@ -177,7 +177,7 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
         category_suggestion = f"""Use an allowlist of safe file or URL locations and compare `{variable_detected}` against this list before invoking the method `{sink_method}`."""
     elif category in ("Deserialization", "Deserialization of HTTP data"):
         if sink_method in ("json.loads"):
-            category_suggestion = f"""This is likely a false positive since the sink method `{sink_method}` is safe by default."""
+            category_suggestion = f"""This is an informational finding since the sink method `{sink_method}` is safe by default."""
             suppressable_finding = True
         else:
             category_suggestion = f"""Follow security best practices to configure and use the deserialization library in a safe manner. Depending on the version of the library used, this vulnerability could be difficult to exploit."""
@@ -187,10 +187,10 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
         "Potential Server-Side Request Forgery",
     ):
         if variable_detected == variable_detected.upper():
-            category_suggestion = f"""This is likely a false positive since the variable `{variable_detected}` could either be a constant or belong to a trusted endpoint."""
+            category_suggestion = f"""This is an informational finding since the variable `{variable_detected}` could either be a constant or belong to a trusted endpoint."""
             suppressable_finding = True
         elif "__POLYMORPHIC__" in sink_method:
-            category_suggestion = f"""This is likely a false positive since the code could be performing an internal redirection or an API call. Specify `{sink_method}` in your remediation config to suppress this finding."""
+            category_suggestion = f"""This is an informational finding since the code could be performing an internal redirection or an API call. Specify `{sink_method}` in your remediation config to suppress this finding."""
             suppressable_finding = True
         else:
             category_suggestion = f"""Validate and ensure `{variable_detected}` does not contain URLs and other malicious input. For externally injected values, compare `{variable_detected}` against an allowlist of approved URL domains or service IP addresses. Then, specify this validation method name or the source method `{source_method}` in the remediation config file to suppress this finding."""
@@ -198,7 +198,7 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
         category_suggestion = f"""Follow security best practices to configure and use the XML library in a safe manner."""
     elif category in ("Cross-Site Scripting", "XSS"):
         if source_method == "^__node^.process.%env":
-            category_suggestion = f"""This is likely a false positive since reading an environment variable using `process.env` is safe by default."""
+            category_suggestion = f"""This is an informational finding since reading an environment variable using `process.env` is safe by default."""
             suppressable_finding = True
         else:
             category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before returning via HTML or API response."""
@@ -215,20 +215,20 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
             )
     elif category == "Prototype Pollution":
         if '"' in variable_detected or "=" in variable_detected:
-            category_suggestion = "This is a false positive."
+            category_suggestion = "This is an informational finding."
             suppressable_finding = True
         elif sink_method in ("Object.assign", "JSON.parse"):
-            category_suggestion = f"""This is likely a false positive since the sink method `{sink_method}` is safe by default."""
+            category_suggestion = f"""This is an informational finding since the sink method `{sink_method}` is safe by default."""
             suppressable_finding = True
         else:
-            category_suggestion = f"""This could be a false positive depending on the sink method `{sink_method}`. Look for the use of recursive functions that performs any object-level assignment."""
+            category_suggestion = f"""This could be an informational finding depending on the sink method `{sink_method}`. Look for the use of recursive functions that performs any object-level assignment."""
     elif category == "Timing Attack":
         if (
             '"' in variable_detected
             or "=" in variable_detected
             or not variable_detected
         ):
-            category_suggestion = "This is a false positive."
+            category_suggestion = "This is an informational finding."
             suppressable_finding = True
         else:
             category_suggestion = f"""This finding is relevant only if the variable `{variable_detected}` holds security-sensitive value. Ignore this finding otherwise."""
@@ -241,6 +241,7 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
         "Race Condition",
         "Security Misconfiguration",
         "Invalid Certificate Validation",
+        "Error Handling",
     ):
         if variable_detected:
             category_suggestion = f"""This finding is based on best practices. Validate `{variable_detected}` for this context before invoking the sink method `{sink_method}`."""
@@ -1015,7 +1016,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 elif variable_detected:
                     taint_suggestion = f"**Taint:** Variable `{variable_detected}`."
                 preface_text = (
-                    "This is likely a security best practices type finding or a false positive."
+                    "This is likely a security best practices type finding or an informational finding."
                     if not suppressable_finding
                     else ""
                 )
@@ -1091,7 +1092,7 @@ Include these detected CHECK methods in your remediation config to suppress this
                     ignorables_suggestion = f"""To ignore specific directory from analysis, pass `-- --ignore-paths [<ignore_path_1>] [<ignore_path_2>]` at the end of the `sl analyze` command."""
             # Fallback
             if not best_fix:
-                best_fix = f"""{"This is likely a security best practices type finding." if app_language in ("js", "python") else "This is likely a security best practices type finding or a false positive."}.
+                best_fix = f"""{"This is likely a security best practices type finding." if app_language in ("js", "python") else "This is likely a security best practices type finding or an informational finding."}.
 
 **Remediation suggestions:**\n
 Specify the sink method in your remediation config to suppress this finding.\n
