@@ -249,9 +249,19 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
             category_suggestion = f"This finding is based on best practices. Please refer to the description for further information."
         suppressable_finding = True
     elif category in ("CRLF Injection", "Header Injection"):
-        category_suggestion = f"""Validate and ensure `{variable_detected}` does not contain any malicious input prior to invoking the sink `{sink_method}`."""
+        if variable_detected:
+            category_suggestion = f"""Validate and ensure `{variable_detected}` does not contain any malicious input prior to invoking the sink `{sink_method}`."""
+        else:
+            category_suggestion = (
+                f"Please refer to the description for further information."
+            )
     elif category == "Open Redirect":
-        category_suggestion = f"""Validate and ensure `{variable_detected}` does not contain any malicious URL or protocol prior to invoking the sink `{sink_method}`. Use an allowlist to verify the URL redirection domains."""
+        if variable_detected:
+            category_suggestion = f"""Validate and ensure `{variable_detected}` does not contain any malicious URL or protocol prior to invoking the sink `{sink_method}`. Use an allowlist to verify the URL redirection domains."""
+        else:
+            category_suggestion = (
+                f"Please refer to the description for further information."
+            )
     return category_suggestion, suppressable_finding
 
 
