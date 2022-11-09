@@ -19,12 +19,14 @@ from packaging.version import parse
 from rich import box
 from rich.console import Console
 from rich.markdown import Markdown
+from rich.markup import escape
 from rich.panel import Panel
 from rich.progress import Progress
 from rich.syntax import Syntax
 from rich.table import Table
-from rich.theme import Theme
 from rich.terminal_theme import MONOKAI
+from rich.theme import Theme
+from rich.tree import Tree
 from six import moves
 
 import config
@@ -686,6 +688,17 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
         console.print(f"Internal id for this scan: {scan.get('internal_id')}\n")
 
 
+def file_locations_tree(category, files_loc_list, full_path_prefix):
+    tree = Tree(
+        f":spiral_notepad: {category}",
+        guide_style="bold bright_blue",
+    )
+    for fl in files_loc_list:
+        aloc = f"[link={to_local_path(full_path_prefix, fl)}]{escape(fl)}[/link]"
+        tree.add(aloc)
+    return tree
+
+
 def find_best_fix(org_id, app, scan, findings, source_dir):
     annotated_findings = []
     if not findings:
@@ -699,9 +712,10 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
         expand=True,
     )
     table.add_column("ID", justify="right", style="cyan")
-    table.add_column("Category")
+    if CI_MODE or "win" in sys.platform:
+        table.add_column("Category")
     table.add_column(
-        "Locations",
+        "Vulnerable Flow",
         overflow="fold",
         max_width=160 if "win" in sys.platform and not CI_MODE else 50,
     )
@@ -1012,7 +1026,7 @@ Specify the sink method in your remediation config to suppress this finding.\n
                     category, variable_detected, source_method, sink_method
                 )
                 best_fix = f"""**Taint:** Parameter `{variable_detected}` in the method `{methods_list[-1]}`\n
-{category_suggestion if category_suggestion else f"Validate or Sanitize the parameter `{variable_detected}` before invoking the sink `{sink_method}`"}
+{category_suggestion if category_suggestion else f"Validate or sanitize the parameter `{variable_detected}` before invoking the sink `{sink_method}`"}
 
 **Fix locations:**\n
 {location_suggestion}
@@ -1030,7 +1044,7 @@ Specify the sink method in your remediation config to suppress this finding.\n
                     category, variable_detected, source_method, sink_method
                 )
                 best_fix = f"""**Taint:** {Parameter_str} `{variable_detected}` in the method `{methods_list[-1]}`\n
-{category_suggestion if category_suggestion else f"Validate or Sanitize the {Parameter_str} `{variable_detected}` before invoking the sink `{sink_method}`"}
+{category_suggestion if category_suggestion else f"Validate or sanitize the {Parameter_str} `{variable_detected}` before invoking the sink `{sink_method}`"}
 
 **Fix locations:**\n
 {location_suggestion}
@@ -1041,7 +1055,7 @@ Specify the sink method in your remediation config to suppress this finding.\n
                     and not tracked_list
                     and not category_suggestion
                 ):
-                    best_fix = f"""Validate or Sanitize user provided input before invoking the sink method `{sink_method}`
+                    best_fix = f"""Validate or sanitize user provided input before invoking the sink method `{sink_method}`
 """
                 if not suppressable_finding:
                     best_fix = (
@@ -1095,26 +1109,40 @@ Specify the sink method in your remediation config to suppress this finding.\n
                     f"{comment_str} {last_location_fname}\n\n" + code_snippet,
                     app_language,
                 )
-            file_locations_md = Markdown(
-                MD_LIST_MARKER
-                + MD_LIST_MARKER.join(
-                    [
-                        f"[{fl}]({to_local_path(full_path_prefix, fl)})"
-                        for fl in files_loc_list
-                    ]
+            file_locations_md = ""
+            if CI_MODE:
+                file_locations_md = Markdown(
+                    MD_LIST_MARKER
+                    + MD_LIST_MARKER.join(
+                        [
+                            f"[{fl}]({to_local_path(full_path_prefix, fl)})"
+                            for fl in files_loc_list
+                        ]
+                    )
                 )
-            )
-            if "win" in sys.platform and not CI_MODE:
+            elif "win" in sys.platform and not CI_MODE:
                 file_locations_md = "\n\n".join(
                     [f"{to_local_path(full_path_prefix, fl)}" for fl in files_loc_list]
                 )
-            table.add_row(
-                f"""[link={deep_link}]{afinding.get("id")}[/link]""",
-                afinding.get("category"),
-                file_locations_md,
-                fmt_code_snippet,
-                Markdown(best_fix),
-            )
+            else:
+                file_locations_md = file_locations_tree(
+                    afinding.get("category"), files_loc_list, full_path_prefix
+                )
+            if CI_MODE or "win" in sys.platform:
+                table.add_row(
+                    f"""[link={deep_link}]{afinding.get("id")}[/link]""",
+                    afinding.get("category"),
+                    file_locations_md,
+                    fmt_code_snippet,
+                    Markdown(best_fix),
+                )
+            else:
+                table.add_row(
+                    f"""[link={deep_link}]{afinding.get("id")}[/link]""",
+                    file_locations_md,
+                    fmt_code_snippet,
+                    Markdown(best_fix),
+                )
             annotated_findings.append(
                 {
                     "id": afinding.get("id"),
