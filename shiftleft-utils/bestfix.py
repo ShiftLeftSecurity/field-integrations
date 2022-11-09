@@ -770,6 +770,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
         methods_list = []
         check_methods = set()
         http_routes = set()
+        event_routes = set()
         package_url = ""
         cve = ""
         oss_internal_id = ""
@@ -807,9 +808,15 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 for pt in parameter_tags
                 if pt.get("key", "") in (9, 31) and pt.get("value")
             ]
-            # Mark all routes as vulnerable if the header is attacker-controlled
-            if "httpHeader" in ptags or "httpClient" in ptags:
-                http_routes.add("*")
+            # Try hard to find http and event routes
+            if not http_routes:
+                for all_rt in config.all_routes_tags:
+                    if all_rt in ptags:
+                        http_routes.add("*")
+            if not event_routes:
+                for all_et in config.all_events_tags:
+                    if all_et in ptags:
+                        event_routes.add("*")
             if file_name == "N/A" or not location.get("line_number"):
                 continue
             # Skip getter/setter methods in csharp
@@ -848,6 +855,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 and "filter" in lower_file_name
                 or "middleware" in lower_file_name
                 or "route" in lower_file_name
+                or "controller" in lower_file_name
             ):
                 http_routes.add("*")
             if variableInfo:
@@ -1013,11 +1021,12 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     + f"\n- After line {first_location_lineno} in {first_location_fname}"
                 )
             http_routes = list(http_routes)
+            event_routes = list(event_routes)
             source_variable = ""
             if tracked_list:
                 source_variable = tracked_list[0]
             if (
-                source_method == sink_method or not http_routes
+                source_method == sink_method or (not http_routes and not event_routes)
             ) and "lambda" not in source_method:
                 if not variable_detected and tracked_list:
                     variable_detected = tracked_list[-1]
@@ -1027,6 +1036,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 taint_suggestion = ""
                 if (
                     not http_routes
+                    and not event_routes
                     and "lambda" not in source_method
                     and not variable_detected in ("event", "ctx", "request", "headers")
                     and not source_variable in ("event", "ctx", "request", "headers")
@@ -1052,7 +1062,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     else ""
                 )
                 if snippet_list:
-                    preface_text = "This is a security best practices type finding. Please refer to the description for further information."
+                    preface_text = "This is a security best practices type finding."
                 best_fix = f"""{preface_text}
 {taint_suggestion}
 {category_suggestion}
