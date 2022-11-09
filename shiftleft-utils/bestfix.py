@@ -798,6 +798,15 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
             if method_name:
                 method_name = method_name.split(":")[0]
             short_method_name = location.get("short_method_name")
+            parameter_tags = df.get("parameter_tags", [])
+            ptags = [
+                pt.get("value")
+                for pt in parameter_tags
+                if pt.get("key", "") in (9, 31) and pt.get("value")
+            ]
+            # Mark all routes as vulnerable if the header is attacker-controlled
+            if "httpHeader" in ptags or "httpClient" in ptags:
+                http_routes.add("*")
             if file_name == "N/A" or not location.get("line_number"):
                 continue
             # Skip getter/setter methods in csharp
