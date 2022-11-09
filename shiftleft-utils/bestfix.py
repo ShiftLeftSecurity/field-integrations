@@ -24,6 +24,7 @@ from rich.progress import Progress
 from rich.syntax import Syntax
 from rich.table import Table
 from rich.theme import Theme
+from rich.terminal_theme import MONOKAI
 from six import moves
 
 import config
@@ -1360,7 +1361,7 @@ def build_args():
         dest="rformat",
         help="Report format",
         default="html",
-        choices=["html"],
+        choices=["html", "svg"],
     )
     parser.add_argument(
         "--troubleshoot",
@@ -1431,5 +1432,9 @@ if __name__ == "__main__":
     end_time = time.monotonic_ns()
     total_time_sec = round((end_time - start_time) / 1000000000, 2)
     if args.rformat == "html":
-        console.save_html(report_file)
+        console.save_html(report_file, theme=MONOKAI)
+        console.print(f"HTML report saved to {report_file}")
+    elif args.rformat == "svg":
+        report_file = report_file.replace(".html", ".svg")
+        console.save_svg(report_file, theme=MONOKAI)
         console.print(f"HTML report saved to {report_file}")
