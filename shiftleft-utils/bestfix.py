@@ -712,7 +712,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
         expand=True,
     )
     table.add_column("ID", justify="right", style="cyan")
-    if CI_MODE or "win" in sys.platform:
+    if CI_MODE:
         table.add_column("Category")
     table.add_column(
         "Vulnerable Flow",
@@ -1120,15 +1120,15 @@ Specify the sink method in your remediation config to suppress this finding.\n
                         ]
                     )
                 )
-            elif "win" in sys.platform and not CI_MODE:
-                file_locations_md = "\n\n".join(
-                    [f"{to_local_path(full_path_prefix, fl)}" for fl in files_loc_list]
-                )
+            # elif "win" in sys.platform and not CI_MODE:
+            #     file_locations_md = "\n\n".join(
+            #         [f"{to_local_path(full_path_prefix, fl)}" for fl in files_loc_list]
+            #     )
             else:
                 file_locations_md = file_locations_tree(
                     afinding.get("category"), files_loc_list, full_path_prefix
                 )
-            if CI_MODE or "win" in sys.platform:
+            if CI_MODE:
                 table.add_row(
                     f"""[link={deep_link}]{afinding.get("id")}[/link]""",
                     afinding.get("category"),
