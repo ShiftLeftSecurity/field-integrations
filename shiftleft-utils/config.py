@@ -62,3 +62,9 @@ check_labels_list = (
     "authenticate",
     "authorize",
 )
+
+trimmable_ci_paths = (
+    "D:\\a\\1\\s\\",
+    "C:\\",
+    "D:\\",
+)

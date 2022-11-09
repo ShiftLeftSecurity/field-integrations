@@ -897,7 +897,9 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 )
             loc_line = f'{location.get("file_name")}:{location.get("line_number")}'
             # Remove erroneous CI prefixes
-            loc_line = unquote(loc_line.replace("D:\\a\\1\\s\\", ""))
+            for tci in config.trimmable_ci_paths:
+                loc_line = loc_line.replace(tci, "")
+            loc_line = unquote(loc_line)
             if loc_line not in files_loc_list:
                 files_loc_list.append(loc_line)
         if dataflows and dataflows[-1]:
@@ -939,14 +941,24 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 ].append(afinding.get("id"))
             tmpA = last_location.split(":")
             tmpB = first_location.split(":")
-            last_location_fname = tmpA[0]
             last_location_lineno = 1
             first_location_lineno = 1
             if tmpA[-1]:
                 last_location_lineno = int(tmpA[-1])
-            first_location_fname = tmpB[0]
+            if len(tmpA) == 2:
+                last_location_fname = tmpA[0]
+            else:
+                last_location_fname = last_location.replace(
+                    f":{last_location_lineno}", ""
+                )
             if tmpB[-1]:
                 first_location_lineno = int(tmpB[-1])
+            if len(tmpB) == 2:
+                first_location_fname = tmpB[0]
+            else:
+                first_location_fname = first_location.replace(
+                    f":{first_location_lineno}", ""
+                )
             code_snippet, variable_detected, full_path = get_code(
                 source_dir, app, last_location_fname, last_location_lineno, tracked_list
             )
