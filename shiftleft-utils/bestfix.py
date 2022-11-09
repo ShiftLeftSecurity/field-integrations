@@ -504,6 +504,7 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
                 )
     sizes = summary.get("sizes")
     size_based_reco = False
+    perf_based_reco = False
     if sizes:
         files = sizes.get("files", 0)
         lines = sizes.get("lines", 0)
@@ -540,6 +541,7 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
                 if app_language == "go" and "./..." in sl_cmd_str:
                     size_suggestion = "Scan only the required module using `.` or `module name` syntax."
             if size_suggestion:
+                perf_based_reco = True
                 ideas.append(
                     f"**PERF:** Scan time was over {math.floor(scan_duration_ms / (60 * 1000))} mins.\n{size_suggestion}"
                 )
@@ -696,7 +698,8 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
                 expand=False,
             )
         )
-        console.print(f"Internal id for this scan: {scan.get('internal_id')}\n")
+        if perf_based_reco:
+            console.print(f"Internal id for this scan: {scan.get('internal_id')}\n")
 
 
 def file_locations_tree(category, files_loc_list, full_path_prefix):
@@ -838,6 +841,15 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
             route_value = mtags[0] if mtags else None
             if route_value:
                 http_routes.add(route_value)
+            # Look for middlewares, filters that can operate on all routes
+            lower_file_name = file_name.lower()
+            if (
+                not http_routes
+                and "filter" in lower_file_name
+                or "middleware" in lower_file_name
+                or "route" in lower_file_name
+            ):
+                http_routes.add("*")
             if variableInfo:
                 parameter = variableInfo.get("Parameter")
                 if not parameter:
@@ -1040,7 +1052,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     else ""
                 )
                 if snippet_list:
-                    preface_text = "This is a security best practices type finding."
+                    preface_text = "This is a security best practices type finding. Please refer to the description for further information."
                 best_fix = f"""{preface_text}
 {taint_suggestion}
 {category_suggestion}
