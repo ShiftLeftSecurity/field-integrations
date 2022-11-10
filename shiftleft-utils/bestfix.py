@@ -242,7 +242,6 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
         "Security Misconfiguration",
         "Invalid Certificate Validation",
         "Error Handling",
-        "Denial of Service",
     ):
         if variable_detected:
             category_suggestion = f"""This finding is based on best practices. Validate `{variable_detected}` for this context before invoking the sink method `{sink_method}`."""
@@ -627,7 +626,11 @@ def troubleshoot_app(
                 ideas.append(
                     "Pass `./...` to scan this go app by including all the sub-projects."
                 )
-            if app_language == "csharp" and not verbose_used:
+            if (
+                app_language == "csharp"
+                and not verbose_used
+                and not multiple_dep_projects_used
+            ):
                 ideas.append(
                     "Ensure the solution is restored or built successfully prior to invoking ShiftLeft."
                 )
@@ -704,14 +707,15 @@ def troubleshoot_app(
             or not sinks
             or not int(sinks)
         ):
-            if not library_reco and metadata_artifact:
-                ideas.append(
-                    "**SUPPORT:** This app might be using libraries that are not supported yet. Please contact ShiftLeft support to manually review this app."
-                )
-            elif "lib" not in app_name and metadata_artifact:
-                ideas.append(
-                    "**SUPPORT:** Alternatively, this app might be using private dependencies or third-party libraries that are not supported yet. Please contact ShiftLeft support to manually review this app."
-                )
+            if not multiple_dep_projects_used:
+                if not library_reco and metadata_artifact:
+                    ideas.append(
+                        "**SUPPORT:** This app might be using libraries that are not supported yet. Please contact ShiftLeft support to manually review this app."
+                    )
+                elif "lib" not in app_name and metadata_artifact:
+                    ideas.append(
+                        "**SUPPORT:** Alternatively, this app might be using private dependencies or third-party libraries that are not supported yet. Please contact ShiftLeft support to manually review this app."
+                    )
         if total and int(total) < 20:
             ideas.append(f"This is a small app with only {total} methods.")
     token = summary.get("token")
