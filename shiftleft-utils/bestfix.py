@@ -242,6 +242,7 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
         "Security Misconfiguration",
         "Invalid Certificate Validation",
         "Error Handling",
+        "Denial of Service",
     ):
         if variable_detected:
             category_suggestion = f"""This finding is based on best practices. Validate `{variable_detected}` for this context before invoking the sink method `{sink_method}`."""
@@ -412,7 +413,9 @@ def find_best_oss_fix(
         console.print(table)
 
 
-def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
+def troubleshoot_app(
+    client, org_id, app_name, scan, findings, source_dir, annotated_findings
+):
     ideas = []
     run_info = get_scan_run(client, org_id, scan, app_name)
     app_language = scan.get("language", "java")
@@ -423,6 +426,15 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
     build_machine = environment.get("machine", [])
     lang_args_used = False
     verbose_used = False
+    remediation_used = False
+    suppressable_count = 0
+    check_methods_count = 0
+    multiple_dep_projects_used = False
+    for af in annotated_findings:
+        if af.get("suppressable_finding"):
+            suppressable_count += 1
+        if af.get("check_methods"):
+            check_methods_count += len(af.get("check_methods").split("\n"))
     if sl_cmd:
         sl_cmd_str = " ".join(sl_cmd)
         if "--tag" not in sl_cmd:
@@ -441,6 +453,15 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
             ideas.append(
                 "**CLI:** `--sca` flag is no longer required for the `sl analyze` command."
             )
+        if "--dotnet-core" in sl_cmd:
+            if "sl.exe" in sl_cmd_str:
+                ideas.append(
+                    "**CLI:** `--dotnet-core` flag is deprecated and no longer required for the `sl analyze` command on Windows."
+                )
+            else:
+                ideas.append(
+                    "**CLI:** `--dotnet-core` flag is deprecated and no longer required for the `sl analyze` command."
+                )
         if "--oss-recursive" in sl_cmd:
             ideas.append(
                 "**CLI:** `--oss-recursive` flag is set to true by default and is no longer required for the `sl analyze` command."
@@ -449,12 +470,29 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
             ideas.append(
                 "**CLI:** `--force` functionality is no longer available. This flag could be removed from the `sl analyze` command."
             )
+        if "--remediation" in sl_cmd:
+            remediation_used = True
         if "--" in sl_cmd:
             lang_args_used = True
         if "--verbose" in sl_cmd or "--trace-all" in sl_cmd:
             verbose_used = True
+        if sl_cmd_str.count("--dep") > 1:
+            multiple_dep_projects_used = True
+            if app_language == "csharp":
+                if ".sln" not in sl_cmd_str:
+                    ideas.append(
+                        "**CLI:** Consider scanning the solution file. To ignore test projects during analysis, pass `-- --ignore-tests` at the end of the `sl analyze` command."
+                    )
+                else:
+                    ideas.append(
+                        "**CLI:** `--dep` argument cannot be used while scanning a solution file. Please refer to https://docs.shiftleft.io/ngsast/analyzing-applications/c-sharp#apps-utilizing-msbuild-project-files to setup MSBuild project files for scanning this app."
+                    )
+            if app_language == "java":
+                ideas.append(
+                    "**CLI:** If the build target directory contains multiple jars, use `jar cvf app.jar -C $TARGET_DIR .` command to create a single larger jar for scanning."
+                )
         if app_language == "java":
-            if sl_cmd_str.count(".jar") > 1:
+            if sl_cmd_str.count(".jar") > 1 and "--dep" not in sl_cmd_str:
                 ideas.append(
                     "**CLI:** Only a single jar or war file could be passed to `sl analyze` for java applications.\nIf the build target directory contains multiple jars, use `jar cvf app.jar -C $TARGET_DIR .` command to create a single larger jar for scanning."
                 )
@@ -505,12 +543,29 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
     sizes = summary.get("sizes")
     size_based_reco = False
     perf_based_reco = False
+    uploadRequest = summary.get("upload-request", {})
+    metadata_artifact = uploadRequest.get("metadata_artifact", [])
+    container_sbom_found = False
+    sca_sbom_found = False
+    for mart in metadata_artifact:
+        if mart.get("metadata_file_name", ""):
+            if "container_bom.xml" in mart.get("metadata_file_name"):
+                container_sbom_found = True
+            elif "-bom.xml" in mart.get("metadata_file_name"):
+                sca_sbom_found = True
+            elif not remediation_used and "remediation" in mart.get(
+                "metadata_file_name"
+            ):
+                remediation_used = True
     if sizes:
         files = sizes.get("files", 0)
         lines = sizes.get("lines", 0)
         binsize = sizes.get("binsize", 0)
         low_findings_count = (
-            lines and int(lines) > 2000 and len(findings) < math.ceil(int(lines) / 1000)
+            lines
+            and int(lines) > 2000
+            and len(findings) < math.ceil(int(lines) / 1000)
+            and not remediation_used
         )
         if app_language == "java" and binsize and int(binsize) < 4000:
             ideas.append(
@@ -607,6 +662,7 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
         build_machine
         and app_language in ("java", "csharp", "python", "go")
         and not size_based_reco
+        and perf_based_reco
     ):
         num_cpu = build_machine.get("cpu", {}).get("num", "")
         memory_total = build_machine.get("memory", {}).get("total", "")
@@ -623,8 +679,6 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
                 f"**CI:** Ensure the build machine has a minimum of 4096 MB RAM to reduce CPG generation time. Found only {memory_total} MB."
             )
     methods = summary.get("methods")
-    uploadRequest = summary.get("upload-request", {})
-    metadata_artifact = uploadRequest.get("metadata_artifact", {})
     library_reco = False
     if methods and not size_based_reco:
         ios = methods.get("ios", 0)
@@ -689,6 +743,15 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
         ideas.append(
             f"""**iSCA:** Software Bill-of-Materials (SBoM) was not generated correctly for this project.\n{sbom_idea}"""
         )
+    if suppressable_count or check_methods_count:
+        if remediation_used:
+            ideas.append(
+                f"""**Remediation:** Review this best fix report and update the existing remediation config to suppress additional findings."""
+            )
+        else:
+            ideas.append(
+                f"""**Remediation:** Review this best fix report and create a remediation config to suppress additional findings."""
+            )
     if ideas:
         console.print("\n")
         console.print(
@@ -702,9 +765,10 @@ def troubleshoot_app(client, org_id, app_name, scan, findings, source_dir):
             console.print(f"Internal id for this scan: {scan.get('internal_id')}\n")
 
 
-def file_locations_tree(category, files_loc_list, full_path_prefix):
+def file_locations_tree(internal_id, category, files_loc_list, full_path_prefix):
+    conclusion_name = internal_id.split("/")[0]
     tree = Tree(
-        f":spiral_notepad: {category}",
+        f"{category} ({conclusion_name})",
         guide_style="bold bright_blue",
     )
     for fl in files_loc_list:
@@ -731,7 +795,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
     table.add_column(
         "Vulnerable Flow",
         overflow="fold",
-        max_width=160 if "win" in sys.platform and not CI_MODE else 50,
+        max_width=160 if "win" in sys.platform and not CI_MODE else 60,
     )
     table.add_column("Code Snippet", overflow="fold")
     table.add_column("Comment", overflow="fold")
@@ -856,6 +920,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 or "middleware" in lower_file_name
                 or "route" in lower_file_name
                 or "controller" in lower_file_name
+                or "service" in lower_file_name
             ):
                 http_routes.add("*")
             if variableInfo:
@@ -1180,7 +1245,10 @@ Specify the sink method in your remediation config to suppress this finding.\n
             #     )
             else:
                 file_locations_md = file_locations_tree(
-                    afinding.get("category"), files_loc_list, full_path_prefix
+                    afinding.get("internal_id"),
+                    afinding.get("category"),
+                    files_loc_list,
+                    full_path_prefix,
                 )
             if CI_MODE:
                 table.add_row(
@@ -1217,6 +1285,7 @@ Specify the sink method in your remediation config to suppress this finding.\n
                     "check_methods": "\n".join(check_methods),
                     "code_snippet": code_snippet.replace("\n", "\\n"),
                     "best_fix": best_fix.replace("\n", "\\n"),
+                    "suppressable_finding": suppressable_finding,
                 }
             )
         ###########
@@ -1398,7 +1467,13 @@ def export_report(
                 if troubleshoot:
                     if scan:
                         troubleshoot_app(
-                            client, org_id, app_name, scan, findings, source_dir
+                            client,
+                            org_id,
+                            app_name,
+                            scan,
+                            findings,
+                            source_dir,
+                            annotated_findings,
                         )
                     else:
                         console.print(
