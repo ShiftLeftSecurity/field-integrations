@@ -217,7 +217,7 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
         if '"' in variable_detected or "=" in variable_detected:
             category_suggestion = "This is an informational finding."
             suppressable_finding = True
-        elif sink_method in ("Object.assign", "JSON.parse"):
+        elif sink_method in ("JSON.parse"):
             category_suggestion = f"""This is an informational finding since the sink method `{sink_method}` is safe by default."""
             suppressable_finding = True
         else:
