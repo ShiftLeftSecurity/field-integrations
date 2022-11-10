@@ -51,7 +51,7 @@ def process_app(progress, task, org_id, report_file, app, detailed, branch):
     )
     r = None
     try:
-        client = httpx.Client(http2="win" not in sys.platform)
+        client = httpx.Client(http2="win32" not in sys.platform)
         r = client.get(findings_url, headers=headers, timeout=config.timeout)
     except httpx.RequestError as exc:
         console.print(f"""\nWARN: Unable to retrieve findings for {app_name}""")

@@ -145,7 +145,7 @@ def get_code(source_dir, app, fname, lineno, variables, max_lines=3, tabbed=Fals
 
 def to_local_path(full_path_prefix, fl):
     full_file_path = f"{full_path_prefix}{fl}"
-    if "win" in sys.platform:
+    if "win32" in sys.platform:
         full_file_path = "/" + full_file_path.replace("\\", "/")
     return f"file://{full_file_path}"
 
@@ -799,7 +799,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
     table.add_column(
         "Vulnerable Flow",
         overflow="fold",
-        max_width=160 if "win" in sys.platform and not CI_MODE else 60,
+        max_width=160 if "win32" in sys.platform and not CI_MODE else 60,
     )
     table.add_column("Code Snippet", overflow="fold")
     table.add_column("Comment", overflow="fold")
@@ -1243,7 +1243,7 @@ Specify the sink method in your remediation config to suppress this finding.\n
                         ]
                     )
                 )
-            # elif "win" in sys.platform and not CI_MODE:
+            # elif "win32" in sys.platform and not CI_MODE:
             #     file_locations_md = "\n\n".join(
             #         [f"{to_local_path(full_path_prefix, fl)}" for fl in files_loc_list]
             #     )
@@ -1455,7 +1455,7 @@ def export_report(
         limits = httpx.Limits(
             max_keepalive_connections=20, max_connections=100, keepalive_expiry=120
         )
-        with httpx.Client(http2="win" not in sys.platform, limits=limits) as client:
+        with httpx.Client(http2="win32" not in sys.platform, limits=limits) as client:
             for app in app_list:
                 app_id = app.get("id")
                 app_name = app.get("name")
