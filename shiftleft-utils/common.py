@@ -2,6 +2,7 @@ import logging
 import os
 import urllib.parse
 
+import httpx
 import jwt
 import requests
 from rich.console import Console
@@ -159,3 +160,19 @@ def extract_org_id(token):
     except Exception as e:
         print("Unable to parse the environment variable SHIFTLEFT_ACCESS_TOKEN")
     return None
+
+
+def get_scan_run(client, org_id, scan, app_name):
+    scan_run_url = f"""https://{config.SHIFTLEFT_API_HOST}/api/v4/private/orgs/{org_id}/apps/{app_name}/scans/{scan.get("id")}/runs?fields=environment,isLibrary,scan_time,scan_duration_ms,sizes,sl,token,upload-request,methods"""
+    try:
+        r = client.get(scan_run_url, headers=headers, timeout=config.timeout)
+        if r.status_code == 200:
+            raw_response = r.json()
+            if raw_response and raw_response.get("response"):
+                response = raw_response.get("response")
+                return response
+    except httpx.ReadTimeout as e:
+        print(
+            f"Unable to retrieve scan run info for {app_name} due to timeout after {config.timeout} seconds"
+        )
+    return {}

@@ -49,6 +49,12 @@ Collect summary stats for your organization
 python3 stats.py
 ```
 
+Include token name in the stats by querying runtime information api.
+
+```
+python3 stats.py --include-run-info
+```
+
 Collect detailed stats for your organization including sources, sinks, file locations, method names, and routes.
 
 ```bash

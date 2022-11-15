@@ -22,6 +22,7 @@ from common import (
     get_all_apps,
     get_findings_counts_url,
     get_findings_url,
+    get_scan_run,
     headers,
 )
 
@@ -35,7 +36,9 @@ def to_arr(counts_dict):
     return arr
 
 
-def process_app(progress, task, org_id, report_file, app, detailed, branch):
+def process_app(
+    progress, task, org_id, report_file, app, detailed, branch, include_run_info
+):
     start = time.time()
     app_id = app.get("id")
     app_name = app.get("name")
@@ -65,6 +68,13 @@ def process_app(progress, task, org_id, report_file, app, detailed, branch):
                     f"""\nINFO: No scans found for {app_name} {branch if branch else ""}"""
                 )
                 return []
+            run_info = {}
+            token_name = ""
+            if include_run_info:
+                run_info = get_scan_run(client, org_id, scan, app_name)
+                run_summary = run_info.get("summary", {})
+                run_token = run_summary.get("token", {})
+                token_name = run_token.get("owner", "")
             tags = app.get("tags")
             app_group = ""
             app_branch = scan.get("tags", {}).get("branch", "")
@@ -277,6 +287,7 @@ def process_app(progress, task, org_id, report_file, app, detailed, branch):
                 container_low_count,
                 "\\n".join(methods_list),
                 "\\n".join(routes_list),
+                token_name,
             ]
     else:
         console.print(f"""WARN: Unable to retrieve findings for {app_name}""")
@@ -318,6 +329,7 @@ def write_to_csv(report_file, row):
                 "Container Low Count",
                 "Methods",
                 "Routes",
+                "Token name",
             ]
             reportwriter.writerow(csv_cols)
     elif row:
@@ -331,10 +343,9 @@ def write_to_csv(report_file, row):
             reportwriter.writerow(row)
 
 
-def collect_stats_parallel(org_id, report_file, detailed, branch):
+def collect_stats_parallel(org_id, report_file, detailed, branch, include_run_info):
     """Method to collect stats for all apps to a csv"""
     apps_list = get_all_apps(org_id)
-    attention_apps = 0
     if not apps_list:
         console.print("No apps were found in this organization")
         return
@@ -360,7 +371,14 @@ def collect_stats_parallel(org_id, report_file, detailed, branch):
             rows = []
             for app in capps:
                 row = dask.delayed(process_app)(
-                    progress, task, org_id, report_file, app, detailed, branch
+                    progress,
+                    task,
+                    org_id,
+                    report_file,
+                    app,
+                    detailed,
+                    branch,
+                    include_run_info,
                 )
                 rows.append(row)
             rows = dask.compute(*rows)
@@ -390,9 +408,16 @@ def build_args():
     )
     parser.add_argument(
         "--detailed",
-        action=argparse.BooleanOptionalAction,
+        action="store_true",
         dest="detailed",
         help="Detailed stats including sources, sinks and file location",
+        default=False,
+    )
+    parser.add_argument(
+        "--include-run-info",
+        action="store_true",
+        dest="include_run_info",
+        help="Run info includes runtime information, tokens and scan statistics",
         default=False,
     )
     return parser.parse_args()
@@ -414,7 +439,9 @@ def main():
     console.print(config.ngsast_logo)
     args = build_args()
     report_file = args.report_file
-    collect_stats_parallel(org_id, report_file, args.detailed, args.branch)
+    collect_stats_parallel(
+        org_id, report_file, args.detailed, args.branch, args.include_run_info
+    )
 
 
 if __name__ == "__main__":

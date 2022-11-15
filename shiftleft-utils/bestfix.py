@@ -14,7 +14,6 @@ from collections import defaultdict
 from urllib.parse import unquote
 
 import httpx
-from json2xml import json2xml
 from packaging.version import parse
 from rich import box
 from rich.console import Console
@@ -31,7 +30,7 @@ from six import moves
 
 import config
 import gh as GitHubLib
-from common import extract_org_id, get_all_apps, get_dataflow, get_findings_url, headers
+from common import extract_org_id, get_all_apps, get_scan_run, headers
 
 CI_MODE = os.getenv("CI") in ("true", "1") or os.getenv("AGENT_OS") is not None
 
@@ -1354,22 +1353,6 @@ def export_csv(app, annotated_findings, report_file):
             for finding in annotated_findings:
                 writer.writerow(finding)
             console.print(f"CSV exported to {report_file}")
-
-
-def get_scan_run(client, org_id, scan, app_name):
-    scan_run_url = f"""https://{config.SHIFTLEFT_API_HOST}/api/v4/private/orgs/{org_id}/apps/{app_name}/scans/{scan.get("id")}/runs?fields=environment,isLibrary,scan_time,scan_duration_ms,sizes,sl,token,upload-request,methods"""
-    try:
-        r = client.get(scan_run_url, headers=headers, timeout=config.timeout)
-        if r.status_code == 200:
-            raw_response = r.json()
-            if raw_response and raw_response.get("response"):
-                response = raw_response.get("response")
-                return response
-    except httpx.ReadTimeout as e:
-        console.print(
-            f"Unable to retrieve scan run info for {app_name} due to timeout after {config.timeout} seconds"
-        )
-    return {}
 
 
 def get_all_findings_with_scan(client, org_id, app_name, version, ratings):
