@@ -2,10 +2,7 @@
 
 import argparse
 import csv
-import functools
-import json
 import math
-import multiprocessing
 import os
 import sys
 import time
@@ -256,6 +253,7 @@ def process_app(progress, task, org_id, report_file, app, detailed, branch):
                 app_group,
                 app_branch,
                 scan.get("version"),
+                scan.get("id"),
                 completed_at,
                 scan.get("language"),
                 scan.get("number_of_expressions"),
@@ -297,6 +295,7 @@ def write_to_csv(report_file, row):
                 "Branch",
                 "Version",
                 "Last Scan",
+                "Last Scan ID",
                 "Language",
                 "Expressions Count",
                 "Critical Count",
