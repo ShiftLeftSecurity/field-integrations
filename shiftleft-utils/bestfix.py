@@ -1138,7 +1138,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
 **Fix locations:**\n
 {location_suggestion}
 
-**Supression:**\n
+**Suppression:**\n
 Specify the sink method in your remediation config to suppress this finding.\n
 - {sink_method}
 
