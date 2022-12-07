@@ -193,6 +193,9 @@ def get_category_suggestion(
         if variable_detected == variable_detected.upper():
             category_suggestion = f"""This is an informational finding since the variable `{variable_detected}` could either be a constant or belong to a trusted endpoint."""
             suppressable_finding = True
+        elif "httpClient" in ptags_set:
+            category_suggestion = f"""This finding is not attacker reachable since the source parameter is an http client."""
+            suppressable_finding = True
         elif "__POLYMORPHIC__" in sink_method:
             category_suggestion = f"""This is an informational finding since the code could be performing an internal redirection or an API call. Specify `{sink_method}` in your remediation config to suppress this finding."""
             suppressable_finding = True
