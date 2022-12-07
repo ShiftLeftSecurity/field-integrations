@@ -159,7 +159,9 @@ def find_ignorables(app_language, last_location_fname, files_loc_list):
     return list(ignorables_list)
 
 
-def get_category_suggestion(category, variable_detected, source_method, sink_method):
+def get_category_suggestion(
+    category, variable_detected, source_method, sink_method, ptags_set, mtags_set
+):
     suppressable_finding = False
     category_suggestion = ""
     if category in ("Remote Code Execution", "Potential Remote Code Execution"):
@@ -169,7 +171,10 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
             category_suggestion = "This is an informational finding."
             suppressable_finding = True
     elif category == "SQL Injection":
-        category_suggestion = f"""Use any alternative SQL method with builtin parameterization capability. Parameterize and validate the variables `{variable_detected}` before invoking the SQL method `{sink_method}`."""
+        if "stringManipulation" in ptags_set:
+            category_suggestion = f"""Use any alternative SQL method with builtin parameterization capability instead of string manipulation methods. Parameterize and validate the variables `{variable_detected}` before invoking the SQL method `{sink_method}`."""
+        else:
+            category_suggestion = f"""Use any alternative SQL method with builtin parameterization capability. Parameterize and validate the variables `{variable_detected}` before invoking the SQL method `{sink_method}`."""
     elif category == "NoSQL Injection":
         category_suggestion = f"""Use any alternative SDK method with builtin parameterization capability. Parameterize and validate the variables `{variable_detected}` before invoking the NoSQL method `{sink_method}`."""
     elif category == "Directory Traversal":
@@ -261,6 +266,11 @@ def get_category_suggestion(category, variable_detected, source_method, sink_met
             category_suggestion = (
                 f"Please refer to the description for further information."
             )
+    if "authorized" in ptags_set:
+        category_suggestion = f"""{category_suggestion}
+
+**NOTE**: Proper Authorization check is performed in this flow. Consider reducing the severity of this finding.
+"""
     return category_suggestion, suppressable_finding
 
 
@@ -838,6 +848,8 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
         check_methods = set()
         http_routes = set()
         event_routes = set()
+        ptags_set = set()
+        mtags_set = set()
         package_url = ""
         cve = ""
         oss_internal_id = ""
@@ -875,6 +887,8 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 for pt in parameter_tags
                 if pt.get("key", "") in (9, 31) and pt.get("value")
             ]
+            if ptags:
+                ptags_set.update(ptags)
             # Try hard to find http and event routes
             if not http_routes:
                 for all_rt in config.all_routes_tags:
@@ -913,6 +927,8 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 if mt.get("key", "") in ("EXPOSED_METHOD_ROUTE", 30) and mt.get("value")
             ]
             route_value = mtags[0] if mtags else None
+            if mtags:
+                mtags_set.update(mtags)
             if route_value:
                 http_routes.add(route_value)
             # Look for middlewares, filters that can operate on all routes
@@ -1099,7 +1115,12 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 if not variable_detected and tracked_list:
                     variable_detected = tracked_list[-1]
                 category_suggestion, suppressable_finding = get_category_suggestion(
-                    category, variable_detected, source_method, sink_method
+                    category,
+                    variable_detected,
+                    source_method,
+                    sink_method,
+                    ptags_set,
+                    mtags_set,
                 )
                 taint_suggestion = ""
                 if (
@@ -1145,7 +1166,12 @@ Specify the sink method in your remediation config to suppress this finding.\n
 """
             elif variable_detected:
                 category_suggestion, suppressable_finding = get_category_suggestion(
-                    category, variable_detected, source_method, sink_method
+                    category,
+                    variable_detected,
+                    source_method,
+                    sink_method,
+                    ptags_set,
+                    mtags_set,
                 )
                 best_fix = f"""**Taint:** Parameter `{variable_detected}` in the method `{methods_list[-1]}`\n
 {category_suggestion if category_suggestion else f"Validate or sanitize the parameter `{variable_detected}` before invoking the sink `{sink_method}`"}
@@ -1163,7 +1189,12 @@ Specify the sink method in your remediation config to suppress this finding.\n
                     )
                     Parameter_str = "Variables"
                 category_suggestion, suppressable_finding = get_category_suggestion(
-                    category, variable_detected, source_method, sink_method
+                    category,
+                    variable_detected,
+                    source_method,
+                    sink_method,
+                    ptags_set,
+                    mtags_set,
                 )
                 best_fix = f"""**Taint:** {Parameter_str} `{variable_detected}` in the method `{methods_list[-1]}`\n
 {category_suggestion if category_suggestion else f"Validate or sanitize the {Parameter_str} `{variable_detected}` before invoking the sink `{sink_method}`"}
@@ -1285,6 +1316,8 @@ Specify the sink method in your remediation config to suppress this finding.\n
                     "last_location": last_location,
                     "variable_detected": variable_detected,
                     "tracked_list": "\n".join(tracked_list),
+                    "parameter_tags": "\n".join(list(ptags_set)),
+                    "method_tags": "\n".join(list(mtags_set)),
                     "check_methods": "\n".join(check_methods),
                     "code_snippet": code_snippet.replace("\n", "\\n"),
                     "best_fix": best_fix.replace("\n", "\\n"),

@@ -76,7 +76,9 @@ def process_app(
                 if run_summary.get("token"):
                     run_token = run_summary.get("token")
                     if run_token.get("owner"):
-                        token_name = f"""{run_token.get("owner")} {run_token.get("name")}"""
+                        token_name = (
+                            f"""{run_token.get("owner")} {run_token.get("name")}"""
+                        )
             tags = app.get("tags")
             app_group = ""
             app_branch = scan.get("tags", {}).get("branch", "")
