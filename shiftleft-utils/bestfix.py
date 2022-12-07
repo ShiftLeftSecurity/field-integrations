@@ -572,6 +572,7 @@ def troubleshoot_app(
         low_findings_count = (
             lines
             and int(lines) > 2000
+            and len(findings) < 10
             and len(findings) < math.ceil(int(lines) / 1000)
             and not remediation_used
         )
@@ -1161,7 +1162,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
 
 **Suppression:**\n
 Specify the sink method in your remediation config to suppress this finding.\n
-- {sink_method}
+- {sink_method if "<operator>" not in sink_method else "Parent method of " + sink_method}
 
 """
             elif variable_detected:
