@@ -48,6 +48,8 @@ ignorable_paths = (
     ".nuxt/",
     ".next/",
     ".html",
+    "grunt",
+    "bower",
 )
 
 check_labels_list = (

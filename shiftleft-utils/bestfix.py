@@ -267,6 +267,7 @@ def get_category_suggestion(
                 f"Please refer to the description for further information."
             )
     if "authorized" in ptags_set:
+        suppressable_finding = True
         category_suggestion = f"""{category_suggestion}
 
 **NOTE**: Proper Authorization check is performed in this flow. Consider reducing the severity of this finding.
@@ -895,10 +896,12 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 for all_rt in config.all_routes_tags:
                     if all_rt in ptags:
                         http_routes.add("*")
+                        break
             if not event_routes:
                 for all_et in config.all_events_tags:
                     if all_et in ptags:
                         event_routes.add("*")
+                        break
             if file_name == "N/A" or not location.get("line_number"):
                 continue
             # Skip getter/setter methods in csharp
@@ -1148,7 +1151,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     taint_suggestion = f"**Taint:** Variable `{variable_detected}`."
                 preface_text = (
                     "This is likely a security best practices or an informational finding."
-                    if not suppressable_finding
+                    if suppressable_finding
                     else ""
                 )
                 if snippet_list:
