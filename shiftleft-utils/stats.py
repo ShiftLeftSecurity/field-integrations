@@ -310,7 +310,7 @@ def write_to_csv(report_file, row):
                 "Branch",
                 "Version",
                 "Last Scan",
-                "Last Scan ID",
+                "Total Num of Scans",
                 "Language",
                 "Expressions Count",
                 "Critical Count",
