@@ -577,9 +577,11 @@ def troubleshoot_app(
             lines
             and int(lines) > 2000
             and len(findings) < 10
-            and len(findings) < math.ceil(int(lines) / 1000)
+            and (findings and lines and len(findings) < math.ceil(int(lines) / 1000))
             and not remediation_used
         )
+        if not low_findings_count and binsize:
+            low_findings_count = len(findings) < 10 and not remediation_used
         if app_language == "java" and binsize and int(binsize) < 4000:
             ideas.append(
                 "**CLI:** Pass the .war file or a uber jar to get better results for Java applications."
@@ -652,7 +654,7 @@ def troubleshoot_app(
                     ideas.append(
                         "Try scanning the solution instead of a specific csproj."
                     )
-            if app_language == "python":
+            if app_language == "python" and len(findings) < 5:
                 if not verbose_used:
                     ideas.append(
                         "Ensure the project dependencies are installed with `pip install` command prior to invoking ShiftLeft."
