@@ -742,7 +742,7 @@ def troubleshoot_app(
         ideas.append(
             f"""**TOKEN:** Use a CI integration token to scan apps with ShiftLeft. Currently scanned with `{token.get("owner")}'s` personal access token."""
         )
-    if not metadata_artifact and app_language not in (
+    if not sca_sbom_found and app_language not in (
         "terraform_hcl",
         "terraform",
         "aws",
@@ -763,9 +763,10 @@ def troubleshoot_app(
             sbom_idea = "Ensure the package manifest files such as go.mod or go.sum or Gopkg.lock are present in the repo."
         if app_language == "csharp":
             sbom_idea = "Ensure the solution is restored or built successfully prior to invoking ShiftLeft."
-        ideas.append(
-            f"""**iSCA:** Software Bill-of-Materials (SBoM) was not generated correctly for this project.\n{sbom_idea}"""
-        )
+        if sbom_idea:
+            ideas.append(
+                f"""**iSCA:** Software Bill-of-Materials (SBoM) was not generated correctly for this project.\n{sbom_idea}"""
+            )
     if suppressable_count or check_methods_count:
         if remediation_used:
             ideas.append(
