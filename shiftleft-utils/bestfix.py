@@ -409,7 +409,10 @@ def find_best_oss_fix(
         # If not report all critical and high oss vulnerabilities
         if reachable_oss_count > 0 and reachability != "reachable":
             continue
-        fix_versions = sorted(fix_version, key=parse, reverse=True)
+        try:
+            fix_versions = sorted(fix_version, key=parse, reverse=True)
+        except Exception:
+            fix_versions = sorted(fix_version, reverse=True)
         # For long list of fix versions just show the first half
         if len(fix_versions) > 5:
             fix_versions = fix_versions[0 : math.ceil(len(fix_versions) / 2)]
