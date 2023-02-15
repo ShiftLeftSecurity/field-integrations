@@ -207,8 +207,10 @@ def get_category_suggestion(
         if source_method == "^__node^.process.%env":
             category_suggestion = f"""This is an informational finding since reading an environment variable using `process.env` is safe by default."""
             suppressable_finding = True
-        else:
+        elif variable_detected:
             category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before returning via HTML or API response."""
+        else:
+            category_suggestion = f"""Ensure all user input variables are encoded or sanitized before returning via HTML or API response."""
     elif category == "LDAP Injection":
         category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before invoking the LDAP method `{sink_method}`."""
     elif category in ("Hardcoded Credentials", "Weak Hash"):
@@ -1104,9 +1106,9 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                 full_path_prefix = full_path.replace(last_location_fname, "")
             # Arrive at a best fix
             best_fix = ""
-            location_suggestion = (
-                f"- Before or at line {last_location_lineno} in {last_location_fname}"
-            )
+            location_suggestion = ""
+            if last_location_fname:
+                location_suggestion = f"- Before or at line {last_location_lineno} in {last_location_fname}"
             category_suggestion = ""
             suppressable_finding = False
             if (
@@ -1245,7 +1247,10 @@ Include these detected CHECK methods in your remediation config to suppress this
                     ignorables_suggestion = f"""To ignore specific directory from analysis, pass `-- --ignore-paths [<ignore_path_1>] [<ignore_path_2>]` at the end of the `sl analyze` command."""
             # Fallback
             if not best_fix:
-                best_fix = f"""{"This is likely a security best practices type finding." if app_language in ("js", "python") else "This is an informational finding."}
+                if app_language in ("java", "scala", "csharp"):
+                    best_fix = "No fix suggestion available for this finding."
+                else:
+                    best_fix = f"""{"This is likely a security best practices type finding." if app_language in ("js", "python") else "This is an informational finding."}
 
 **Remediation suggestions:**\n
 Specify the sink method in your remediation config to suppress this finding.\n
