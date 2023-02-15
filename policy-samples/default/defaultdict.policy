@@ -1,5 +1,3 @@
-Multiple policies satisfy the requested policyID. Returning the latest one.
-Policy `io.shiftleft/defaultdict`:
 ####
 # Default dictionary
 ####

@@ -1,0 +1,125 @@
+####
+# Default policy
+#
+# used categories:
+# a1-injection
+# a2-broken-authentication-and-session-management
+# a3-cross-site-scripting
+# a4-broken-access-control
+# a5-security-misconfiguration
+# a6-sensitive-data-exposure
+# a7-insufficient-attack-protection
+# a8-cross-site-request-forgery
+# a9-known-vulnerabilities
+# a10-underprotected-api
+####
+
+IMPORT io.shiftleft/ssrf:v0.5.2185 io/shiftleft/ssrf.policy
+IMPORT io.shiftleft/environment:v0.5.2185 io/shiftleft/environment.policy
+IMPORT io.shiftleft/sqlinjection:v0.5.2185 io/shiftleft/sqlinjection.policy
+IMPORT io.shiftleft/nosqlinjection:v0.5.2185 io/shiftleft/nosqlinjection.policy
+IMPORT io.shiftleft/xss:v0.5.2185 io/shiftleft/xss.policy
+IMPORT io.shiftleft/execute:v0.5.2185 io/shiftleft/execute.policy
+IMPORT io.shiftleft/dataTransferObjectWrite:v0.5.2185 io/shiftleft/data_transfer_object_write.policy
+IMPORT io.shiftleft/httpWrite:v0.5.2185 io/shiftleft/http_write.policy
+IMPORT io.shiftleft/httpHeader:v0.5.2185 io/shiftleft/http_header.policy
+IMPORT io.shiftleft/cacheWrite:v0.5.2185 io/shiftleft/cache_write.policy
+IMPORT io.shiftleft/logWrite:v0.5.2185 io/shiftleft/log_write.policy
+IMPORT io.shiftleft/fileWrite:v0.5.2185 io/shiftleft/file_write.policy
+IMPORT io.shiftleft/fileRead:v0.5.2185 io/shiftleft/file_read.policy
+IMPORT io.shiftleft/databaseWrite:v0.5.2185 io/shiftleft/database_write.policy
+IMPORT io.shiftleft/transformers:v0.5.2185 io/shiftleft/transformers.policy
+IMPORT io.shiftleft/deserialization:v0.5.2185 io/shiftleft/deserialization.policy
+IMPORT io.shiftleft/xpath:v0.5.2185 io/shiftleft/xpath.policy
+IMPORT io.shiftleft/ldapi:v0.5.2185 io/shiftleft/ldapi.policy
+IMPORT io.shiftleft/cookie:v0.5.2185 io/shiftleft/cookie.policy
+IMPORT io.shiftleft/sessionInject:v0.5.2185 io/shiftleft/session_inject.policy
+IMPORT io.shiftleft/leakTerminal:v0.5.2185 io/shiftleft/leak_terminal.policy
+IMPORT io.shiftleft/xxe:v0.5.2185 io/shiftleft/xxe.policy
+IMPORT io.shiftleft/mailSend:v0.5.2185 io/shiftleft/mail_send.policy
+IMPORT io.shiftleft/blacklist:v0.5.2185 io/shiftleft/blacklist.policy
+IMPORT io.shiftleft/weakCipher:v0.5.2185 io/shiftleft/weak_cipher.policy
+IMPORT io.shiftleft/weakRandom:v0.5.2185 io/shiftleft/weak_random.policy
+IMPORT io.shiftleft/weakHash:v0.5.2185 io/shiftleft/weak_hash.policy
+IMPORT io.shiftleft/dllinjection:v0.5.2185 io/shiftleft/dllinjection.policy
+IMPORT io.shiftleft/xmlinjection:v0.5.2185 io/shiftleft/xmlinjection.policy
+IMPORT io.shiftleft/cloudAccess:v0.5.2185 io/shiftleft/cloud_access.policy
+IMPORT io.shiftleft/jwtParser:v0.5.2185 io/shiftleft/jwt_parser.policy
+IMPORT io.shiftleft/redos:v0.5.2185 io/shiftleft/redos.policy
+IMPORT io.shiftleft/grpcWrite:v0.5.2185 io/shiftleft/grpc_write.policy
+IMPORT io.shiftleft/deprecated:v0.5.2185 io/shiftleft/deprecated.policy
+IMPORT io.shiftleft/prototypePollution:v0.5.2185 io/shiftleft/prototype_pollution.policy
+IMPORT io.shiftleft/connectionRedirect:v0.5.2185 io/shiftleft/connection_redirect.policy
+IMPORT io.shiftleft/android:v0.5.2185 io/shiftleft/android.policy
+IMPORT io.shiftleft/aws:v0.5.2185 io/shiftleft/aws.policy
+IMPORT io.shiftleft/zipbomb:v0.5.2185 io/shiftleft/zipbomb.policy
+IMPORT io.shiftleft/csrf:v0.5.2185 io/shiftleft/csrf.policy
+IMPORT io.shiftleft/plainText:v0.5.2185 io/shiftleft/plain_text.policy
+IMPORT io.shiftleft/alloc:v0.5.2185 io/shiftleft/alloc.policy
+
+HIDE IO mail
+HIDE IO pii
+HIDE IO exception
+HIDE IO stream
+HIDE IO stderr
+HIDE IO headers
+HIDE IO proto
+HIDE IO amazonSns
+HIDE IO parsers
+HIDE IO xml
+HIDE IO string
+HIDE IO collections
+HIDE IO key
+HIDE IO socket
+HIDE IO datagram
+HIDE IO user
+HIDE IO oauth2
+HIDE IO mongodb
+HIDE IO ldap
+HIDE IO httpParsing
+HIDE IO ec2
+HIDE IO unsafe
+HIDE IO heap
+HIDE IO server
+HIDE IO jetty
+HIDE IO hash
+HIDE IO serialization
+HIDE IO xmlUnmarshal
+HIDE IO encrypt
+HIDE IO auth
+HIDE IO parser
+HIDE IO crypto
+HIDE IO bson
+HIDE IO zip
+HIDE IO cookie
+HIDE IO jsonGen
+HIDE IO media
+HIDE IO nio
+HIDE IO direct
+HIDE IO scheduling
+HIDE IO bcrypt
+HIDE IO url
+HIDE IO httpHeader
+HIDE IO validation
+HIDE IO reflection
+HIDE IO dos
+HIDE IO utils
+HIDE IO servlet
+HIDE IO cloudClient
+HIDE IO cert
+HIDE IO customerSave
+HIDE IO shell
+HIDE IO console
+HIDE IO database
+HIDE IO network
+HIDE IO permission
+
+HIDE DATA port
+HIDE DATA attacker-controlled
+HIDE DATA mustacheTemplate
+HIDE DATA mustacheTemplateName
+HIDE DATA httpObject
+
+
+EXPOSED http = METHOD -f r"handleRequest(.*Request)"  { PAR -t r".*Request" "SOURCE" }
+TRANSFORM escape = METHOD -n "SanitizeText" { RET "SOURCE", PAR -i 1 "SINK" }
