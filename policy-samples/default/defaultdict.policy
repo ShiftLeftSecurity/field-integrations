@@ -1,0 +1,47 @@
+Multiple policies satisfy the requested policyID. Returning the latest one.
+Policy `io.shiftleft/defaultdict`:
+####
+# Default dictionary
+####
+
+# Internal Secrets
+DATA internal-keys, aws = VAR aws key, aws keys, aws secret, docker key, docker keys, mesos key, amazon key, amazon keys, github key, github keys, ghub key, mesos key, mesos keys, kube key, kube keys, k8s key, gitlab key, gitlab keys, gcp key gcp api key, google key
+DATA internal-keys, crypt = VAR master key, encrypt key, crypt key, cipher, cipher text
+DATA authentication = VAR password, passwd, my pass, user pass, user password, user key, master password, master passwd, mastr pass, master secret, access key, private key, priv key, secret key, access key id, private key id, priv key id, hashed pass, hashed password, aws password, aws pass, reset password
+DATA certificates = VAR priv cert, private cert, private certificate, private cert, client cert, client certificate, root certificate, root cert, aws cert, ssl cert, ssl certificate, tls cert, tls certificate, pem cert, pem certificate, 509 cert, 509 certificate, x 509 certificate
+
+# Tokens
+DATA tokens = VAR token, access token, temp access token, user token, _token, token Secret, token Str, token Type
+DATA tokens = VAR api token, app token, auth token, authentication token, o auth token 
+DATA tokens = VAR aws access token, aws security token, aws sec token
+
+#auth
+DATA authentication = VAR oauth2Token, oathAccessToken, oauth2, oAuth2AccessToken, oAuth2InvalidateTokenURL, oAuth2Scope, oAuth2TokenType, oAuth2TokenURL, oauthAccessToken, oAuthAccessToken, oAuthAccessTokenSecret, oAuthAccessTokenURL, oauthAuth, oAuthAuthenticationURL, oAuthAuthorizationURL, oauthBaseString, oAuthConsumerKey, oAuthConsumerSecret, oauthHeaderParams, oAuthRequestTokenURL, oauthSignature, oauthVerifier
+
+# Cookies 
+DATA cookies = VAR cookie, session cookie, sess cookie, settings cookie
+
+# Payment Data
+DATA payment-data = VAR cvv num, cvv, cvc num, cvc
+DATA payment-data = VAR credit card num, ccard num, ccard number, creditcard number, c c num, c c number, credit card expiry date, credit card expiry, ccard expiry, master card expiry, master card num, master card number, master card num, visa card number, credit Card
+DATA payment-data = VAR vbv pass, vbv password
+DATA payment-data = VAR mastercard secure code, mastercard sec code
+DATA payment-data = VAR paypal pass, pay pal password, pay pal user name
+DATA payment-data = VAR bill address, billing address, bill addr, billing addr
+DATA payment-data = VAR balance, interest, amount, current balance, deposit amount, initial balance, initial interest
+DATA account-info = VAR bank account number, bank acc num, bank acc number, bank account num, account name, account num, acc num, savings account number, savings acc num, checking account num, checking account num, routing number, account number
+
+# PII
+DATA pii = VAR first name, last name, middle name, middle initials, full name, maiden name, player name, family name
+DATA pii = VAR dob, date of birth, birth date, birth year, current age, curr age, year of birth, place of birth, nationality, place of birth
+DATA pii, location = VAR city, residential address, res address, res addr, temporary addr, temp address, zip code, zip, street name, province, country
+DATA pii = VAR email, email addr, email address, alternate email
+DATA pii  = VAR phone number, phone num, phone, landline number, home phone number, home phone num, office phone number, office phone num, alternate phone num, alternate phone number, phone number extension
+DATA pii, credentials = VAR user, user name, user sid, usr name, uname, login name, client name, customer name, cust name, admin user id
+DATA pii, location = VAR ip address, i p addr, user i p, user location, user loc, client location, client loc
+DATA pii = VAR ssn, social security number, social sec num, so sec num, social sec number, sin, nas, numero assurance sociale, num assur sociale, social insurance number, social insurance num, social insur num, soc insur num, itin, tax id num, tax i d, employer id number, employer i d
+DATA pii = VAR tin
+
+# Health
+DATA medical = VAR patient, patient first name, patient last name, patient name, patient weight, patient height, patient id, pat id, gender, current medications, current meds, curr meds, allergies, temperature, body temp, temp site, pulse rate, bp systolic, bp diastolic, bp sys, bp dias, blood press sys, blood press dias, heart rate, hrt rate, cholestrol, chol, hdl, ldl, hba1c lvl, hba1c level
+
