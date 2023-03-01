@@ -791,15 +791,45 @@ def troubleshoot_app(
             console.print(f"Internal id for this scan: {scan.get('internal_id')}\n")
 
 
-def file_locations_tree(internal_id, category, files_loc_list, full_path_prefix):
+def file_locations_tree(
+    internal_id,
+    category,
+    files_loc_list,
+    files_method_list,
+    http_routes,
+    tracked_list,
+    full_path_prefix,
+):
     conclusion_name = internal_id.split("/")[0]
+    first_route = None
+    http_routes = [r for r in http_routes if r != "*"]
+    if http_routes and len(http_routes):
+        first_route = http_routes[0]
     tree = Tree(
-        f"{category} ({conclusion_name})",
+        f"{category} ({first_route if first_route and first_route != '*' else conclusion_name})",
         guide_style="bold bright_blue",
     )
-    for fl in files_loc_list:
-        aloc = f"[link={to_local_path(full_path_prefix, fl)}]{escape(fl)}[/link]"
-        tree.add(aloc)
+    i = 0
+    first_var = "Parameter"
+    last_var = "Parameter"
+    if tracked_list:
+        first_var = tracked_list[0]
+        if len(tracked_list) > 1:
+            last_var = tracked_list[-1]
+    for fm in files_method_list:
+        if i == 1:
+            tree.add(
+                f"[bold green]// Validate {first_var}\nvalidate{first_var[0].upper() + first_var[1:]}()"
+            )
+        if i > 1 and i == len(files_method_list) - 1:
+            tree.add(
+                f"[bold green]// Additional checks for {last_var}\ncheck{last_var[0].upper() + last_var[1:]}()"
+            )
+        tree.add(fm)
+        i = i + 1
+    # for fl in files_loc_list:
+    #     aloc = f"[link={to_local_path(full_path_prefix, fl)}]{escape(fl)}[/link]"
+    #     tree.add(aloc)
     return tree
 
 
@@ -812,18 +842,18 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
         title=f"""Best Fix Suggestions for {app["name"]}""",
         show_lines=True,
         box=box.DOUBLE_EDGE,
-        header_style="bold magenta",
+        header_style="bold green",
         expand=True,
     )
     table.add_column("ID", justify="right", style="cyan")
     if CI_MODE:
         table.add_column("Category")
     table.add_column(
-        "Vulnerable Flow",
+        "Remediated Flow",
         overflow="fold",
-        max_width=160 if "win32" in sys.platform and not CI_MODE else 60,
+        max_width=160 if "win32" in sys.platform and not CI_MODE else 120,
     )
-    table.add_column("Code Snippet", overflow="fold")
+    # table.add_column("Code Snippet", overflow="fold", min_width=10)
     table.add_column("Comment", overflow="fold")
     source_cohorts = defaultdict(dict)
     sink_cohorts = defaultdict(dict)
@@ -841,6 +871,8 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
         if "Sensitive" in category or "Log" in category:
             continue
         files_loc_list = []
+        files_method_list = []
+        files_method_simple_list = []
         tracked_list = []
         snippet_list = []
         source_method = ""
@@ -894,6 +926,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
             if method_name:
                 method_name = method_name.split(":")[0]
             short_method_name = location.get("short_method_name")
+            fmt_short_method_name = short_method_name
             parameter_tags = df.get("parameter_tags", [])
             ptags = [
                 pt.get("value")
@@ -1024,9 +1057,13 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                         method_name.split(":_callee")[0].split("::")[-1].split(":")[-1]
                     )
                 methods_list.append(short_method_name)
+                fmt_short_method_name = short_method_name
                 for check_labels in config.check_labels_list:
                     if check_labels in short_method_name.lower():
                         check_methods.add(method_name)
+                        fmt_short_method_name = (
+                            f"[dim green]{short_method_name}[/dim green]"
+                        )
                 # Methods that start with is are usually validation methods
                 if re.match(r"^is[_A-Z]", short_method_name):
                     check_methods.add(method_name)
@@ -1035,12 +1072,22 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     f'{location.get("file_name")}:{location.get("line_number")}'
                 )
             loc_line = f'{location.get("file_name")}:{location.get("line_number")}'
+            last_tracked = ""
+            if tracked_list:
+                last_tracked = tracked_list[-1]
+            method_line = f'[dim]{location.get("file_name")}:{location.get("line_number")}[/dim]  {fmt_short_method_name}( [bold red]{last_tracked}[/bold red] )'
+            method_simple_line = f'[dim]{location.get("file_name")}  {short_method_name}( [bold red]{last_tracked}[/bold red] )'
             # Remove erroneous CI prefixes
             for tci in config.trimmable_ci_paths:
                 loc_line = loc_line.replace(tci, "")
+                method_line = method_line.replace(tci, "")
             loc_line = unquote(loc_line)
+            method_line = unquote(method_line)
             if loc_line not in files_loc_list:
                 files_loc_list.append(loc_line)
+            if method_simple_line not in files_method_simple_list:
+                files_method_list.append(method_line)
+                files_method_simple_list.append(method_simple_line)
         if dataflows and dataflows[-1]:
             sink = dataflows[-1].get("location", {})
             if sink and not sink_method:
@@ -1171,9 +1218,6 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
 {taint_suggestion}
 {category_suggestion}
 
-**Fix locations:**\n
-{location_suggestion}
-
 **Suppression:**\n
 Specify the sink method in your remediation config to suppress this finding.\n
 - {sink_method if "<operator>" not in sink_method else "Parent method of " + sink_method}
@@ -1190,9 +1234,6 @@ Specify the sink method in your remediation config to suppress this finding.\n
                 )
                 best_fix = f"""**Taint:** Parameter `{variable_detected}` in the method `{methods_list[-1]}`\n
 {category_suggestion if category_suggestion else f"Validate or sanitize the parameter `{variable_detected}` before invoking the sink `{sink_method}`"}
-
-**Fix locations:**\n
-{location_suggestion}
 """
             elif tracked_list:
                 # No variable detected but taint list available
@@ -1213,9 +1254,6 @@ Specify the sink method in your remediation config to suppress this finding.\n
                 )
                 best_fix = f"""**Taint:** {Parameter_str} `{variable_detected}` in the method `{methods_list[-1]}`\n
 {category_suggestion if category_suggestion else f"Validate or sanitize the {Parameter_str} `{variable_detected}` before invoking the sink `{sink_method}`"}
-
-**Fix locations:**\n
-{location_suggestion}
 """
             if check_methods:
                 if (
@@ -1300,6 +1338,9 @@ Specify the sink method in your remediation config to suppress this finding.\n
                     afinding.get("internal_id"),
                     afinding.get("category"),
                     files_loc_list,
+                    files_method_list,
+                    http_routes,
+                    tracked_list,
                     full_path_prefix,
                 )
             if CI_MODE:
@@ -1307,14 +1348,12 @@ Specify the sink method in your remediation config to suppress this finding.\n
                     f"""[link={deep_link}]{afinding.get("id")}[/link]""",
                     afinding.get("category"),
                     file_locations_md,
-                    fmt_code_snippet,
                     Markdown(best_fix),
                 )
             else:
                 table.add_row(
                     f"""[link={deep_link}]{afinding.get("id")}[/link]""",
                     file_locations_md,
-                    fmt_code_snippet,
                     Markdown(best_fix),
                 )
             annotated_findings.append(
