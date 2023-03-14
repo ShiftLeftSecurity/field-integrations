@@ -1,22 +1,30 @@
-CONCLUSION cloud-access = FLOW IO (http OR $http) -> IO (cloud)
+CONCLUSION cloud-access = FLOW DATASOURCE (attacker-controlled) -> DATA (NOT numeric) -> IO (cloud)
 WHEN CONCLUSION cloud-access => EMIT {
-  title: "Directory Traversal: HTTP data used for accessing cloud data {{via `$paramname`}} {{in `$methodname`}}",
-  description: "Data from HTTP methods is not escaped, hashed or encoded and used to access files that are located in a cloud storage. This indicates a directory traversal or an arbitrary file read. 
+  title: "Attacker-Controlled Data Used for Accessing Cloud Data {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Attacker-controlled data is used in a path to access files in a cloud storage. This indicates a directory traversal vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/dir-trav.md",
+  score: "8.0",
+  vulnerability_description: "Directory Traversal",
+  cwe_category: "22"
+}
+CONCLUSION cloud-access-http = FLOW IO ((http OR $http OR httpClient OR $httpClient OR httpHeader OR $httpHeader OR httpClientHeader OR $httpClientHeader) AND NOT session) -> DATA (NOT numeric AND NOT attacker-controlled) -> IO (cloud)
+WHEN CONCLUSION cloud-access-http => EMIT {
+  title: "HTTP Data Used for Accessing Cloud Data {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Data from a HTTP request or response is used in a path to access files in a cloud storage. This indicates a directory traversal vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/dir-trav.md",
+  score: "8.0",
+  vulnerability_description: "Directory Traversal",
+  cwe_category: "22"
+}
 
-## Countermeasures
-
-This vulnerability can be prevented by validating HTTP data (preferably on server-side by means of common input sanitation libraries or whitelisting) before using it (e.g., ensure that attackers cannot define file paths through HTTP requests).
-
-## Additional information
-
-**[CWE-22](https://cwe.mitre.org/data/definitions/22.html)**
-
-**[OWASP-A5](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A5-Broken_Access_Control)**",
+CONCLUSION cloud-store-uri = FLOW DATASOURCE (attacker-controlled) -> DATA (cloudStoreUri) -> IO (http OR httpClient)
+WHEN CONCLUSION cloud-store-uri => EMIT {
+  title: "Attacker-controlled Data Used for Accessing Arbitrary Cloud Data {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Attacker-controlled data is used in a path to access files from cloud storage. This indicates a directory traversal vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/dir-trav.md",
   category: "a5-broken-access-control",
   score: "8.0",
   vulnerability_description: "Directory Traversal",
-  cwe_link: "https://cwe.mitre.org/data/definitions/22.html",
-  link: "https://cwe.mitre.org/data/definitions/22.html",
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A5-Broken_Access_Control"
+  cwe_category: "22"
 }
 

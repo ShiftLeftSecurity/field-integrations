@@ -2,25 +2,42 @@
 # XXE
 ####
 
-CONCLUSION xxe-injection = FLOW IO (http OR $http) ->  IO (xml AND NOT marshal)
-WHEN CONCLUSION xxe-injection => EMIT {
-  title: "XXE: HTTP data to XML {{via `$paramname`}} {{in `$methodname`}}",
-  description: "This flow indicates an XXE attack. An attacker could read arbitrary files, if the features are not disabled.
+# has complex exclusions in XxeSuppressionPass
 
-
-## Countermeasures
-
-This vulnerability can be prevented by disabling XML External Entity for server-side XML parser altogether. You can find more information in the [OWASP (XXE) Prevention Cheat Sheet](https://www.owasp.org/index.php/XML_External_Entity_(XXE)_Prevention_Cheat_Sheet).
-
-## Additional information
-
-- **[CWE-611](https://cwe.mitre.org/data/definitions/611.html)**
-
-- **[OWASP-A4](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A4-XML_External_Entities_(XXE))**",
+CONCLUSION xxe-injection-attacker = FLOW DATASOURCE (attacker-controlled) -> DATA (NOT numeric) -> IO ((xml OR ($xml AND write) OR (usuallySafeXml AND $unsafeXml)) AND NOT marshal)
+WHEN CONCLUSION xxe-injection-attacker => EMIT {
+  title: "Attacker-controlled Data Parsed as XML {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Attacker-controlled data is parsed as XML. This indicates an XML External Entities (XXE) or other XML-based vulnerability like billion laughs.",
+  description_suffix_file: "io/shiftleft/descriptions/xxe.md",
   category: "A4-XXE",
   score: "9.0",
-  vulnerability_description: "XXE",
-  cwe_link: "https://cwe.mitre.org/data/definitions/611.html",
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A4-XML_External_Entities_(XXE)",
+  vulnerability_description: "XML External Entities",
+  cwe_category: "611",
+  cwe_category: "91",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A4-XML_External_Entities_(XXE)"
+}
+CONCLUSION xxe-injection = FLOW IO ((http OR $http OR httpClient OR $httpClient OR httpHeader OR $httpHeader OR httpClientHeader OR $httpClientHeader) AND NOT session AND NOT $xml) -> DATA (NOT numeric AND NOT attacker-controlled) -> IO ((xml OR ($xml AND write) OR (usuallySafeXml AND $unsafeXml)) AND NOT marshal)
+WHEN CONCLUSION xxe-injection => EMIT {
+  title: "HTTP Data Parsed as XML {{via `$paramname`}} {{in `$methodname`}}",
+  description: "HTTP request/response data is parsed as XML. This indicates an XML External Entities (XXE) or other XML-based vulnerability like billion laughs.",
+  description_suffix_file: "io/shiftleft/descriptions/xxe.md",
+  category: "A4-XXE",
+  score: "6.0",
+  vulnerability_description: "XML External Entities",
+  cwe_category: "611",
+  cwe_category: "91",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A4-XML_External_Entities_(XXE)"
+}
+
+CONCLUSION xml-generate-inject = FLOW IO ((http OR $http OR httpClient OR $httpClient OR httpHeader OR $httpHeader OR httpClientHeader OR $httpClientHeader) AND NOT session AND NOT $xml) -> DATA (NOT numeric AND NOT escaped AND NOT XML) -> IO ($xml AND NOT $html AND stringManipulation)
+WHEN CONCLUSION xml-generate-inject => EMIT {
+  title: "HTTP Inputs Used to Unsafely Generate XML {{via `$paramname`}} {{in `$methodname`}}",
+  description: "HTTP request/response data is used directly without escaping to generate an XML document. This indicates an XML External Entities (XXE) or other XML-based vulnerability like billion laughs when that XML document is later parsed.",
+  description_suffix_file: "io/shiftleft/descriptions/xxe.md",
+  category: "A4-XXE",
+  score: "6.0",
+  vulnerability_description: "XML External Entities",
+  cwe_category: "611",
+  cwe_category: "91",
   link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A4-XML_External_Entities_(XXE)"
 }

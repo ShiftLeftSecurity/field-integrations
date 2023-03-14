@@ -1,0 +1,27 @@
+####
+# LDAPi
+####
+
+CONCLUSION ldap-injection-attacker-controlled = FLOW DATASOURCE (attacker-controlled) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped) -> IO (ldap)
+WHEN CONCLUSION ldap-injection-attacker-controlled => EMIT {
+  title: "Attacker-controlled Data to LDAP {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Attacker controlled data is used in an LDAP query without undergoing escaping or validation. This indicates an LDAP injection vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/ldap-injection.md",
+  category: "a1-injection",
+  score: "9.0",
+  vulnerability_description: "LDAP Injection",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_category: "90"
+}
+
+CONCLUSION ldap-injection-http = FLOW IO ((http OR $http OR httpClient OR $httpClient OR httpHeader OR $httpHeader OR httpClientHeader OR $httpClientHeader) AND NOT session) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped) -> IO (ldap)
+WHEN CONCLUSION ldap-injection-http => EMIT {
+  title: "HTTP Data to LDAP {{via `$paramname`}} {{in `$methodname`}}",
+  description: "HTTP data is used in an LDAP query without undergoing escaping or validation. This is an LDAP injection.",
+  description_suffix_file: "io/shiftleft/descriptions/ldap-injection.md",
+  category: "a1-injection",
+  score: "9.0",
+  vulnerability_description: "LDAP Injection",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_category: "90"
+}

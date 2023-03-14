@@ -1,0 +1,17 @@
+####
+# Data to GRPC
+####
+####
+
+
+CONCLUSION sensitive-to-grpc = FLOW DATASOURCE (tokens OR authentication OR certificates OR internal-keys OR medical OR pii OR payment-data) -> IO (grpc)
+WHEN CONCLUSION sensitive-to-grpc => EMIT {
+  title: "Sensitive Data Contained in GRPC Response {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Sensitive data is included in a GRPC response. This could result in sensitive data exposure if the endpoint lacks suitable authentication or is not a trusted domain.",
+  description_suffix_file: "io/shiftleft/descriptions/sensitive-data-leak.md",
+  category: "a3-sensitive-data-exposure",
+  score: "2.5",
+  vulnerability_description: "Sensitive Data Usage",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
+  cwe_category: "200"
+}

@@ -1,27 +1,4 @@
 ####
-# To xml
+# file kept for compatibility
+# no contents because it does the same as xxe.policy
 ####
-
-CONCLUSION http-to-xml = FLOW IO (http OR $http) -> IO (xmlwrite)
-WHEN CONCLUSION http-to-xml => EMIT {
-  title: "XML Injection: HTTP data to XML write {{via `$paramname`}} {{in `$methodname`}}",
-  description: "HTTP data is stored in an XML database without undergoing sanitization or validation. This could allow an attacker to read sensitive data from the XML database or modify its content by running an [XML Injection attack](http://cwe.mitre.org/data/definitions/91.html).
-
-
-## Countermeasures
-
-This vulnerability can be prevented by input sanitization and validation on the HTTP data before using it.
-
-## Additional information
-
-**[CWE-643](https://cwe.mitre.org/data/definitions/643.html)**
-
-**[OWASP-A1](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection)**",
-  category: "a1-injection",
-  score: "9.0",
-  vulnerability_description: "XML Injection",
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
-  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
-  cwe_link: "https://cwe.mitre.org/data/definitions/643.html"
-}
-

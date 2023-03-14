@@ -1,0 +1,66 @@
+CONCLUSION http-to-httpHeader = FLOW IO ((http OR httpClient OR httpHeader OR httpClientHeader OR (read AND ($http OR $httpClient OR $httpHeader OR $httpClientHeader))) AND NOT session) -> DATA (NOT hashed AND NOT escaped AND NOT encoded AND NOT numeric) -> IO ((httpHeader OR httpClientHeader OR (write AND ($httpHeader OR $httpClientHeader))) AND NOT redirect AND NOT session)
+WHEN CONCLUSION http-to-httpHeader => EMIT {
+     title: "HTTP Data to Header {{via `$paramname`}} {{in `$methodname`}}",
+     category: "a1-injection",
+     description: "Data from HTTP request parameters is stored in HTTP headers without escaping. This indicates a header injection vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/header-injection.md",
+     score: "5.0",
+     vulnerability_description: "Header Injection",
+     link: "https://owasp.org/www-project-top-ten/2017/A1_2017-Injection",
+     cwe_category: "113"
+}
+
+
+
+CONCLUSION ip-spoof = FLOW DATASOURCE (X-Forwarded-For OR X-Real-IP OR Forwarded OR X-Forwarded-Host) -> IO (httpHeaderCheck)
+WHEN CONCLUSION ip-spoof => EMIT {
+     title: "Client IP Address Spoofable Through HTTP Request Header {{via `$paramname`}} {{in `$methodname`}}",
+     description: "An HTTP header is used to determine the client IP address. Unless proper precautions are taken, this indicates attackers can spoof incorrect source IP addresses.
+
+
+## Countermeasures
+
+ - Ensure your application only looks at the HTTP request header when the client address matches a known IP address of a proxy you trust.
+ - Use a firewall to prevent direct connections to your application that don't go through the proxy.
+
+## Additional information
+
+**[CWE-290](https://cwe.mitre.org/data/definitions/290.html)**
+
+**[CWE-940](https://cwe.mitre.org/data/definitions/940.html)**",
+     score: "5.0",
+     vulnerability_description: "Authentication Bypass",
+     cwe_category: "290",
+     cwe_category: "940"
+}
+
+CONCLUSION database-credentials = FLOW IO (http OR httpHeader) -> DATA (NOT hashed) -> IO ((httpHeader OR $httpHeader OR httpClientHeader OR $httpClientHeader) AND $authenticationLiteral)
+WHEN CONCLUSION database-credentials => EMIT {
+     title: "HTTP Data to Header {{via `$paramname`}} {{in `$methodname`}}",
+     category: "a1-injection",
+     description: "Data from HTTP request parameters is stored in HTTP headers without escaping. This indicates a header injection vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/header-injection.md",
+     score: "5.0",
+     vulnerability_description: "Header Injection",
+     link: "https://owasp.org/www-project-top-ten/2017/A1_2017-Injection",
+     cwe_category: "113"
+}
+
+CONCLUSION unsafe-eval = FLOW IO (unsafe-eval) -> IO (httpHeader OR httpFrameworkConfig)
+WHEN CONCLUSION unsafe-eval => EMIT {
+     title: "Content-Security Policy Allows Use of `eval()` Function {{in `$methodname`}}",
+     description: "The Content-Security Policy (CSP) response header value allows using unsafe JavaScript functions. This indicates a potential Cross-Site-Scripting (XSS) vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/xss.md",
+     score: "3.5",
+     vulnerability_description: "Cross-Site Scripting",
+     cwe_category: "79"
+}
+CONCLUSION unsafe-inline = FLOW IO (unsafe-inline) -> IO (httpHeader OR httpFrameworkConfig)
+WHEN CONCLUSION unsafe-inline => EMIT {
+     title: "Content-Security Policy Allows Use of Inline Scripts {{in `$methodname`}}",
+     description: "The Content-Security Policy (CSP) response header value allows using inline JavaScript in HTML (not loaded from `<script>` tags). This indicates a potential Cross-Site-Scripting (XSS) vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/xss.md",
+     score: "3.5",
+     vulnerability_description: "Cross-Site Scripting",
+     cwe_category: "79"
+}

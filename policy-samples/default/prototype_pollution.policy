@@ -1,0 +1,27 @@
+####
+# Prototype Pollution
+####
+
+CONCLUSION prototype-pollution-ac = FLOW DATASOURCE (attacker-controlled) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped AND NOT numeric AND NOT objectKeys) -> IO (prototypePollution)
+WHEN CONCLUSION prototype-pollution-ac => EMIT {
+  title: "Attacker-controlled Data Used in Object Creation {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Attacker-controlled data is used in object creation. This indicates a prototype pollution vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/prototype-pollution.md",
+  category: "a1-injection",
+  score: "4.0",
+  vulnerability_description: "Prototype Pollution",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_category: "1321"
+}
+
+CONCLUSION prototype-pollution-http = FLOW IO ((http OR httpClient OR httpHeader OR httpClientHeader OR guessedHttp) AND NOT session AND NOT clientSide) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped AND NOT numeric AND NOT attacker-controlled AND NOT objectKeys) -> IO (prototypePollution)
+WHEN CONCLUSION prototype-pollution-http => EMIT {
+  title: "HTTP Data Used in Object Creation {{via `$paramname`}} {{in `$methodname`}}",
+  description: "HTTP data is used in object creation. This indicates a prototype pollution vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/prototype-pollution.md",
+  category: "a1-injection",
+  score: "4.0",
+  vulnerability_description: "Prototype Pollution",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_category: "1321"
+}

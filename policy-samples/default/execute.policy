@@ -2,90 +2,270 @@
 # Remote code Execution
 ####
 
-CONCLUSION command-injection-http = FLOW IO (http) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped) -> IO (execute)
+CONCLUSION lfi-http = FLOW IO ((http OR httpClient OR httpHeader OR httpClientHeader) AND NOT session) -> DATA (NOT numeric AND NOT attacker-controlled) -> IO (localFileInclude)
+WHEN CONCLUSION lfi-http => EMIT {
+  title: "Local File Inclusion Through HTTP {{via `$paramname`}} {{in `$methodname`}}",
+  description: "HTTP data is used to load and execute a file from the file system. This indicates a remote code execution vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/remote-code-execution.md",
+  score: "9.0",
+  vulnerability_description: "Remote Code Execution",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_category: "94",
+  cwe_category: "98"
+}
+CONCLUSION code-injection-http = FLOW IO ((http OR httpClient OR httpHeader OR httpClientHeader) AND NOT session AND NOT clientSide) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped AND NOT numeric AND NOT attacker-controlled) -> IO (executeCode)
+WHEN CONCLUSION code-injection-http => EMIT {
+  title: "Code Injection Through HTTP {{via `$paramname`}} {{in `$methodname`}}",
+  description: "HTTP data is used in a code execution context without undergoing escaping or validation. This indicates a remote code execution vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/remote-code-execution.md",
+  score: "9.0",
+  vulnerability_description: "Remote Code Execution",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_category: "94",
+  cwe_category: "77",
+  cwe_category: "78",
+  cwe_category: "917"
+}
+
+
+# removed spel injection -- see discussion in https://github.com/ShiftLeftSecurity/codescience/pull/2129
+
+CONCLUSION command-injection-http = FLOW IO ((http OR httpClient OR httpHeader OR httpClientHeader) AND NOT session) -> DATA (NOT attacker-controlled AND NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped AND NOT numeric) -> IO (execute)
 WHEN CONCLUSION command-injection-http => EMIT {
-  title: "Remote Code Execution: Command Injection through HTTP {{via `$paramname`}} {{in `$methodname`}}",
-  description: "HTTP data is used in a shell command without undergoing escaping or validation. This could allow an attacker to execute code on the server. Injection flaws occur when untrusted data is sent to an interpreter as part of a command or query. By injecting hostile data, an attacker may trick the interpreter into executing unintended commands or accessing data without authorization which can result in data loss, corruption, or disclosure to unauthorized parties, loss of accountability, denial of access or even a complete host takeover.
-
-
-## Countermeasures
-
-This vulnerability can be prevented by using parameterized queries or by validating HTTP data (preferably on server-side by means of common input sanitation libraries or whitelisting) before using it.
-
-## Additional information
-
-**[CWE-77](https://cwe.mitre.org/data/definitions/77.html)**
-
-**[CWE-78](https://cwe.mitre.org/data/definitions/78.html)**
-
-**[CWE-917](https://cwe.mitre.org/data/definitions/917.html)**
-
-**[OWASP-A1](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection)**",
-  category: "a1-injection",
+  title: "Command Injection Through HTTP {{via `$paramname`}} {{in `$methodname`}}",
+  description: "HTTP data is used in a shell command without undergoing escaping or validation. This indicates a command injection vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/remote-code-execution.md",
   score: "9.0",
   vulnerability_description: "Remote Code Execution",
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
   link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
-  cwe_link: "https://cwe.mitre.org/data/definitions/77.html",
-  cwe_link: "https://cwe.mitre.org/data/definitions/78.html",
-  cwe_link: "https://cwe.mitre.org/data/definitions/917.html"
+  cwe_category: "94",
+  cwe_category: "77",
+  cwe_category: "78",
+  cwe_category: "917"
 }
 
 
-CONCLUSION command-injection-cloud = FLOW IO (cloud) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped) -> IO (execute)
+CONCLUSION command-injection-cloud = FLOW IO (cloud) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped AND NOT numeric) -> IO (execute)
 WHEN CONCLUSION command-injection-cloud => EMIT {
-  title: "Remote Code Execution: Command Injection through cloud data {{via `$paramname`}} {{in `$methodname`}}",
-  description: "Cloud data is used in a command without undergoing escaping or validation. This could allow an attacker to execute code on the server. Injection flaws occur when untrusted data is sent to an interpreter as part of a command or query. By injecting hostile data, an attacker may trick the interpreter into executing unintended commands or accessing data without authorization which can result in data loss, corruption, or disclosure to unauthorized parties, loss of accountability, denial of access or even a complete host takeover.
-
-
-## Countermeasures
-
-This vulnerability can be prevented by using parameterized queries or by validating cloud data (preferably on server-side by means of common input sanitation libraries or whitelisting) before using it.
-
-## Additional information
-
-**[CWE-77](https://cwe.mitre.org/data/definitions/77.html)**
-
-**[CWE-78](https://cwe.mitre.org/data/definitions/78.html)**
-
-**[CWE-917](https://cwe.mitre.org/data/definitions/917.html)**
-
-**[OWASP-A1](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection)**",
-  category: "a1-injection",
+  title: "Command Injection Through Cloud Data {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Cloud data is used in a code execution context without undergoing escaping or validation. This indicates a remote code execution vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/remote-code-execution.md",
   score: "9.0",
   vulnerability_description: "Remote Code Execution",
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
   link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
-  cwe_link: "https://cwe.mitre.org/data/definitions/77.html",
-  cwe_link: "https://cwe.mitre.org/data/definitions/78.html",
-  cwe_link: "https://cwe.mitre.org/data/definitions/917.html"
+  cwe_category: "94",
+  cwe_category: "77",
+  cwe_category: "78",
+  cwe_category: "917"
 }
 
-CONCLUSION command-injection-attacker-controlled = FLOW DATA (attacker-controlled AND NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped) -> IO (execute)
+CONCLUSION command-injection-attacker-controlled = FLOW DATASOURCE (attacker-controlled) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped AND NOT numeric) -> IO (execute)
 WHEN CONCLUSION command-injection-attacker-controlled => EMIT {
-  title: "Remote Code Execution: Command Injection through attacker-controlled data {{via `$paramname`}} {{in `$methodname`}}",
-  description: "Attacker controlled data is used in a shell command without undergoing escaping or validation. This could allow an attacker to execute code on the server. Injection flaws occur when untrusted data is sent to an interpreter as part of a command or query. By injecting hostile data, an attacker may trick the interpreter into executing unintended commands or accessing data without authorization which can result in data loss, corruption, or disclosure to unauthorized parties, loss of accountability, denial of access or even a complete host takeover.
+  title: "Command Injection Through Attacker-controlled Data {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Attacker-controlled data is used in a shell command without undergoing escaping or validation. This indicates a command injection vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/remote-code-execution.md",
+  score: "9.0",
+  vulnerability_description: "Remote Code Execution",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_category: "94",
+  cwe_category: "77",
+  cwe_category: "78",
+  cwe_category: "917"
+}
 
+CONCLUSION command-injection-environment = FLOW IO (environment) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped AND NOT numeric) -> IO (execute)
+WHEN CONCLUSION command-injection-environment => EMIT {
+  title: "Command Injection Through Environment Variables {{via `$paramname`}} {{in `$methodname`}}",
+  description: "The value of an environment variable is used in a shell command without undergoing escaping or validation. Depending on who has control over environment variables in the application's execution environment, this may be a command injection vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/remote-code-execution.md",
+  score: "2.5",
+  vulnerability_description: "Command Injection",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_category: "94",
+  cwe_category: "77",
+  cwe_category: "78",
+  cwe_category: "917"
+}
+
+
+CONCLUSION lfi-attacker = FLOW DATASOURCE (attacker-controlled) -> DATA (NOT numeric) -> IO (localFileInclude)
+WHEN CONCLUSION lfi-attacker => EMIT {
+  title: "Local File Inclusion Through Attacker-controlled Data {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Attacker-controlled data is used to load and execute a file from the file system. This indicates a remote code execution vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/remote-code-execution.md",
+  score: "9.0",
+  vulnerability_description: "Remote Code Execution",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_category: "94",
+  cwe_category: "98"
+}
+CONCLUSION code-injection-attacker-controlled = FLOW DATASOURCE (attacker-controlled) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped AND NOT numeric) -> IO (executeCode)
+WHEN CONCLUSION code-injection-attacker-controlled => EMIT {
+  title: "Code Injection Through Attacker-controlled Data {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Attacker-controlled data is used in a code execution context without undergoing escaping or validation. This indicates a remote code execution vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/remote-code-execution.md",
+  score: "9.0",
+  vulnerability_description: "Remote Code Execution",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_category: "77",
+  cwe_category: "78",
+  cwe_category: "917"
+}
+
+################################################################################
+CONCLUSION lfi-database = FLOW IO (database) -> DATA (NOT numeric AND NOT attacker-controlled) -> IO (localFileInclude)
+WHEN CONCLUSION lfi-database => EMIT {
+  title: "Local File Inclusion Through Database Data {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Data from a database is used to load and execute a file from the file system. This indicates a remote code execution vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/remote-code-execution.md",
+  score: "9.0",
+  vulnerability_description: "Remote Code Execution",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_category: "94",
+  cwe_category: "98"
+}
+CONCLUSION code-injection-database = FLOW IO (database) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped AND NOT numeric AND NOT attacker-controlled) -> IO (executeCode)
+WHEN CONCLUSION code-injection-database => EMIT {
+  title: "Code Injection Through Database Data {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Data from a database is used in a code execution context without undergoing escaping or validation. If an attacker can control the corresponding database values, this indicates a remote code execution vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/remote-code-execution.md",
+  score: "5.0",
+  vulnerability_description: "Remote Code Execution",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_category: "94",
+  cwe_category: "77",
+  cwe_category: "78",
+  cwe_category: "917"
+}
+
+################################################################################
+
+CONCLUSION stdio-to-ffi = FLOW IO (read AND $stream) -> IO (ffi)
+WHEN CONCLUSION stdio-to-ffi => EMIT {
+  title: "User Input Used With Potentially Unsafe Procedure {{via `$paramname`}} {{in `$methodname`}}",
+  description: "User input is used in a call to a procedure written in another programming language. Calling foreign function interfaces like JNI on user input is potentially unsafe.
 
 ## Countermeasures
 
-This vulnerability can be prevented by using parameterized queries or by validating HTTP data (preferably on server-side by means of common input sanitation libraries or whitelisting) before using it.
+To prevent this vulnerability, re-implement the required functionality in the native language, or use a safer interface.
 
 ## Additional information
 
-**[CWE-77](https://cwe.mitre.org/data/definitions/77.html)**
+**[CWE-111](https://cwe.mitre.org/data/definitions/111.html)**",
+  score: "2.0",
+  vulnerability_description: "Security Best Practices",
+  cwe_category: "111"
+}
+################################################################################
 
-**[CWE-78](https://cwe.mitre.org/data/definitions/78.html)**
+CONCLUSION stream-to-reflection = FLOW IO ((read AND ($http OR $httpClient OR $httpHeader OR $httpClientHeader OR $socket)) OR ((http OR httpClient OR httpHeader OR httpClientHeader) AND NOT session)) -> IO (reflection)
+WHEN CONCLUSION stream-to-reflection => EMIT {
+  title: "Network Data Used to Select Classes or Code {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Network data is used for reflection on methods or classes. If the input is not sufficiently validated, an attacker could cause unexpected classes or methods to be selected. This may be used to bypass security checks, or even to execute arbitrary code.
 
-**[CWE-917](https://cwe.mitre.org/data/definitions/917.html)**
+## Countermeasures
 
-**[OWASP-A1](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection)**",
-  category: "a1-injection",
-  score: "9.0",
+To prevent this vulnerability, try to avoid using reflection, avoid network data as input for reflection methods or strictly validate all input using allow lists before using it for reflection.
+
+## Additional information
+
+**[CWE-470](https://cwe.mitre.org/data/definitions/470.html)**",
+  score: "6.0",
+  vulnerability_description: "Unsafe Reflection",
+  cwe_category: "470"
+}
+################################################################################
+
+CONCLUSION environment-to-reflection = FLOW IO (environment) -> IO (reflection)
+WHEN CONCLUSION environment-to-reflection => EMIT {
+  title: "Environment Variable Used to Select Classes or Code {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Network data is used for reflection on methods or classes. If the input is not sufficiently validated, an attacker could cause unexpected classes or methods to be selected. This may be used to bypass security checks, or even to execute arbitrary code.
+
+## Countermeasures
+
+To prevent this vulnerability, try to avoid using reflection, avoid environment variables as input for reflection methods or strictly validate all input using allow lists before using it for reflection.
+
+## Additional information
+
+**[CWE-470](https://cwe.mitre.org/data/definitions/470.html)**",
+  score: "2.0",
+  vulnerability_description: "Unsafe Reflection",
+  cwe_category: "470"
+}
+################################################################################
+
+CONCLUSION database-to-reflection = FLOW IO (database) -> IO (reflection)
+WHEN CONCLUSION database-to-reflection => EMIT {
+  title: "Database Results Used to Select Classes or Code {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Database results are used for reflection on methods or classes. If the input is not sufficiently validated, an attacker could cause unexpected classes or methods to be selected. This may be used to bypass security checks, or even to execute arbitrary code.
+
+## Countermeasures
+
+To prevent this vulnerability, try to avoid using reflection, avoid database results as input for reflection methods or strictly validate all input using allow lists before using it for reflection.
+
+## Additional information
+
+**[CWE-470](https://cwe.mitre.org/data/definitions/470.html)**",
+  score: "5.0",
+  vulnerability_description: "Unsafe Reflection",
+  cwe_category: "470"
+}
+################################################################################
+# disabled for now, only causes FPs for ticketmaster
+CONCLUSION attacker-to-lambda-fn = FLOW IO (attacker-controlled) -> IO (lambdaFunctionName)
+WHEN CONCLUSION attacker-to-lambda-fn => EMIT {
+  title: "Attacker-Controlled Data Selects Which AWS Lambda Function is Called {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Attacker-controlled data is used as the function name in a AWS Lambda invocation.
+
+If the input is not sufficiently validated against an allow-list an attacker could cause unexpected lambdas to be called. This may be used for example to bypass security checks or cause infinite loops leading to large bills.
+
+## Countermeasures
+
+To prevent this vulnerability avoid using HTTP data to choose which AWS Lambda function to call. If you must do so, strictly validate all input against an allow list before invoking the AWS Lambda.
+
+## Additional information
+
+**[CWE-470](https://cwe.mitre.org/data/definitions/470.html)**",
+  score: "6.0",
+  vulnerability_description: "Unsafe Lambda Call",
+  cwe_category: "470"
+}
+CONCLUSION attacker-to-rpc-method-name = FLOW IO (attacker-controlled) -> IO (rpcMethodName)
+WHEN CONCLUSION attacker-to-rpc-method-name => EMIT {
+  title: "Attacker-Controlled Data Selects Which Remote Function is Called {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Attacker-controlled data is used as the function name in a remote procedure call.
+
+If the input is not sufficiently validated against an allow-list an attacker could cause unexpected lambdas to be called. This may be used for example to bypass security checks or cause infinite loops leading to large bills.
+
+## Countermeasures
+
+To prevent this vulnerability avoid using HTTP data to choose which remote procedure to call. If you must do so, strictly validate all input against an allow list before invoking the remote procedure.
+
+## Additional information
+
+**[CWE-470](https://cwe.mitre.org/data/definitions/470.html)**",
+  score: "6.0",
+  vulnerability_description: "Unsafe RPC Call",
+  cwe_category: "470"
+}
+################################################################################
+
+WHEN CONCLUSION gets => EMIT {
+  title: "Usage of the Dangerous Function `gets` {{for `$paramname`}} {{in `$methodname`}}",
+  description: "Avoid the `gets` function as it can read beyond buffer boundary and cause buffer overflows. Some secure alternatives are `fgets` and `gets_s`.",
+  description_suffix_file: "io/shiftleft/descriptions/remote-code-execution.md",
+  score: "3.0",
   vulnerability_description: "Remote Code Execution",
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
-  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
-  cwe_link: "https://cwe.mitre.org/data/definitions/77.html",
-  cwe_link: "https://cwe.mitre.org/data/definitions/78.html",
-  cwe_link: "https://cwe.mitre.org/data/definitions/917.html"
+  cwe_category: "693",
+  cwe_category: "95"
+}
+
+WHEN CONCLUSION eval-python => EMIT {
+  title: "Usage of the Dangerous `eval` Function {{in `$methodname`}}",
+  description: "The `eval` function should generally be avoided because it is inherently dangerous. Consider alternatives that don't involve executing unknown Python code, such as `ast.literal_eval` or serialization.",
+  description_suffix_file: "io/shiftleft/descriptions/remote-code-execution.md",
+  score: "1.0",
+  vulnerability_description: "Potential Remote Code Execution",
+  cwe_category: "95",
+  cwe_category: "676"
 }

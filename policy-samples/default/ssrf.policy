@@ -1,23 +1,72 @@
-CONCLUSION ssrf = FLOW IO (http OR $http) -> IO (ssrf)
+CONCLUSION ssrf = FLOW IO ((http OR httpClient OR httpHeader OR httpClientHeader OR (read AND ($http OR $httpClient OR $httpHeader OR $httpClientHeader))) AND NOT session AND NOT clientSide) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT numeric AND NOT attacker-controlled) -> IO (ssrf)
 WHEN CONCLUSION ssrf => EMIT {
-     title: "Server-Side Request Forgery: {{via `$paramname`}} {{in `$methodname`}}",
-     description: "Data from HTTP requests is used in the application logic without appropriate validation. By sending specially-crafted requests, an attacker could retrieve sensitive information, gain access to administrative services, or execute arbitrary commands on the system.
-
-## Countermeasures
-
-To prevent this vulnerability, validate HTTP request data before using it to return information to the user.
-
-## Additional information
-
-**[CWE-918](https://cwe.mitre.org/data/definitions/918.html)**
-
-**[OWASP-A5](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A5-Broken_Access_Control)**
-
-**[OWASP Description of SSRF](https://owasp.org/www-community/attacks/Server_Side_Request_Forgery)**",
-     category: "A5-Broken_Access_Control",
+     title: "Unvalidated HTTP Data Used in URL {{via `$paramname`}} {{in `$methodname`}}",
+     description: "Data from HTTP requests is used in the application logic without appropriate validation. This indicates a server-side request forgery (SSRF) vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/ssrf.md",
+     category: "A1-injection",
      score: "7.0",
-     vulnerability_description: "SSRF",
-     owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A5-Broken_Access_Control",
-     link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A5-Broken_Access_Control",
-     cwe_link: "https://cwe.mitre.org/data/definitions/918.html"
+     vulnerability_description: "Server-Side Request Forgery",
+     link: "https://owasp.org/www-project-top-ten/2017/A1_2017-Injection",
+     cwe_category: "918"
+}
+
+CONCLUSION ssrf-attacker = FLOW DATASOURCE (attacker-controlled) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT numeric) -> IO (ssrf)
+WHEN CONCLUSION ssrf-attacker => EMIT {
+     title: "Attacker-Controlled Data Used in URL {{via `$paramname`}} {{in `$methodname`}}",
+     description: "Attacker-Controlled data is used in the application logic without appropriate validation. This indicates a server-side request forgery (SSRF) vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/ssrf.md",
+     category: "A1-injection",
+     link: "https://owasp.org/www-project-top-ten/2017/A1_2017-Injection",
+     score: "7.0",
+     vulnerability_description: "Server-Side Request Forgery",
+     cwe_category: "918"
+}
+
+
+
+CONCLUSION http-to-database-connection = FLOW IO ((http OR httpClient OR httpHeader OR httpClientHeader) AND NOT session AND NOT clientSide) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT numeric) -> IO (database-connect)
+WHEN CONCLUSION http-to-database-connection => EMIT {
+     title: "HTTP Data Used In Database Connection String {{via `$paramname`}} {{in `$methodname`}}",
+     description: "Data from HTTP requests is used to connect to a database without appropriate validation. This indicates a special case of a server-side request forgery (SSRF) vulnerability where the connection target is a database instead of an outgoing HTTP request.",
+     description_suffix_file: "io/shiftleft/descriptions/ssrf.md",
+     category: "A1-injection",
+     link: "https://owasp.org/www-project-top-ten/2017/A1_2017-Injection",
+     score: "7.0",
+     vulnerability_description: "Server-Side Request Forgery",
+     cwe_category: "918"
+}
+
+CONCLUSION attacker-to-queue-name = FLOW DATASOURCE (attacker-controlled) -> DATA (NOT numeric) -> IO (queueName)
+WHEN CONCLUSION attacker-to-queue-name => EMIT {
+     title: "Attacker-Controlled Data Used in Name of Message Queue {{via `$paramname`}} {{in `$methodname`}}",
+     description: "Attacker-Controlled data is used to determine the name of a message queue. This indicates a special case of a server-side request forgery (SSRF) vulnerability where the connection target is an event queue instead of an outgoing HTTP request.",
+     description_suffix_file: "io/shiftleft/descriptions/ssrf.md",
+     score: "7.0",
+     vulnerability_description: "Server-Side Request Forgery",
+     cwe_category: "918"
+}
+
+
+CONCLUSION attacker-to-http = FLOW IO ((http OR $http OR httpClient OR $httpClient OR httpHeader OR $httpHeader OR httpClientHeader OR $httpClientHeader) AND NOT attacker-controlled AND NOT session AND NOT clientSide) -> DATA (attacker-controlled AND NOT encrypted AND NOT hashed AND NOT escaped AND NOT numeric) -> IO (($url OR url) AND (http OR httpClient OR httpHeader OR httpClientHeader) AND NOT ssrf)
+WHEN CONCLUSION attacker-to-http => EMIT {
+  title: "HTTP Data as URL {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Data that is controlled by an attacker is not escaped, hashed or encoded and used as an HTTP URL in this flow. This indicates a server-side request forgery (SSRF) vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/ssrf.md",
+  category: "A1-injection",
+  link: "https://owasp.org/www-project-top-ten/2017/A1_2017-Injection",
+  score: "8.0",
+  vulnerability_description: "Server-Side Request Forgery",
+  cwe_category: "918"
+}
+
+CONCLUSION attacker2-to-http = FLOW IO (attacker-controlled) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT numeric) -> IO (($url OR url) AND (http OR httpClient OR httpHeader OR httpClientHeader) AND NOT ssrf)
+WHEN CONCLUSION attacker2-to-http => EMIT {
+  title: "Attacker-controlled Data as URL {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Data that is controlled by an attacker is not escaped, hashed or encoded and used as an HTTP URL in this flow. This indicates a server-side request forgery (SSRF) vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/ssrf.md",
+  category: "A1-injection",
+  link: "https://owasp.org/www-community/attacks/Server_Side_Request_Forgery",
+  score: "8.0",
+  vulnerability_description: "Server-Side Request Forgery",
+  cwe_category: "918"
 }

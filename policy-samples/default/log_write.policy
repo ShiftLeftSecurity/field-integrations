@@ -4,106 +4,66 @@
 
 # from org.springframework.core.env.Environment.getProperty:java.lang.String(java.lang.String)
 # org.slf4j.Logger.info:void(java.lang.String,java.lang.Object)
-CONCLUSION sensitive-to-log = FLOW DATA (tokens OR authentication OR internal-keys OR certificates OR payment-data OR credentials OR location OR account-info OR pii OR medical OR cookies) -> IO (log)
+# todo check category, it is more like informational
+CONCLUSION sensitive-to-log = FLOW DATASOURCE (tokens OR authentication OR internal-keys OR certificates OR payment-data OR credentials OR location OR account-info OR pii OR medical OR cookies) -> IO (log)
 WHEN CONCLUSION sensitive-to-log => EMIT {
-  title: "Sensitive Data Leak: Sensitive data is leaked {{via `$paramname`}} to log {{in `$methodname`}}",
-  description: "Sensitive data leak detected in this flow. This data may be visible to a third party that has access to the logs, such as system administrators. Many web applications and APIs do not protect sensitive data, such as financial and healthcare. Attackers may steal or modify such weakly protected data to conduct credit card fraud, identity theft, or other crimes.
-
-
-## Countermeasures
-
-This vulnerability can be prevented by not writing sensitive data to the log or by encrypting it in advance.
-
-## Additional information
-
-**[CWE-200](https://cwe.mitre.org/data/definitions/200.html)**
-
-**[CWE-117](https://cwe.mitre.org/data/definitions/117.html)**
-
-**[OWASP-A3](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure)**",
+  title: "Sensitive Data is Leaked {{via `$paramname`}} to Log {{in `$methodname`}}",
+  description: "Sensitive data is logged in this flow.",
+  description_suffix_file: "io/shiftleft/descriptions/sensitive-data-leak.md",
   category: "a3-sensitive-data-exposure",
   score: "8.0",
   vulnerability_description: "Sensitive Data Leak",
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
   link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
-  cwe_link: "https://cwe.mitre.org/data/definitions/200.html",
-  cwe_link: "https://cwe.mitre.org/data/definitions/117.html"
+  cwe_category: "200",
+  cwe_category: "117"
 }
 
+# todo check category, database content can be leaked to admin (third party) viewable logs
 CONCLUSION database-to-log = FLOW IO (database) -> DATA (tokens OR authentication OR internal-keys OR certificates OR payment-data OR credentials OR location OR account-info OR pii OR medical OR cookies) -> IO (log)
 WHEN CONCLUSION database-to-log => EMIT {
-  title: "Sensitive Data Leak: Security-sensitive data is leaked {{via `$paramname`}} to log {{in `$methodname`}}",
-  description: "Sensitive database data is written to log in this flow. This data may be visible to a third party that has access to the logs, such as system administrators. Many web applications and APIs do not protect sensitive data, such as financial and healthcare. Attackers may steal or modify such weakly protected data to conduct credit card fraud, identity theft, or other crimes.
-
-
-## Countermeasures
-
-This vulnerability can be prevented by not writing sensitive data to the log or by encrypting it in advance.
-
-## Additional information
-
-**[CWE-200](https://cwe.mitre.org/data/definitions/200.html)**
-
-**[CWE-117](https://cwe.mitre.org/data/definitions/117.html)**
-
-**[OWASP-A3](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure)**",
+  title: "Security-sensitive Data is Leaked {{via `$paramname`}} to Log {{in `$methodname`}}",
+  description: "Sensitive database data is written to log in this flow.",
+  description_suffix_file: "io/shiftleft/descriptions/sensitive-data-leak.md",
   category: "a3-sensitive-data-exposure",
   score: "3.0",
   vulnerability_description: "Sensitive Data Leak",
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
   link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
-  cwe_link: "https://cwe.mitre.org/data/definitions/200.html",
-  cwe_link: "https://cwe.mitre.org/data/definitions/117.html"
+  cwe_category: "200",
+  cwe_category: "117"
 }
 
-CONCLUSION http-to-log = FLOW IO (http OR $http) -> IO (log)
+CONCLUSION http-to-log = FLOW IO ((http OR $http OR httpClient OR $httpClient OR httpHeader OR $httpHeader OR httpClientHeader OR $httpClientHeader) AND NOT session) -> DATA (NOT encrypted AND NOT encoded AND NOT numeric AND NOT attacker-controlled) -> IO (log)
 WHEN CONCLUSION http-to-log => EMIT {
-  title: "Sensitive Data Leak: Security-sensitive data is leaked {{via `$paramname`}} to log {{in `$methodname`}}",
-  description: "HTTP data is written to a log file in this flow. This data may be visible to a third party that has access to the logs, such as system administrators. Many web applications and APIs do not protect sensitive data, such as financial and healthcare. Attackers may steal or modify such weakly protected data to conduct credit card fraud, identity theft, or other crimes.
-
-
-## Countermeasures
-
-This vulnerability can be prevented by not writing HTTP data directly to the log or by encrypting it in advance.
-
-## Additional information
-
-**[CWE-200](https://cwe.mitre.org/data/definitions/200.html)**
-
-**[CWE-117](https://cwe.mitre.org/data/definitions/117.html)**
-
-**[OWASP-A3](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure)**",
-  category: "a3-sensitive-data-exposure",
+  title: "External Data is Written Directly to Log {{via `$paramname`}} {{in `$methodname`}}",
+  description: "The application writes external data directly to a log file.",
+  description_suffix_file: "io/shiftleft/descriptions/log-forging.md",
+  category: "A1-injection",
   score: "2.5",
-  vulnerability_description: "Sensitive Data Leak",
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
-  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
-  cwe_link: "https://cwe.mitre.org/data/definitions/200.html",
-  cwe_link: "https://cwe.mitre.org/data/definitions/117.html"
+  vulnerability_description: "Log Forging",
+  link: "https://owasp.org/www-project-top-ten/2017/A1_2017-Injection",
+  cwe_category: "117"
+}
+CONCLUSION log-forging-attacker = FLOW DATASOURCE (attacker-controlled) -> DATA (NOT encrypted AND NOT encoded AND NOT numeric) -> IO (log)
+WHEN CONCLUSION log-forging-attacker => EMIT {
+  title: "Attacker-controlled Data is Written Directly to Log {{via `$paramname`}} {{in `$methodname`}}",
+  description: "The application writes attacker-controlled data directly to a log file.",
+  description_suffix_file: "io/shiftleft/descriptions/log-forging.md",
+  category: "A1-injection",
+  score: "2.5",
+  vulnerability_description: "Log Forging",
+  link: "https://owasp.org/www-project-top-ten/2017/A1_2017-Injection",
+  cwe_category: "117"
 }
 
-CONCLUSION cloud-to-log = FLOW IO (cloud) -> IO (log)
+CONCLUSION cloud-to-log = FLOW IO (cloud) -> DATA (NOT encrypted AND NOT encoded AND NOT numeric AND NOT attacker-controlled) -> IO (log)
 WHEN CONCLUSION cloud-to-log => EMIT {
-  title: "Sensitive Data Leak: Security-sensitive data is leaked {{via `$paramname`}} to log {{in `$methodname`}}",
-  description: "Cloud data is written to a log file in this flow. This data may be visible to a third party that has access to the logs, such as system administrators. Many web applications and APIs do not protect sensitive data, such as financial and healthcare. Attackers may steal or modify such weakly protected data to conduct credit card fraud, identity theft, or other crimes.
-
-
-## Countermeasures
-
-This vulnerability can be prevented by not writing cloud data directly to the log or by encrypting it in advance.
-
-## Additional information
-
-**[CWE-200](https://cwe.mitre.org/data/definitions/200.html)**
-
-**[CWE-117](https://cwe.mitre.org/data/definitions/117.html)**
-
-**[OWASP-A3](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure)**",
+  title: "Security-sensitive Data is Leaked {{via `$paramname`}} to Log {{in `$methodname`}}",
+  description: "Cloud data is written to a log file in this flow. This data may be visible to a third party that has access to the logs, such as system administrators.",
+  description_suffix_file: "io/shiftleft/descriptions/sensitive-data-leak.md",
   category: "a3-sensitive-data-exposure",
   score: "2.5",
   vulnerability_description: "Sensitive Data Leak",
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
   link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
-  cwe_link: "https://cwe.mitre.org/data/definitions/200.html",
-  cwe_link: "https://cwe.mitre.org/data/definitions/117.html"
+  cwe_category: "200",
+  cwe_category: "117"
 }

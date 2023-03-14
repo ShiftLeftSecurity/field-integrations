@@ -2,237 +2,323 @@
 # XSS
 ####
 
-CONCLUSION template-injection = FLOW IO (database) -> DATA (mustacheTemplate)
+CONCLUSION template-injection = FLOW IO (database) -> IO (mustacheTemplate)
 WHEN CONCLUSION template-injection => EMIT {
-     title: "Template Injection: Template injection {{via `$paramname`}} {{in `$methodname`}}",
-     description : "A string is passed from the database to the mustache template engine without undergoing escaping or validation. Unless the string is validated upon insertion into the database, this results in a cross-site scripting vulnerability.
-
-
-## Countermeasures
-
-This vulnerability can be prevented by using input sanitization/validation techniques (e.g., whitelisting) on the database data before using it in the mustacheTemplate.
-
-## Additional information
-
-**[CWE-79](https://cwe.mitre.org/data/definitions/79.html)**
-
-**[OWASP-A7](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS))**",
-     category: "a7-XSS",
+     title: "Template Injection {{via `$paramname`}} {{in `$methodname`}}",
+     description : "A string is passed from the database to the mustache template engine without undergoing escaping or validation. This indicates a template injection vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/template-injection.md",
      score: "8.0",
      vulnerability_description: "Template Injection",
-     owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
-     link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
-     cwe_link: "https://cwe.mitre.org/data/definitions/79.html"
+     cwe_category: "79",
+     cwe_category: "94"
 }
 
-CONCLUSION http-to-velocityTemplate = FLOW IO (http OR $http) -> DATA (velocityTemplate)
-WHEN CONCLUSION http-to-template => EMIT {
-     title: "Template Injection: Template name injection {{via `$paramname`}} {{in `$methodname`}}",
-     category: "a7-XSS",
-     description: "HTTP data is evaluated in the context of a velocity template, without prior sanitazatoin. This may result in a XSS attack.
-
-## Countermeasures
-
-This vulnerability can be prevented by using input sanitization/validation techniques (e.g., whitelisting) on data before providing them to a velocity evaluation.
-
-## Additional information
-
-**[CWE-79](https://cwe.mitre.org/data/definitions/79.html)**
-
-**[OWASP-A7](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS))**",
+CONCLUSION http-to-velocityTemplate = FLOW IO ((http OR $http OR httpClient OR $httpClient OR httpHeader OR $httpHeader OR httpClientHeader OR $httpClientHeader) AND NOT session) -> IO (velocityTemplate)
+WHEN CONCLUSION http-to-velocityTemplate => EMIT {
+     title: "Template Name Injection {{via `$paramname`}} {{in `$methodname`}}",
+     description: "HTTP data is evaluated in the context of a velocity template without undergoing escaping or validation. This indicates a template injection vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/template-injection.md",
      score: "5.0",
      vulnerability_description: "Template Injection",
-     owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
-     link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
-     cwe_link: "https://cwe.mitre.org/data/definitions/79.html"
+     cwe_category: "79",
+     cwe_category: "94"
 }
 
 
-CONCLUSION template-name-injection = FLOW IO (database) -> DATA (mustacheTemplateName)
+CONCLUSION template-name-injection = FLOW IO (database) -> IO (mustacheTemplateName)
 WHEN CONCLUSION template-name-injection => EMIT {
-     title: "Template Injection: Template name injection {{via `$paramname`}} {{in `$methodname`}}",
-     category: "a7-XSS",
-     description: "The name of a mustache template is potentially attacker-controlled. This may result in a XSS attack.
-
-## Countermeasures
-
-This vulnerability can be prevented by using input sanitization/validation techniques (e.g., whitelisting) on the name of the mustache template.
-
-## Additional information
-
-**[CWE-79](https://cwe.mitre.org/data/definitions/79.html)**
-
-**[OWASP-A7](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS))**",
+     title: "Template Name Injection {{via `$paramname`}} {{in `$methodname`}}",
+     description: "The name of a mustache template is potentially attacker-controlled. This indicates a template injection vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/template-injection.md",
      score: "8.0",
      vulnerability_description: "Template Injection",
-     owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
-     link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
-     cwe_link: "https://cwe.mitre.org/data/definitions/79.html"
+     cwe_category: "79"
 }
 
-
-CONCLUSION xss-to-header = FLOW IO (http OR $http) -> IO (httpHeader)
-WHEN CONCLUSION xss-to-header => EMIT {
-     title: "XSS: HTTP data to header {{via `$paramname`}} {{in `$methodname`}}",
-     category: "a7-XSS",
-     description: "Data from HTTP request parameters is stored in HTTP headers. Unless the string is validated, this may result in a XSS attack.
-
-
-## Countermeasures
-
-This vulnerability can be prevented by using input sanitization/validation techniques (e.g., whitelisting) on the HTTP data before using it inside another HTTP header.
-
-## Additional information
-
-**[CWE-79](https://cwe.mitre.org/data/definitions/79.html)**
-
-**[OWASP-A7](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS))**",
-     score: "8.0",
-     vulnerability_description: "XSS",
-     owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
-     link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
-     cwe_link: "https://cwe.mitre.org/data/definitions/79.html"
-}
 
 # `htmlTemplate` only defined in go, at the moment; this is tagged as part of HtmlTemplateCastTaggingPass
-CONCLUSION xss-to-html-template = FLOW IO (http) -> DATA (unsafe-html-template-cast) -> IO (htmlTemplate)
+CONCLUSION xss-to-html-template = FLOW IO ((http OR httpClient OR httpHeader OR httpClientHeader) AND NOT session) -> DATA (unsafe-html-template-cast AND NOT numeric) -> IO (htmlTemplate)
 WHEN CONCLUSION xss-to-html-template => EMIT {
-     title: "XSS: HTTP data to HTML {{via `$paramname`}} {{in `$methodname`}}",
-     category: "a7-XSS",
-     description: "Data from HTTP request parameters is used in HTML rendering. Unless the string is validated, this may result in a XSS attack.
-
-
-## Countermeasures
-
-This vulnerability can be prevented by using input sanitization/validation techniques (e.g., whitelisting) on the HTTP data before using it inside another HTTP header.
-
-## Additional information
-
-**[CWE-79](https://cwe.mitre.org/data/definitions/79.html)**
-
-**[OWASP-A7](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS))**",
+     title: "HTTP Data Used in HTML Template {{via `$paramname`}} {{in `$methodname`}}",
+     description: "Data from a HTTP request or response is used in HTML rendering. This indicates a template injection vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/template-injection.md",
      score: "8.0",
-     vulnerability_description: "XSS",
-     owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
-     link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
-     cwe_link: "https://cwe.mitre.org/data/definitions/79.html"
+     vulnerability_description: "Template Injection",
+     cwe_category: "79"
+}
+CONCLUSION http-to-template-name = FLOW IO ((http OR httpClient OR httpHeader OR httpClientHeader) AND NOT session) -> DATA (NOT numeric AND NOT attacker-controlled) -> IO (templateName)
+WHEN CONCLUSION http-to-template-name => EMIT {
+     title: "HTTP Data Used as Template Name {{via `$paramname`}} {{in `$methodname`}}",
+     description: "Data from an HTTP request or response is used as a HTML template name. This indicates a template injection vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/template-injection.md",
+     vulnerability_description: "Template Injection",
+     score: "8.0",
+     cwe_category: "79"
+}
+CONCLUSION attacker-to-template-name = FLOW DATASOURCE (attacker-controlled) -> DATA (NOT numeric) -> IO (templateName)
+WHEN CONCLUSION attacker-to-template-name => EMIT {
+     title: "Attacker-Controlled Data Used as Template Name {{via `$paramname`}} {{in `$methodname`}}",
+     description: "Attacker-controlled data is used as a HTML template name. This indicates a template injection vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/template-injection.md",
+     score: "8.0",
+     vulnerability_description: "Template Injection",
+     cwe_category: "79"
 }
 
 
-CONCLUSION xss-to-html = FLOW IO (http) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT encoded) -> IO (html AND NOT session)
+CONCLUSION attacker-to-html = FLOW DATASOURCE (attacker-controlled) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT encoded AND NOT numeric AND NOT session AND NOT JSON) -> IO ((html OR ($html AND (http OR write))) AND NOT httpHeader AND NOT httpClientHeader)
+WHEN CONCLUSION attacker-to-html => EMIT {
+     title: "Attacker-Controlled Data Used as HTML Content {{via `$paramname`}} {{in `$methodname`}}",
+     description_suffix_file: "io/shiftleft/descriptions/xss.md",
+     description: "Attacker-Controlled data is used as HTML content. This indicates a Cross-Site-Scripting (XSS) vulnerability.",
+     score: "8.0",
+     vulnerability_description: "Cross-Site Scripting",
+     cwe_category: "79"
+}
+CONCLUSION xss-to-html = FLOW IO ((http OR httpClient OR httpHeader OR httpClientHeader OR (read AND ($http OR $httpClient OR $httpHeader OR $httpClientHeader))) AND NOT session AND NOT clientSide) -> DATA (NOT attacker-controlled AND NOT encrypted AND NOT hashed AND NOT escaped AND NOT encoded AND NOT numeric AND NOT session AND NOT JSON) -> IO ((html OR ($html AND (http OR write))) AND NOT httpHeader AND NOT httpClientHeader)
 WHEN CONCLUSION xss-to-html => EMIT {
-     title: "XSS: HTTP data to HTML {{via `$paramname`}} {{in `$methodname`}}",
-     category: "a7-XSS",
-     description: "Data from HTTP request parameters is used in HTML or session information. Unless the string is validated, this may result in a XSS attack.
-
-
-## Countermeasures
-
-This vulnerability can be prevented by using input sanitization/validation techniques (e.g., whitelisting) on the HTTP data before using it inside another HTTP header.
-
-## Additional information
-
-**[CWE-79](https://cwe.mitre.org/data/definitions/79.html)**
-
-**[OWASP-A7](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS))**",
+     title: "HTTP Data Used as HTML Content {{via `$paramname`}} {{in `$methodname`}}",
+     description: "HTTP request/response data is used as HTML content. This indicates a Cross-Site-Scripting (XSS) vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/xss.md",
      score: "8.0",
-     vulnerability_description: "XSS",
-     owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
-     link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
-     cwe_link: "https://cwe.mitre.org/data/definitions/79.html"
+     vulnerability_description: "Cross-Site Scripting",
+     cwe_category: "79"
+}
+CONCLUSION client-http-to-html = FLOW IO (httpClient AND clientSide) -> DATA (NOT attacker-controlled AND NOT encrypted AND NOT hashed AND NOT escaped AND NOT encoded AND NOT numeric AND NOT session AND NOT JSON) -> IO ((html OR ($html AND (http OR write))) AND NOT httpHeader AND NOT httpClientHeader)
+WHEN CONCLUSION client-http-to-html => EMIT {
+     title: "HTTP Response Data Used as HTML Content {{via `$paramname`}} {{in `$methodname`}}",
+     description: "HTTP response data is used as HTML content. If the data can be controlled by an attacker, indicates a potential Cross-Site-Scripting (XSS) vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/xss.md",
+     score: "4.0",
+     vulnerability_description: "Cross-Site Scripting",
+     cwe_category: "79"
 }
 
 
-CONCLUSION xss-to-print = FLOW IO (http AND NOT session) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT encoded) -> IO (print AND $http AND NOT session)
+CONCLUSION attacker-to-link = FLOW DATASOURCE (attacker-controlled) -> DATA (NOT encrypted AND NOT hashed AND NOT numeric AND NOT session AND NOT JSON) -> IO (html-link-target)
+WHEN CONCLUSION attacker-to-link => EMIT {
+     title: "Attacker-Controlled Data Used in HTML Link Destination {{via `$paramname`}} {{in `$methodname`}}",
+     description: "Attacker-controlled data is used as part of the `href` attribute of an HTML link. If an attacker can specify a `javascript:` URL, this indicates a Cross-Site-Scripting (XSS) vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/xss.md",
+     score: "6.0",
+     vulnerability_description: "Cross-Site Scripting",
+     link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
+     cwe_category: "79"
+}
+CONCLUSION attacker-to-javascript = FLOW DATASOURCE (attacker-controlled) -> DATA (NOT encrypted AND NOT hashed AND NOT numeric AND NOT session AND NOT JSON) -> IO (javascript AND NOT executeCode)
+WHEN CONCLUSION attacker-to-javascript => EMIT {
+     title: "Attacker-Controlled Data Used in JavaScript Code {{via `$paramname`}} {{in `$methodname`}}",
+     description: "Attacker-controlled data is used as part of JavaScript code. This indicates a Cross-Site-Scripting (XSS) vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/xss.md",
+     score: "8.0",
+     vulnerability_description: "Cross-Site Scripting",
+     cwe_category: "79"
+}
+CONCLUSION http-to-javascript = FLOW IO ((http OR $http OR httpClient OR $httpClient OR httpHeader OR $httpHeader OR httpClientHeader OR $httpClientHeader) AND NOT session AND NOT clientSide) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT encoded AND NOT numeric AND NOT session AND NOT JSON AND NOT attacker-controlled) -> IO (javascript AND NOT executeCode)
+WHEN CONCLUSION http-to-javascript => EMIT {
+     title: "HTTP Data Used as JavaScript Code {{via `$paramname`}} {{in `$methodname`}}",
+     description: "HTTP request/response data is used as JavaScript code. This indicates a Cross-Site-Scripting (XSS) vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/xss.md",
+     score: "8.0",
+     vulnerability_description: "Cross-Site Scripting",
+     cwe_category: "79"
+}
+CONCLUSION http-client-to-javascript = FLOW IO (httpClient AND clientSide) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT encoded AND NOT numeric AND NOT session AND NOT JSON AND NOT attacker-controlled) -> IO (javascript)
+WHEN CONCLUSION http-client-to-javascript => EMIT {
+     title: "HTTP Data Used as JavaScript Code {{via `$paramname`}} {{in `$methodname`}}",
+     description: "HTTP response data is used as JavaScript code. If the response data can be controlled by an attacker, this indicates a Cross-Site-Scripting (XSS) vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/xss.md",
+     score: "4.0",
+     vulnerability_description: "Cross-Site Scripting",
+     cwe_category: "79"
+}
+
+
+CONCLUSION xss-to-print = FLOW IO ((http OR httpClient OR httpHeader OR httpClientHeader) AND NOT session) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT encoded AND NOT numeric AND NOT session) -> IO (print AND ($http OR $httpClient) AND NOT session AND NOT httpHeader AND NOT httpClientHeader AND NOT $httpHeader AND NOT $httpClientHeader)
 WHEN CONCLUSION xss-to-print => EMIT {
-     title: "XSS: HTTP data to HTML {{via `$paramname`}} {{in `$methodname`}}",
-     category: "a7-XSS",
-     description: "Data from HTTP request parameters is used in HTML. Unless the string is validated, this may result in a XSS attack.
-
-
-## Countermeasures
-
-This vulnerability can be prevented by using input sanitization/validation techniques (e.g., whitelisting) on the HTTP data before displaying it.
-
-## Additional information
-
-**[CWE-79](https://cwe.mitre.org/data/definitions/79.html)**
-
-**[OWASP-A7](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS))**",
+     title: "HTTP Data Used as HTML Content {{via `$paramname`}} {{in `$methodname`}}",
+     description: "HTTP request/response data is used as HTML content. This indicates a Cross-Site-Scripting (XSS) vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/xss.md",
      score: "8.0",
-     vulnerability_description: "XSS",
-     owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
-     link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
-     cwe_link: "https://cwe.mitre.org/data/definitions/79.html"
+     vulnerability_description: "Cross-Site Scripting",
+     cwe_category: "79",
+     cwe_category: "94"
 }
 
-CONCLUSION xss-file-to-html = FLOW IO (reader) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT encoded) -> IO (html AND NOT session)
+CONCLUSION xss-file-to-html = FLOW IO (reader) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT encoded AND NOT numeric AND NOT session) -> IO (html AND NOT session AND NOT httpHeader AND NOT httpClientHeader)
 WHEN CONCLUSION xss-file-to-html => EMIT {
-     title: "XSS: Data from file to HTML {{via `$paramname`}} {{in `$methodname`}}",
-     category: "a7-XSS",
-     description: "Data from file is used in HTML. Unless the string is validated, this may result in a XSS attack.
-
-
-## Countermeasures
-
-This vulnerability can be prevented by using input sanitization/validation techniques (e.g., whitelisting) on the HTTP data before displaying it.
-
-## Additional information
-
-**[CWE-79](https://cwe.mitre.org/data/definitions/79.html)**
-
-**[OWASP-A7](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS))**",
+     title: "Streamed Data Used as HTML Content {{via `$paramname`}} {{in `$methodname`}}",
+     description: "Data from a stream is used as HTML content. This indicates a potential Cross-Site-Scripting (XSS) vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/xss.md",
      score: "8.0",
-     vulnerability_description: "XSS",
-     owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
-     link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
-     cwe_link: "https://cwe.mitre.org/data/definitions/79.html"
+     vulnerability_description: "Cross-Site Scripting",
+     cwe_category: "79"
 }
 
 IO playHttp = METHOD -f r".*\.ok:play\.mvc\.Result\(.*" { PAR -i 1 "SINK" }
-CONCLUSION xss-play = FLOW IO (http) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT encoded) -> IO (playHttp)
+CONCLUSION xss-play = FLOW IO ((http OR httpClient) AND NOT session) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT encoded AND NOT numeric AND NOT JSON) -> IO (playHttp)
 WHEN CONCLUSION xss-play => EMIT {
-     title: "XSS: HTTP data to HTML {{via `$paramname`}} {{in `$methodname`}}",
-     category: "a7-XSS",
-     description: "Data from HTTP request parameters is used in HTML. Unless the string is validated, this may result in a XSS attack.
-
-
-## Countermeasures
-
-This vulnerability can be prevented by using input sanitization/validation techniques (e.g., whitelisting) on the HTTP data before displaying it.
-
-## Additional information
-
-**[CWE-79](https://cwe.mitre.org/data/definitions/79.html)**
-
-**[OWASP-A7](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS))**",
+     title: "HTTP Data Used as HTML Content {{via `$paramname`}} {{in `$methodname`}}",
+     description: "HTTP request/response data is used as HTML content. This indicates a Cross-Site-Scripting (XSS) vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/xss.md",
      score: "8.0",
-     vulnerability_description: "XSS",
-     owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
+     vulnerability_description: "Cross-Site Scripting",
      link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
-     cwe_link: "https://cwe.mitre.org/data/definitions/79.html"
+     cwe_category: "79"
 }
 
 
-CONCLUSION http-to-jsp = FLOW IO (http) -> IO (jsp)
+# This is the static policy for the java webgoat, it is here because http -> http introduced many false positives
+# recently.
+
+# Todo: Check if FPs are still introduced by http -> http
+IO attackBuilderOutput = METHOD -f "org.owasp.webgoat.assignments.AttackResult$AttackResultBuilder.output:org.owasp.webgoat.assignments.AttackResult$AttackResultBuilder(java.lang.String)" { PAR -i 1 "SINK" }
+
+CONCLUSION xss-abuilder = FLOW IO ((http OR httpClient OR httpHeader OR httpClientHeader) AND NOT session) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT encoded AND NOT numeric) -> IO (attackBuilderOutput)
+WHEN CONCLUSION xss-abuilder => EMIT {
+     title: "HTTP Data Used as HTML Content {{via `$paramname`}} {{in `$methodname`}}",
+     description: "HTTP request/response data is used in HTML content. This indicates a Cross-Site-Scripting (XSS) vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/xss.md",
+     score: "8.0",
+     vulnerability_description: "Cross-Site Scripting",
+     cwe_category: "79"
+}
+
+CONCLUSION http-to-jsp = FLOW IO ((http OR httpClient OR httpHeader OR httpClientHeader) AND NOT session) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT encoded AND NOT numeric) -> IO (jsp AND NOT http)
 WHEN CONCLUSION http-to-jsp => EMIT {
-     title: "XSS: HTTP data to HTML {{via `$paramname`}} {{in `$methodname`}}",
-     category: "a7-XSS",
-     description: "Data from HTTP request parameters is used in HTML. Unless the string is validated, this may result in a XSS attack.
+     title: "HTTP Data Used as HTML Content {{via `$paramname`}} {{in `$methodname`}}",
+     description: "HTTP request/response data is used in HTML content. This indicates a potential Cross-Site-Scripting (XSS) vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/xss.md",
+     score: "8.0",
+     vulnerability_description: "Cross-Site Scripting",
+     link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
+     cwe_category: "79"
+}
+
+
+
+#CONCLUSION http-to-html = FLOW IO ((http OR httpClient) AND NOT session) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT encoded AND NOT numeric) -> IO (html)
+#WHEN CONCLUSION http-to-html => EMIT {
+#     title: "HTTP Data Used as HTML Content {{via `$paramname`}} {{in `$methodname`}}",
+#     description: "HTTP request/response data is used in HTML content. This indicates a Cross-Site-Scripting (XSS) vulnerability.",
+#     description_suffix_file: "io/shiftleft/descriptions/xss.md",
+#     score: "8.0",
+#     vulnerability_description: "Cross-Site Scripting",
+#     cwe_category: "79"
+#}
+
+CONCLUSION env-to-html = FLOW IO (environment) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT encoded AND NOT numeric AND NOT session) -> IO ((html OR $html) AND NOT session)
+WHEN CONCLUSION env-to-html => EMIT {
+     title: "Environment Data Used as HTML Content {{via `$paramname`}} {{in `$methodname`}}",
+     description: "Data from environment variables is used as HTML content. This indicates a Cross-Site-Scripting (XSS) vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/xss.md",
+     score: "3.0",
+     vulnerability_description: "Cross-Site Scripting",
+     cwe_category: "79"
+}
+
+CONCLUSION network-to-html = FLOW IO (network) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT encoded AND NOT numeric) -> IO ((html OR $html) AND NOT session AND NOT httpHeader AND NOT httpClientHeader)
+WHEN CONCLUSION network-to-html => EMIT {
+     title: "Network Data Used as HTML Content {{via `$paramname`}} {{in `$methodname`}}",
+     description: "Data from the network is used as HTML content. This indicates a Cross-Site-Scripting (XSS) vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/xss.md",
+     score: "3.0",
+     vulnerability_description: "Cross-Site Scripting",
+     cwe_category: "79"
+}
+
+CONCLUSION json-inject-response = FLOW IO ((http OR httpClient OR httpHeader OR httpClientHeader) AND NOT session AND NOT $json) -> DATA (NOT JSON) -> IO ((http OR httpClient) AND $json AND NOT json)
+WHEN CONCLUSION json-inject-response => EMIT {
+  title: "HTTP Input Data Used as JSON Response {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Input data received over HTTP is used in a JSON response. This indicates a JSON Injection vulnerability.
 
 
 ## Countermeasures
 
-This vulnerability can be prevented by using input sanitization/validation techniques (e.g., whitelisting) on the HTTP data before displaying it.
+This vulnerability can be prevented by converting inputs to JSON or escaping strings instead of using them as-is.
 
 ## Additional information
 
-**[CWE-79](https://cwe.mitre.org/data/definitions/79.html)**
+**[CWE-143](https://cwe.mitre.org/data/definitions/143.html)**
 
-**[OWASP-A7](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS))**",
+**[OWASP-A1](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection)**",
+  score: "5.0",
+  vulnerability_description: "JSON Injection",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_category: "143"
+}
+
+CONCLUSION xml-inject-response = FLOW IO ((http OR httpClient OR httpHeader OR httpClientHeader) AND NOT session AND NOT $xml) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT encoded AND NOT numeric AND NOT session) -> IO ((http OR httpClient) AND $xml AND NOT stringManipulation)
+WHEN CONCLUSION xml-inject-response => EMIT {
+  title: "HTTP Input Data Used as XML Response {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Input data received over HTTP is used in a XML response. This indicates a XML Injection vulnerability.
+
+
+## Countermeasures
+
+This vulnerability can be prevented by escaping input data instead of using it as-is.
+
+## Additional information
+
+**[CWE-143](https://cwe.mitre.org/data/definitions/143.html)**
+
+**[OWASP-A1](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection)**",
+  score: "5.0",
+  vulnerability_description: "XML External Entities",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_link: "https://cwe.mitre.org/data/definitions/143.html",
+  cwe_category: "143"
+}
+
+
+CONCLUSION template-unescaped-output = FLOW IO (templateInputs) -> IO ((http OR httpClient) AND html)
+WHEN CONCLUSION template-unescaped-output => EMIT {
+     title: "Template Inputs are Sent as Unescaped HTML {{via `$paramname`}} {{in `$methodname`}}",
+     description: "An HTML template sends inputs from the application as unescaped HTML. This indicates a potential Cross-Site-Scripting (XSS) vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/xss.md",
+     score: "4.0",
+     vulnerability_description: "Cross-Site Scripting",
+     cwe_category: "79"
+}
+
+CONCLUSION attacker-to-email-html = FLOW DATASOURCE (attacker-controlled) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT encoded AND NOT numeric AND NOT session AND NOT JSON) -> IO (emailHtml OR (mail AND $html))
+WHEN CONCLUSION attacker-to-email-html => EMIT {
+     title: "Attacker-Controlled Data Used in Email as HTML Content {{via `$paramname`}} {{in `$methodname`}}",
+     description: "Attacker-controlled data is used as HTML content for an email. This indicates a Cross-Site Scripting (XSS) vulnerability. Even when the recipient's email client does not execute JavaScript within the email, an attacker who injects arbitrary HTML can e.g. change the contents to say whatever they want (e.g. for phishing) or reference external images for tracking purposes.",
+     description_suffix_file: "io/shiftleft/descriptions/xss.md",
+     score: "4.0",
+     vulnerability_description: "Cross-Site Scripting",
+     cwe_category: "79"
+}
+
+# compare https://github.com/valentin-panov/next-js-test-env/blob/03175c2cad7c4a9f369243ff527d41e5684523d8/components/refInnerHTML/refInnerHTML.tsx#L14
+CONCLUSION react-component-html = FLOW IO (react-component) -> DATA (NOT encrypted AND NOT hashed AND NOT escaped AND NOT encoded AND NOT numeric) -> IO (html)
+WHEN CONCLUSION react-component-html => EMIT {
+     title: "React Component Uses Inputs as HTML Content {{in `$methodname`}}",
+     description: "If attacker-controlled data is passed to the React component, that indicates a Cross-Site Scripting vulnerability. Avoid using raw HTML in React where possible.",
+     description_suffix_file: "io/shiftleft/descriptions/xss.md",
      score: "8.0",
-     vulnerability_description: "XSS",
-     owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
+     vulnerability_description: "Cross-Site Scripting",
+     cwe_category: "79",
+     link: "https://reactjs.org/docs/dom-elements.html#dangerouslysetinnerhtml"
+}
+CONCLUSION react-component-to-link = FLOW IO (react-component) -> DATA (NOT encrypted AND NOT hashed AND NOT numeric AND NOT session AND NOT JSON) -> IO (html-link-target OR windowUrl)
+WHEN CONCLUSION react-component-to-link => EMIT {
+     title: "React Component Uses Inputs as HTML Link Destination {{via `$paramname`}} {{in `$methodname`}}",
+     description: "A react component navigates to a destination based on its inputs. When an attacker can specify a `javascript:` URL, this indicates a Cross-Site-Scripting (XSS) vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/xss.md",
+     score: "8.0",
+     vulnerability_description: "Cross-Site Scripting",
      link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A7-Cross-Site_Scripting_(XSS)",
-     cwe_link: "https://cwe.mitre.org/data/definitions/79.html"
+     cwe_category: "79"
+}
+CONCLUSION ag-grid-cell-renderer-unescaped = FLOW IO (ag-grid-cell-renderer) -> DATA (NOT encrypted AND NOT hashed AND NOT numeric AND NOT escaped) -> IO (html)
+WHEN CONCLUSION ag-grid-cell-renderer-unescaped => EMIT {
+     title: "Data Grid Cell Renderer Uses Unescaped Inputs as HTML {{via `$paramname`}} {{in `$methodname`}}",
+     description: "The HTML code returned in this cell renderer contains unescaped inputs. If the rendered data can be controlled by an attacker, this indicates a Cross-Site-Scripting (XSS) vulnerability.",
+     description_suffix_file: "io/shiftleft/descriptions/xss.md",
+     score: "4.5",
+     vulnerability_description: "Cross-Site Scripting",
+     cwe_category: "79",
+     link: "https://www.ag-grid.com/javascript-data-grid/component-cell-renderer/#cell-renderer-function"
 }

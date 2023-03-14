@@ -175,10 +175,11 @@ def get_all_findings(client, org_id, app_name, version):
     while page_available:
         try:
             r = client.get(findings_url, headers=headers, timeout=config.timeout)
-        except httpx.ReadTimeout as e:
+        except Exception as e:
             console.print(
-                f"Unable to retrieve findings for {app_name} due to timeout after {config.timeout} seconds"
+                f"Unable to retrieve findings for {app_name} due to exception after {config.timeout} seconds"
             )
+            page_available = False
             continue
         if r.status_code == 200:
             raw_response = r.json()

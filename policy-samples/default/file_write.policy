@@ -1,0 +1,114 @@
+####
+# Data to file
+####
+
+CONCLUSION arbitrary-file-write-http = FLOW IO ((http OR httpClient OR httpHeader OR httpClientHeader) AND NOT session) -> DATA (NOT escaped AND NOT encoded AND NOT customChecked AND NOT numeric AND NOT attacker-controlled) -> IO (filePath AND write AND NOT ftp AND NOT cloud)
+WHEN CONCLUSION arbitrary-file-write-http => EMIT {
+  title: "HTTP Data as File Path {{via `$paramname`}} {{in `$methodname`}}",
+  description: "HTTP input data is used as part of a file path to write a file on the server without escaping or validation. This indicates a directory traversal vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/dir-trav.md",
+  score: "8.5",
+  vulnerability_description: "Directory Traversal",
+  cwe_category: "22"
+}
+
+# we just assume everything's a write that's not a read (see also below)
+CONCLUSION directory-traversal-http = FLOW DATASOURCE (attacker-controlled AND NOT android) -> DATA (NOT escaped AND NOT encoded AND NOT customChecked AND NOT session AND NOT numeric) -> IO (filePath AND NOT read AND NOT ftp AND NOT cloud)
+WHEN CONCLUSION directory-traversal-http  => EMIT {
+  title: "Attacker-controlled Data as File Path {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Attacker-Controlled input data is used as part of a file path to write a file without escaping or validation. This indicates a directory traversal vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/dir-trav.md",
+  score: "9.0",
+  vulnerability_description: "Directory Traversal",
+  cwe_category: "22"
+}
+CONCLUSION arbitrary-file-write = FLOW IO ((http OR $http OR httpClient OR $httpClient OR httpHeader OR httpClientHeader OR $httpHeader OR $httpClientHeader) AND NOT session) -> DATA (NOT customChecked AND NOT numeric AND NOT attacker-controlled) -> IO (filePath AND NOT ftp AND NOT log AND NOT read AND NOT cloud)
+WHEN CONCLUSION arbitrary-file-write => EMIT {
+  title: "HTTP Data as File Path {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Data from a HTTP request or respsonse is not escaped, hashed or encoded and used as a file name in this flow. This indicates a directory traversal and arbitrary file write vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/arbitrary-file-writes.md",
+  category: "a5-broken-access-control",
+  score: "8.0",
+  vulnerability_description: "Directory Traversal",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A5-Broken_Access_Control",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A5-Broken_Access_Control",
+  cwe_link: "https://cwe.mitre.org/data/definitions/22.html",
+  cwe_link: "https://cwe.mitre.org/data/definitions/434.html",
+  cwe_category: "22",
+  cwe_category: "434"
+}
+
+CONCLUSION directory-traversal-zip = FLOW IO (zip OR $zip) -> DATA (NOT customChecked AND NOT numeric) -> IO (filePath AND NOT ftp)
+WHEN CONCLUSION directory-traversal-zip => EMIT {
+  title: "Unsafe Unzipping {{via `$paramname`}} {{in `$methodname`}}",
+  description: "File are unzipped without validation. This can lead to an arbitrary file write where existing files and files outside the intended directory are overwritten.",
+  description_suffix_file: "io/shiftleft/descriptions/arbitrary-file-writes.md",
+  category: "a5-broken-access-control",
+  score: "8.0",
+  vulnerability_description: "Directory Traversal",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A5-Broken_Access_Control",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A5-Broken_Access_Control",
+  cwe_link: "https://cwe.mitre.org/data/definitions/22.html",
+  cwe_link: "https://cwe.mitre.org/data/definitions/434.html",
+  cwe_category: "22",
+  cwe_category: "434"
+}
+CONCLUSION directory-traversal-http-unzip = FLOW IO ((http OR httpClient OR httpHeader OR httpClientHeader) AND NOT session) -> IO (unzipAll)
+WHEN CONCLUSION directory-traversal-http-unzip => EMIT {
+  title: "Unsafe Unzipping {{via `$paramname`}} {{in `$methodname`}}",
+  description: "File are unzipped without validation. This can lead to an arbitrary file write where existing files and files outside the intended directory are overwritten.",
+  description_suffix_file: "io/shiftleft/descriptions/arbitrary-file-writes.md",
+  category: "a5-broken-access-control",
+  score: "8.0",
+  vulnerability_description: "Directory Traversal",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A5-Broken_Access_Control",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A5-Broken_Access_Control",
+  cwe_link: "https://cwe.mitre.org/data/definitions/22.html",
+  cwe_link: "https://cwe.mitre.org/data/definitions/434.html",
+  cwe_category: "22",
+  cwe_category: "434"
+}
+CONCLUSION directory-traversal-zip-js = FLOW IO (unzipper) -> IO (filePipe)
+WHEN CONCLUSION directory-traversal-zip-js => EMIT {
+  title: "Unsafe Unzipping {{via `$paramname`}} {{in `$methodname`}}",
+  description: "File are unzipped without validation. This can lead to an arbitrary file write where existing files and files outside the intended directory are overwritten.",
+  description_suffix_file: "io/shiftleft/descriptions/arbitrary-file-writes.md",
+  category: "a5-broken-access-control",
+  score: "8.0",
+  vulnerability_description: "Directory Traversal",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A5-Broken_Access_Control",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A5-Broken_Access_Control",
+  cwe_link: "https://cwe.mitre.org/data/definitions/22.html",
+  cwe_link: "https://cwe.mitre.org/data/definitions/434.html",
+  cwe_category: "22",
+  cwe_category: "434"
+}
+
+CONCLUSION sensitive-to-local-storage = FLOW DATASOURCE (tokens OR authentication OR internal-keys OR certificates OR payment-data OR credentials OR location OR account-info OR pii OR medical OR cookies) -> IO (localStorage)
+WHEN CONCLUSION sensitive-to-local-storage => EMIT {
+  title: "Sensitive Data is Leaked to Persistent Storage {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Sensitive data is persisted to local storage in this flow.",
+  description_suffix_file: "io/shiftleft/descriptions/sensitive-data-leak.md",
+  category: "a3-sensitive-data-exposure",
+  score: "2.0",
+  vulnerability_description: "Sensitive Data Exposure",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
+  cwe_category: "200",
+  cwe_category: "117"
+}
+
+CONCLUSION arbitrary-file-write-android-broadcast-source = FLOW IO (broadcastReceiver) -> DATA (NOT customChecked AND NOT numeric) -> IO (filePath AND NOT ftp AND NOT log AND NOT read AND NOT cloud)
+WHEN CONCLUSION arbitrary-file-write-android-broadcast-source => EMIT {
+  title: "Broadcast Receiver Data as File Path {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Data from an exposed broadcast receiver is used as part of a file path to write a file. This indicates a directory traversal and arbitrary file write vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/arbitrary-file-writes.md",
+  category: "a5-broken-access-control",
+  score: "6.0",
+  vulnerability_description: "Directory Traversal",
+  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A5-Broken_Access_Control",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A5-Broken_Access_Control",
+  cwe_link: "https://cwe.mitre.org/data/definitions/22.html",
+  cwe_link: "https://cwe.mitre.org/data/definitions/434.html",
+  cwe_category: "22",
+  cwe_category: "434"
+}

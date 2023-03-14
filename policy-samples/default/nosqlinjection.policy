@@ -1,46 +1,74 @@
-CONCLUSION attacker-controlled-to-nosql = FLOW DATA (attacker-controlled AND NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped) -> IO (mongoDb)
+CONCLUSION attacker-controlled-to-nosql = FLOW DATASOURCE (attacker-controlled) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped AND NOT numeric) -> IO (mongoDb OR nosql)
 WHEN CONCLUSION attacker-controlled-to-nosql => EMIT {
-  title: "NoSQL Injection: Attacker-controlled data to NoSQL database {{via `$paramname`}} {{in `$methodname`}}",
-  description: "Attacker controlled data is used in a NoSQL query without undergoing escaping or validation. This could allow an attacker to read sensitive data from the database, modify its content or gain control over the server.
-
-
-## Countermeasures
-
-This vulnerability can be prevented by using prepared statements on the attacker-controlled data.
-
-## Additional information
-
-**[CWE-89](https://cwe.mitre.org/data/definitions/943.html)**
-
-**[OWASP-A1](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection)**",
+  title: "Attacker-controlled Data to NoSQL Database {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Attacker controlled data is used in a NoSQL query without undergoing escaping or validation. This is a NoSQL injection.",
+  description_suffix_file: "io/shiftleft/descriptions/nosql-injection.md",
   category: "a1-injection",
   score: "9.0",
   vulnerability_description: "NoSQL Injection",
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
   link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
-  cwe_link: "https://cwe.mitre.org/data/definitions/943.html"
+  cwe_category: "943"
 }
 
 
-CONCLUSION http-to-nosql = FLOW IO (http OR $http) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped) -> IO (mongoDb)
+CONCLUSION http-to-nosql = FLOW IO ((http OR httpClient OR httpHeader OR httpClientHeader OR (($http OR $httpClient OR $httpHeader OR $httpClientHeader) AND read)) AND NOT session) -> DATA (NOT attacker-controlled AND NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped AND NOT numeric) -> IO (mongoDb OR nosql)
 WHEN CONCLUSION http-to-nosql => EMIT {
-  title: "NoSQL Injection: HTTP data to NoSQL database {{via `$paramname`}} {{in `$methodname`}}",
-  description: "HTTP request data is used in a NoSQL query without undergoing escaping or validation. This could allow an attacker to read sensitive data from the database, modify its content or gain control over the server.
+  title: "HTTP Data to NoSQL Database {{via `$paramname`}} {{in `$methodname`}}",
+  description: "HTTP request data is used in a NoSQL query without undergoing escaping or validation. This is a NoSQL injection.",
+  description_suffix_file: "io/shiftleft/descriptions/nosql-injection.md",
+  category: "a1-injection",
+  score: "9.0",
+  vulnerability_description: "NoSQL Injection",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_category: "943"
+}
+
+
+
+CONCLUSION idor = FLOW DATASOURCE (attacker-controlled AND NOT authorized) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped AND NOT session) -> IO (idor AND key-value)
+WHEN CONCLUSION idor => EMIT {
+  title: "Attacker-controlled Data Used Directly in Key-Value Store {{in `$methodname`}} {{ via `$paramname` }}",
+  description: "Attacker controlled data is used in a key-value store. This indicates a possible Insecure Direct Object Reference.
+
+Insecure direct object reference is a type of access control vulnerability that can occur
+when a web application or application programming interface uses an identifier for direct access
+to an object in an internal database but does not check for access control or authentication.
 
 
 ## Countermeasures
 
-This vulnerability can be prevented by using prepared statements on the attacker-controlled data.
+Ensure your application checks that the requesting user is authorized to access the database entry.
 
 ## Additional information
 
-**[CWE-89](https://cwe.mitre.org/data/definitions/943.html)**
+**[Insecure Direct Object Reference Prevention Cheat Sheet](https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Insecure_Direct_Object_Reference_Prevention_Cheat_Sheet.md#proposition.)**",
+  score: "4.0",
+  vulnerability_description: "Insecure Direct Object Reference",
+  link: "https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Insecure_Direct_Object_Reference_Prevention_Cheat_Sheet.md#proposition.",
+  cwe_category: "159",
+  cwe_category: "639"
+}
 
-**[OWASP-A1](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection)**",
-  category: "a1-injection",
-  score: "9.0",
-  vulnerability_description: "NoSQL Injection",
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
-  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
-  cwe_link: "https://cwe.mitre.org/data/definitions/943.html"
+CONCLUSION idor-db = FLOW DATASOURCE (attacker-controlled) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT authorized AND NOT session) -> IO (idor AND database)
+WHEN CONCLUSION idor-db => EMIT {
+  title: "Attacker-controlled Data Used Directly to Find Database Entry {{in `$methodname`}} {{ via `$paramname` }}",
+  description: "Attacker controlled data is used to find an entry in a database. This indicates a possible Insecure Direct Object Reference.
+
+Insecure direct object reference is a type of access control vulnerability that can occur
+when a web application or application programming interface uses an identifier for direct access
+to an object in an internal database but does not check for access control or authentication.
+
+
+## Countermeasures
+
+Ensure your application checks that the requesting user is authorized to access the database entry.
+
+## Additional information
+
+**[Insecure Direct Object Reference Prevention Cheat Sheet](https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Insecure_Direct_Object_Reference_Prevention_Cheat_Sheet.md#proposition.)**",
+  score: "4.0",
+  vulnerability_description: "Insecure Direct Object Reference",
+  link: "https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Insecure_Direct_Object_Reference_Prevention_Cheat_Sheet.md#proposition.",
+  cwe_category: "159",
+  cwe_category: "639"
 }

@@ -2,71 +2,86 @@
 # SQLi
 ####
 
-CONCLUSION sql-injection-attacker-controlled = FLOW DATA (attacker-controlled AND NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped) -> IO (sql)
+CONCLUSION sql-injection-attacker-controlled = FLOW DATASOURCE (attacker-controlled) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped AND NOT numeric) -> IO (sql)
 WHEN CONCLUSION sql-injection-attacker-controlled => EMIT {
-  title: "SQL Injection: Attacker-controlled data to SQL database {{via `$paramname`}} {{in `$methodname`}}",
-  description: "Attacker controlled data is used in a SQL query without undergoing escaping or validation. This could allow an attacker to read sensitive data from the database, modify its content or gain control over the server.
-
-
-## Countermeasures
-
-This vulnerability can be prevented by using prepared statements on the attacker-controlled data.
-
-## Additional information
-
-**[CWE-89](https://cwe.mitre.org/data/definitions/89.html)**
-
-**[OWASP-A1](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection)**",
+  title: "Attacker-controlled Data to SQL Database {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Attacker controlled data is used in a SQL query without undergoing escaping or validation. This indicates a SQL injection vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/sql-injection.md",
   category: "a1-injection",
   score: "9.0",
   vulnerability_description: "SQL Injection",
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
   link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
-  cwe_link: "https://cwe.mitre.org/data/definitions/89.html"
+  cwe_category: "89"
 }
 
-CONCLUSION sql-injection-http = FLOW IO (http OR $http) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped) -> IO (sql)
+CONCLUSION sql-injection-http = FLOW IO ((http OR $http OR httpClient OR $httpClient OR httpHeader OR $httpHeader OR httpClientHeader OR $httpClientHeader) AND NOT session) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped AND NOT numeric AND NOT attacker-controlled) -> IO (sql)
 WHEN CONCLUSION sql-injection-http => EMIT {
-  title: "SQL Injection: HTTP data to SQL database {{via `$paramname`}} {{in `$methodname`}}",
-  description: "HTTP data is used in a SQL query without undergoing escaping or validation. This could allow an attacker to read sensitive data from the database, modify its content or gain control over the server.
-
-
-## Countermeasures
-
-This vulnerability can be prevented by using prepared statements on the HTTP data.
-
-## Additional information
-
-**[CWE-89](https://cwe.mitre.org/data/definitions/89.html)**
-
-**[OWASP-A1](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection)**",
+  title: "HTTP Data to SQL Database {{via `$paramname`}} {{in `$methodname`}}",
+  description: "HTTP data is used in a SQL query without undergoing escaping or validation. This indicates a SQL injection vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/sql-injection.md",
   category: "a1-injection",
   score: "9.0",
   vulnerability_description: "SQL Injection",
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
   link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
-  cwe_link: "https://cwe.mitre.org/data/definitions/89.html"
+  cwe_category: "89"
 }
 
 CONCLUSION sql-injection-ui = FLOW IO (ui) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped) -> IO (sql)
 WHEN CONCLUSION sql-injection-ui => EMIT {
-  title: "SQL Injection: UI data to SQL database {{via `$paramname`}} {{in `$methodname`}}",
-  description: "User-provided data is used in a SQL query without undergoing escaping or validation. This could allow an attacker to read sensitive data from the database, modify its content or gain control over the server.
-
-
-## Countermeasures
-
-This vulnerability can be prevented by using prepared statements on the user-provided data.
-
-## Additional information
-
-**[CWE-89](https://cwe.mitre.org/data/definitions/89.html)**
-
-**[OWASP-A1](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection)**",
+  title: "UI Data to SQL Database {{via `$paramname`}} {{in `$methodname`}}",
+  description: "User-provided data is used in a SQL query without undergoing escaping or validation. This indicates a SQL injection vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/sql-injection.md",
   category: "a1-injection",
   score: "9.0",
   vulnerability_description: "SQL Injection",
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
   link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
-  cwe_link: "https://cwe.mitre.org/data/definitions/89.html"
+  cwe_category: "89"
+}
+
+CONCLUSION sql-injection-env = FLOW IO (environment) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped AND NOT numeric) -> IO (sql)
+WHEN CONCLUSION sql-injection-env => EMIT {
+  title: "Environment Data to SQL Database {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Environment data is used in a SQL query without undergoing escaping or validation. This indicates a SQL injection vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/sql-injection.md",
+  category: "a1-injection",
+  score: "3.0",
+  vulnerability_description: "SQL Injection",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_category: "89"
+}
+
+
+CONCLUSION sql-injection-stream = FLOW IO (read AND $stream AND NOT http AND NOT $http AND NOT httpClient AND NOT $httpClient AND NOT httpHeader AND NOT $httpHeader AND NOT httpClientHeader AND NOT $httpClientHeader AND NOT $network) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped AND NOT numeric AND NOT attacker-controlled) -> IO (sql)
+WHEN CONCLUSION sql-injection-stream => EMIT {
+  title: "Stream Data to SQL Database {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Data read from a stream is used in a SQL query without undergoing escaping or validation. This indicates a SQL injection vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/sql-injection.md",
+  category: "a1-injection",
+  score: "7.0",
+  vulnerability_description: "SQL Injection",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_category: "89"
+}
+
+CONCLUSION sql-injection-network = FLOW IO (read AND $network) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped AND NOT numeric AND NOT attacker-controlled) -> IO (sql)
+WHEN CONCLUSION sql-injection-network => EMIT {
+  title: "Network Data to SQL Database {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Data from the network is used in a SQL query without undergoing escaping or validation. This indicates a SQL injection vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/sql-injection.md",
+  category: "a1-injection",
+  score: "7.0",
+  vulnerability_description: "SQL Injection",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_category: "89"
+}
+CONCLUSION sql-injection-database = FLOW IO (database OR sql OR nosql) -> DATA (NOT encrypted AND NOT hashed AND NOT encoded AND NOT escaped AND NOT numeric AND NOT attacker-controlled) -> IO (sql)
+WHEN CONCLUSION sql-injection-database => EMIT {
+  title: "Database Data Used in SQL Query {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Data from a database is used in a SQL query without undergoing escaping or validation. This indicates a SQL injection vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/sql-injection.md",
+  category: "a1-injection",
+  score: "5.5",
+  vulnerability_description: "SQL Injection",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A1-Injection",
+  cwe_category: "89"
 }

@@ -1,0 +1,16 @@
+CONCLUSION double-free = FLOW IO (free) -> IO (NOT alloc) -> IO (free)
+WHEN CONCLUSION double-free => EMIT {
+  title: "The Same Value is `free`'d Multiple Times {{via `$paramname`}} {{in `$methodname`}}",
+  description: "The same value is released multiple times. This is a classic memory error that can be exploited for code execution.",
+  score: "8.0",
+  vulnerability_description: "Double Free",
+  cwe_category: "415"
+}
+CONCLUSION use-after-free = FLOW IO (free) -> IO (NOT alloc) -> IO (dereference)
+WHEN CONCLUSION use-after-free => EMIT {
+  title: "A Value is Used After it was Released {{via `$paramname`}} {{in `$methodname`}}",
+  description: "A pointer is dereferenced after it was released. This is a classic memory error that can be exploited for code execution.",
+  score: "8.0",
+  vulnerability_description: "Use After Free",
+  cwe_category: "416"
+}

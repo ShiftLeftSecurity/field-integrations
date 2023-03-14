@@ -2,118 +2,123 @@
 # Deserialization
 ####
 
-CONCLUSION deserialization-json = FLOW IO (json) -> IO (deserialization)
+CONCLUSION deserialization-json = FLOW IO (json) -> DATA (NOT numeric) -> IO (deserialization AND NOT $safeDeserialization)
 WHEN CONCLUSION deserialization-json => EMIT {
-  title: "Deserialization: Deserialization of JSON data {{via `$paramname`}} {{in `$methodname`}}",
-  description: "Data from HTTP methods is not escaped and used in deserialization in this flow. An attacker may be able to trick the system into using malicious, potentially harmful data. As a result the attacker may be able to attack the integrity of the system or remotely execute code on the system.
-
-
-## Countermeasures
-
- This vulnerability can be prevented by validating JSON data before it is deserialized.
-
-## Additional information
-
-**[CWE-502](https://cwe.mitre.org/data/definitions/502.html)**
-
-**[OWASP-A8](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A8-Insecure_Deserialization)**",
-  category: "a8-deserialization",
+  title: "External JSON Data Used in Unsafe Deserialization Function {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Data from HTTP requests or responses is not escaped and used to deserialize JSON data.",
+  description_suffix_file: "io/shiftleft/descriptions/deserialization.md",
+  category: "a8-insecure-deserialization",
   score: "8.0",
-  vulnerability_description: "Deserialization",  
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A8-Insecure_Deserialization",
+  vulnerability_description: "Deserialization",
   link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A8-Insecure_Deserialization",
-  cwe_link: "https://cwe.mitre.org/data/definitions/502.html"
+  cwe_category: "502"
 }
 
-CONCLUSION deserialization-http = FLOW IO (http) -> IO (deserialization)
+CONCLUSION deserialization-http = FLOW IO ((http OR httpClient OR httpHeader OR httpClientHeader) AND NOT session) -> DATA (NOT attacker-controlled AND NOT numeric) -> IO (deserialization AND NOT $safeDeserialization)
 WHEN CONCLUSION deserialization-http  => EMIT {
-  title: "Deserialization: Deserialization of HTTP data {{via `$paramname`}} {{in `$methodname`}}",
-  description: "HTTP Request parameter are deserialized and not escaped. An attacker may be able to trick the system into using malicious, potentially harmful data. As a result the attacker may be able to attack the integrity of the system or remotely execute code on the system.
-
-
-## Countermeasures
-
-This vulnerability can be prevented by validating HTTP data before it is deserialized.
-
-## Additional information
-
-**[CWE-502](https://cwe.mitre.org/data/definitions/502.html)**
-
-**[OWASP-A8](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A8-Insecure_Deserialization)**",
-  category: "a8-deserialization",
+  title: "External HTTP Data Used in Unsafe Deserialization Function {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Data from a HTTP request or response is deserialized. This indicates an insecure deserialization vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/deserialization.md",
+  category: "a8-insecure-deserialization",
   score: "8.0",
-  vulnerability_description: "Deserialization",  
-  cwe_link: "https://cwe.mitre.org/data/definitions/502.html",
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A8-Insecure_Deserialization",
+  vulnerability_description: "Deserialization",
+  cwe_category: "502",
   link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A8-Insecure_Deserialization"
 }
 
-CONCLUSION deserialization-network = FLOW IO (network) -> IO (deserialization)
+CONCLUSION deserialization-network = FLOW IO (network) -> DATA (NOT attacker-controlled AND NOT numeric) -> IO (deserialization AND NOT $safeDeserialization)
 WHEN CONCLUSION deserialization-network => EMIT {
-  title: "Deserialization: Deserialization of network data {{via `$paramname`}} {{in `$methodname`}}",
-  description : "Data from network reaches a deserializer without undergoing validation. An attacker may be able to trick the system into using malicious, potentially harmful data. As a result the attacker may be able to attack the integrity of the system or remotely execute code on the system.
-
-
-## Countermeasures
-
-This vulnerability can be prevented by validating network data before it is deserialized.
-
-## Additional information
-
-**[CWE-502](https://cwe.mitre.org/data/definitions/502.html)**
-
-**[OWASP-A8](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A8-Insecure_Deserialization)**",
-  category: "a8-deserialization",
+  title: "External Network Data Used in Unsafe Deserialization Function {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Data from the network is deserialized. This indicates an insecure deserialization vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/deserialization.md",
+  category: "a8-insecure-deserialization",
   score: "8.0",
-  vulnerability_description: "Deserialization",  
-  cwe_link: "https://cwe.mitre.org/data/definitions/502.html",
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A8-Insecure_Deserialization",
+  vulnerability_description: "Deserialization",
+  cwe_category: "502",
   link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A8-Insecure_Deserialization"
 }
 
-CONCLUSION deserialization-database = FLOW IO (database) -> IO (deserialization)
+CONCLUSION deserialization-database = FLOW IO (database) -> DATA (NOT attacker-controlled AND NOT numeric) -> IO (deserialization AND NOT $safeDeserialization)
 WHEN CONCLUSION deserialization-database => EMIT {
-  title: "Deserialization: Deserialization of database data {{via `$paramname`}} {{in `$methodname`}}",
-  description : "Data from an external database is deserialized without undergoing validation, potentially allowing remote code execution. An attacker may be able to trick the system into using malicious, potentially harmful data. As a result the attacker may be able to attack the integrity of the system or remotely execute code on the system.
-
-
-## Countermeasures
-
-This vulnerability can be prevented by validating the data from the external database before it is deserialized.
-
-## Additional information
-
-**[CWE-502](https://cwe.mitre.org/data/definitions/502.html)**
-
-**[OWASP-A8](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A8-Insecure_Deserialization)**",
-  category: "a8-deserialization",
+  title: "External Database Data Used in Unsafe Deserialization Function {{via `$paramname`}} {{in `$methodname`}}",
+  description : "Data from an external database is deserialized. If an attacker can control the database contents directly or indirectly by using the application, this may be an insecure deserialization vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/deserialization.md",
+  category: "a8-insecure-deserialization",
   score: "8.0",
-  vulnerability_description: "Deserialization",  
-  cwe_link: "https://cwe.mitre.org/data/definitions/502.html",
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A8-Insecure_Deserialization",
+  vulnerability_description: "Deserialization",
+  cwe_category: "502",
   link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A8-Insecure_Deserialization"
 }
 
-CONCLUSION deserialization-attacker-controlled = FLOW DATA (attacker-controlled) -> IO (deserialization)
+CONCLUSION deserialization-attacker-controlled = FLOW DATASOURCE (attacker-controlled) -> DATA (NOT numeric) -> IO (deserialization AND NOT $safeDeserialization)
 WHEN CONCLUSION deserialization-attacker-controlled => EMIT {
-  title: "Deserialization: Deserialization of attacker-controlled data {{via `$paramname`}} {{in `$methodname`}}",
-  description: "Attacker controlled data is deserialized in this flow. An attacker may be able to trick the system into using malicious, potentially harmful data. As a result the attacker may be able to attack the integrity of the system or remotely execute code on the system.
-
-
-## Countermeasures
-
-This vulnerability can be prevented by validating data before it is deserialized.
-
-## Additional information
-
-**[CWE-502](https://cwe.mitre.org/data/definitions/502.html)**
-
-**[OWASP-A8](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A8-Insecure_Deserialization)**",
-  category: "a8-deserialization",
+  title: "Attacker-controlled Data Used in Unsafe Deserialization Function {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Attacker-controlled data is deserialized. This indicates an insecure deserialization vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/deserialization.md",
+  category: "a8-insecure-deserialization",
   score: "8.0",
-  vulnerability_description: "Deserialization",  
-  cwe_link: "https://cwe.mitre.org/data/definitions/502.html",
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A8-Insecure_Deserialization",
+  vulnerability_description: "Deserialization",
+  cwe_category: "502",
   link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A8-Insecure_Deserialization"
 }
 
+
+CONCLUSION safe-deserialization-json = FLOW IO (json) -> DATA (NOT attacker-controlled AND NOT numeric) -> IO (safeDeserialization OR (deserialization AND $safeDeserialization))
+WHEN CONCLUSION safe-deserialization-json => EMIT {
+  title: "External JSON Data Used in Deserialization Function {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Data from HTTP requests or responses is not escaped and used to deserialize JSON data.",
+  description_suffix_file: "io/shiftleft/descriptions/deserialization.md",
+  category: "a8-insecure-deserialization",
+  score: "1.0",
+  vulnerability_description: "Deserialization",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A8-Insecure_Deserialization",
+  cwe_category: "502"
+}
+
+CONCLUSION safe-deserialization-http = FLOW IO ((http OR httpClient OR httpHeader OR httpClientHeader) AND NOT session) -> DATA (NOT attacker-controlled AND NOT numeric) -> IO (safeDeserialization OR (deserialization AND $safeDeserialization))
+WHEN CONCLUSION safe-deserialization-http  => EMIT {
+  title: "External HTTP Data Used in Deserialization Function {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Data from a HTTP request or response is deserialized. This indicates a potential deserialization vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/deserialization.md",
+  category: "a8-insecure-deserialization",
+  score: "1.0",
+  vulnerability_description: "Deserialization",
+  cwe_category: "502",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A8-Insecure_Deserialization"
+}
+
+CONCLUSION safe-deserialization-network = FLOW IO (network) -> DATA (NOT attacker-controlled AND NOT numeric) -> IO (safeDeserialization OR (deserialization AND $safeDeserialization))
+WHEN CONCLUSION safe-deserialization-network => EMIT {
+  title: "External Network Data Used in Deserialization Function {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Data from the network is deserialized. This indicates a potential insecure deserialization vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/deserialization.md",
+  category: "a8-insecure-deserialization",
+  score: "1.0",
+  vulnerability_description: "Deserialization",
+  cwe_category: "502",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A8-Insecure_Deserialization"
+}
+
+CONCLUSION safe-deserialization-database = FLOW IO (database) -> DATA (NOT attacker-controlled AND NOT numeric) -> IO (safeDeserialization OR (deserialization AND $safeDeserialization))
+WHEN CONCLUSION safe-deserialization-database => EMIT {
+  title: "External Database Data Used in Deserialization Function {{via `$paramname`}} {{in `$methodname`}}",
+  description : "Data from an external database is deserialized. If an attacker can control the database contents directly or indirectly by using the application, this may be an insecure deserialization vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/deserialization.md",
+  category: "a8-insecure-deserialization",
+  score: "1.0",
+  vulnerability_description: "Deserialization",
+  cwe_category: "502",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A8-Insecure_Deserialization"
+}
+
+CONCLUSION safe-deserialization-attacker-controlled = FLOW DATASOURCE (attacker-controlled) -> DATA (NOT numeric) -> IO (safeDeserialization OR (deserialization AND $safeDeserialization))
+WHEN CONCLUSION safe-deserialization-attacker-controlled => EMIT {
+  title: "Attacker-controlled Data Used in Deserialization Function {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Attacker-controlled data is deserialized. This indicates a potential insecure deserialization vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/deserialization.md",
+  category: "a8-insecure-deserialization",
+  score: "1.0",
+  vulnerability_description: "Deserialization",
+  cwe_category: "502",
+  link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A8-Insecure_Deserialization"
+}

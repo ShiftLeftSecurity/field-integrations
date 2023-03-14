@@ -1,0 +1,23 @@
+CONCLUSION zip-bomb = FLOW IO ((http OR httpClient) AND NOT session) -> IO (zipDos)
+WHEN CONCLUSION zip-bomb => EMIT {
+  title: "Unlimited Decompression of HTTP Data {{via `$paramname`}} {{in `$methodname`}}",
+  description: "External HTTP inputs are decompressed. Even very short inputs can decompress to extremely large outputs.
+
+
+By sending carefully-crafted requests, an attacker could potentially exhaust all memory available to the application - leading to crashes or slow-downs.
+
+## Countermeasures
+
+To prevent this vulnerability, perform decompression in streaming mode and set limits on the maximum size of the decompressed data.
+
+## Additional information
+
+**[CWE-409](https://cwe.mitre.org/data/definitions/409.html)**
+
+**[OWASP-A6](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A6-Security_Misconfiguration)**",
+  category: "A6-security-misconfiguration",
+  score: "4.0",
+  link: "https://en.wikipedia.org/wiki/Zip_bomb",
+  cwe_category: "409",
+  vulnerability_description: "Denial of Service"
+}

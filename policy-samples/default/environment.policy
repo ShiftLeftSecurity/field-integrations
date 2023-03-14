@@ -7,72 +7,39 @@
 # CONCLUSION env-to-path-to-http = FLOW IO (environment AND path) -> IO (file AND http)
 
 
-CONCLUSION env-to-outside = FLOW IO (environment) -> IO (http OR $http)
+CONCLUSION env-to-outside = FLOW IO (environment) -> IO ((http OR $http OR httpHeader OR $httpHeader OR httpClient OR $httpClient OR httpClientHeader OR $httpClientHeader OR ssrf) AND NOT session AND NOT html AND NOT $html)
 WHEN CONCLUSION env-to-outside => EMIT {
-  title: "Sensitive Data Leak: Environment leak to HTTP {{via HTTP parameter `$paramname`}} {{in `$methodname`}}",
-  description: "Information about the configuration of the environment is exposed via HTTP. This information is potentially valuable for attackers in order to craft more targeted attacks. Many web applications and APIs do not protect sensitive data, such as database access keys or encryption keys. Attackers may steal or modify such weakly protected data to conduct credit card fraud, identity theft, or other crimes.
-
-
-## Countermeasures
-
-This vulnerability can be prevented by encrypting environment data.
-
-## Additional information
-
-**[CWE-200](https://cwe.mitre.org/data/definitions/200.html)**
-
-**[OWASP-A3](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure)**",
+  title: "Environment Leak to HTTP {{via HTTP Parameter `$paramname`}} {{in `$methodname`}}",
+  description: "Information from environment variables is exposed via HTTP. This may be a leak of sensitive data.",
+  description_suffix_file: "io/shiftleft/descriptions/sensitive-data-leak.md",
   category: "a3-sensitive-data-exposure",
   score: "3.0",
   vulnerability_description: "Sensitive Data Leak",
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
   link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
-  cwe_link:"https://cwe.mitre.org/data/definitions/200.html"
+  cwe_category:"200"
 }
 
 CONCLUSION env-to-println = FLOW IO (environment) -> IO (print)
 WHEN CONCLUSION env-to-println => EMIT {
-  title: "Sensitive Data Leak: Environment leak to console {{via `$paramname`}} {{in `$methodname`}}",
-  description: "Environment data got printed on console in this flow. It can be viewed by unauthorized third party with access to it, such as system administrators. Many web applications and APIs do not protect sensitive data, such as such as database access keys or encryption keys. Attackers may steal or modify such weakly protected data to conduct credit card fraud, identity theft, or other crimes.
-
-
-## Countermeasures
-
-This vulnerability can be prevented by encrypting environment data.
-
-## Additional information
-
-**[CWE-200](https://cwe.mitre.org/data/definitions/200.html)**
-
-**[OWASP-A3](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure)**",
+  title: "Environment Leak to Console {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Information from environment variables is printed on the console where it can be viewed by unauthorized people with access to it, such as system administrators. This may be a leak of sensitive data.",
+  description_suffix_file: "io/shiftleft/descriptions/sensitive-data-leak.md",
   category: "a3-sensitive-data-exposure",
   score: "3.0",
   vulnerability_description: "Sensitive Data Leak",
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
   link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
-  cwe_link:"https://cwe.mitre.org/data/definitions/200.html"
+  cwe_category:"200"
 }
 
-CONCLUSION env-to-file = FLOW IO (environment AND NOT path) -> IO (file OR $file)
+CONCLUSION env-to-file = FLOW IO (environment AND NOT path) -> IO ((file OR $file) AND NOT filePath)
 WHEN CONCLUSION env-to-file => EMIT {
-  title: "Sensitive Data Leak: Environment leak to file {{via `$paramname`}} {{in `$methodname`}}",
-  description: "Environment data is not escaped and written into a file. This may provide attackers with access to the file with sensitive information. Many web applications and APIs do not protect sensitive data, such as such as database access keys or encryption keys. Attackers may steal or modify such weakly protected data to conduct credit card fraud, identity theft, or other crimes.
-
-
-## Countermeasures
-
-This vulnerability can be prevented by encrypting environment data.
-
-## Additional information
-
-**[CWE-200](https://cwe.mitre.org/data/definitions/200.html)**
-
-**[OWASP-A3](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure)**",
+  title: "Environment Leak to File {{via `$paramname`}} {{in `$methodname`}}",
+  description: "Information from environment variables is written to a file. Depending on who can access this file, this may be a leak of sensitive data.",
+  description_suffix_file: "io/shiftleft/descriptions/sensitive-data-leak.md",
   category: "a3-sensitive-data-exposure",
   score: "3.0",
   vulnerability_description: "Sensitive Data Leak",
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
   link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A3-Sensitive_Data_Exposure",
-  cwe_link:"https://cwe.mitre.org/data/definitions/200.html"
+  cwe_category:"200"
 }
 

@@ -2,48 +2,27 @@
 # file to http
 ####
 
-CONCLUSION file-to-http = FLOW IO (http) -> DATA (NOT escaped AND NOT encoded) -> IO (data AND $file)
-WHEN CONCLUSION file-to-http => EMIT {
-  title: "Directory Traversal: HTTP data as file {{via `$paramname`}} {{in `$methodname`}}",
-  description: "HTML data is used for accessing data that resides on the server without escaping or validation. An attacker may be able to download arbitrary data from the server.
-
-
-## Countermeasures
-
-This attack can be prevented by validating/escaping HTTP data before using it to access server-side data.
-
-## Additional information
-
-**[CWE-22](https://cwe.mitre.org/data/definitions/22.html)**
-
-**[OWASP-A5](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A5-Broken_Access_Control)**",
+CONCLUSION arbitrary-file-read = FLOW IO ((http OR $http OR httpClient OR $httpClient OR httpHeader OR $httpHeader OR httpClientHeader OR $httpClientHeader) AND NOT session) -> DATA (NOT escaped AND NOT encoded AND NOT customChecked AND NOT numeric) -> IO (filePath AND read AND NOT ftp AND NOT cloud)
+WHEN CONCLUSION arbitrary-file-read => EMIT {
+  title: "HTTP Data as File Path {{via `$paramname`}} {{in `$methodname`}}",
+  description: "HTTP input data is used as part of a file path to read a file on the server without escaping or validation. This indicates a directory traversal vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/dir-trav.md",
   category: "a5-broken-access-control",
   score: "8.0",
   vulnerability_description: "Directory Traversal",
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A5-Broken_Access_Control",
   link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A5-Broken_Access_Control",
-  cwe_link: "https://cwe.mitre.org/data/definitions/22.html"
+  cwe_category: "22"
 }
 
-CONCLUSION arbitrary-file-read = FLOW IO (http OR $http) -> DATA (NOT escaped AND NOT encoded) -> IO (filePath AND read AND NOT ftp)
-WHEN CONCLUSION arbitrary-file-read => EMIT {
-  title: "Directory Traversal: HTTP data as file path {{via `$paramname`}} {{in `$methodname`}}",
-  description: "Data from HTTP methods is not escaped, hashed or encoded and used as a file name in this flow. This indicates a directory traversal or an arbitrary file read. 
-
-## Countermeasures
-
-This vulnerability can be prevented by validating HTTP data (preferably on server-side by means of common input sanitation libraries or whitelisting) before using it (e.g., ensure that attackers cannot arbitrarily access files by defining file paths through HTTP requests).
-
-## Additional information
-
-**[CWE-22](https://cwe.mitre.org/data/definitions/22.html)**
-
-**[OWASP-A5](https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A5-Broken_Access_Control)**",
+CONCLUSION file-toctou = FLOW IO (pathCheck) -> IO (filePath)
+WHEN CONCLUSION file-toctou => EMIT {
+  title: "Check Followed by Read or Write Operation on Same File Path {{via `$paramname`}} {{in `$methodname`}}",
+  description: "The same file path is used sequentially first in an existence or file property check and then in a read or write operation. This indicates a time-of-check time-of-use race condition. By sending multiple concurrent requests, an attacker can potentially subvert the existence or file property check in the timing window between the two file operations.",
+  description_suffix_file: "io/shiftleft/descriptions/race-condition.md",
   category: "a5-broken-access-control",
-  score: "8.0",
-  vulnerability_description: "Directory Traversal",
-  owasp_link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A5-Broken_Access_Control",
+  score: "3.0",
+  vulnerability_description: "Race Condition",
   link: "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A5-Broken_Access_Control",
-  cwe_link: "https://cwe.mitre.org/data/definitions/22.html"
+  cwe_category: "367"
 }
 

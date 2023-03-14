@@ -1,0 +1,50 @@
+WHEN CONCLUSION csrf-disable => EMIT {
+     title: "CSRF Protection Disabled {{in `$methodname`}}",
+     description: "CSRF protection by the Spring framework is disabled.",
+     description_suffix_file: "io/shiftleft/descriptions/csrf.md",
+     vulnerability_description: "Cross-Site Request Forgery",
+     score: "1.0",
+     cwe_category: "352"
+}
+CONCLUSION cors-disabled = FLOW IO (allowAll) -> IO (corsAllowedOrigins)
+WHEN CONCLUSION cors-disabled => EMIT {
+     title: "Overly Permissive CORS Policy {{via `$paramname`}} {{in `$methodname`}}",
+     description: "The Access-Control-Allow-Origin (CORS) header is set to the `\U0022*\U0022` wildcard, allowing
+cross-site requests from untrusted third-party web sites. This opts out of standard protections against Cross-Site Request Forgery attacks.",
+     description_suffix_file: "io/shiftleft/descriptions/csrf.md",
+     score: "4.0",
+     vulnerability_description: "Cross-Site Request Forgery",
+     cwe_category: "942"
+}
+CONCLUSION cors-disabled2 = FLOW DATASOURCE (AllowAll) -> IO (corsAllowedOrigins)
+WHEN CONCLUSION cors-disabled2 => EMIT {
+     title: "Overly Permissive CORS Policy {{via `$paramname`}} {{in `$methodname`}}",
+     description_suffix_file: "io/shiftleft/descriptions/csrf.md",
+     description: "The Access-Control-Allow-Origin (CORS) header is set to the `\U0022*\U0022` wildcard, allowing
+cross-site requests from untrusted third-party web sites. This opts out of standard protections against Cross-Site Request Forgery attacks.",
+     score: "4.0",
+     vulnerability_description: "Cross-Site Request Forgery",
+     cwe_category: "942"
+}
+CONCLUSION cors-allowAll-httpHeader = FLOW IO (allowAll) -> IO (httpHeader AND $accessControlAllowOrigin)
+WHEN CONCLUSION cors-allowAll-httpHeader => EMIT {
+     title: "Overly Permissive CORS Policy {{via `$paramname`}} {{in `$methodname`}}",
+     category: "a6-security-misconfiguration",
+     description_suffix_file: "io/shiftleft/descriptions/csrf.md",
+     description: "The Access-Control-Allow-Origin (CORS) header is set to the `\U0022*\U0022` wildcard, allowing
+cross-site requests from untrusted third-party web sites. This opts out of standard protections against Cross-Site Request Forgery attacks.",
+     score: "4.0",
+     vulnerability_description: "Cross-Site Request Forgery",
+     cwe_category: "942"
+}
+CONCLUSION cors-allow-credentials = FLOW DATASOURCE (1 OR true) -> IO ((httpHeader AND $accessControlAllowCredentials) OR accessControlAllowCredentials)
+WHEN CONCLUSION cors-allow-credentials => EMIT {
+     title: "Overly Permissive CORS Policy {{via `$paramname`}} {{in `$methodname`}}",
+     description_suffix_file: "io/shiftleft/descriptions/csrf.md",
+     description: "The Access-Control-Allow-Credentials (CORS) header is set to true, allowing cookies and credentials to be sent with
+cross-site requests from third-party web sites. This opts out of standard protections against Cross-Site Request Forgery attacks.",
+     score: "1.0",
+     vulnerability_description: "Cross-Site Request Forgery",
+     cwe_category: "942"
+}
+

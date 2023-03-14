@@ -1,0 +1,23 @@
+CONCLUSION redos = FLOW IO ((http OR httpClient OR httpHeader OR httpClientHeader OR guessedHttp) AND NOT session) -> DATA (NOT attacker-controlled AND NOT regexEscaped AND NOT numeric) -> IO (regex)
+WHEN CONCLUSION redos => EMIT {
+  title: "HTTP Data is Used in a Regular Expression {{via `$paramname`}} {{in `$methodname`}}",
+  description: "HTTP data is used as part of a regular expression. This indicates a regex injection vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/regex-injection.md",
+  category: "a1-injection",
+  score: "6.0",
+  link: "https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS",
+  cwe_category: "1333",
+  vulnerability_description: "Regex Injection"
+}
+
+CONCLUSION redos-attacker = FLOW DATASOURCE (attacker-controlled) -> IO (regex)
+WHEN CONCLUSION redos-attacker => EMIT {
+  title: "HTTP Data is Used in a Regular Expression {{via `$paramname`}} {{in `$methodname`}}",
+  description: "HTTP data is used as part of a regular expression. This indicates a regex injection vulnerability.",
+  description_suffix_file: "io/shiftleft/descriptions/regex-injection.md",
+  category: "a1-injection",
+  score: "6.0",
+  link: "https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS",
+  cwe_category: "1333",
+  vulnerability_description: "Regex Injection"
+}
