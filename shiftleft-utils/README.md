@@ -41,7 +41,9 @@ export SHIFTLEFT_ACCESS_TOKEN=long token from shiftleft
 | bulk_delete_projects.py | Delete projects from a file containing a list                     |
 | bestfix.py              | Suggest best fix locations for key SAST findings for an app       |
 
-### Sample usages
+## Sample usages
+
+### Stats
 
 Collect summary stats for your organization
 
@@ -67,6 +69,8 @@ Collect stats for a specific branch across apps
 python3 stats.py --detailed --branch main
 ```
 
+### Export
+
 Export findings of an app in csv format
 
 ```bash
@@ -85,16 +89,27 @@ NOTE: For jvm languages, we may have to fix the file path since the value return
 WORKSPACE=<path to src/main/java> python export.py -f sarif -a <app name>
 ```
 
+### Best fix
+
 Find best fix locations for `vuln-spring` app with the source code under `/mnt/work/HooliCorp/vuln-spring`
 
 ```
 python3 bestfix.py -a vuln-spring -s /mnt/work/HooliCorp/vuln-spring
 ```
 
-To troubleshoot a scan and look for tips to improve the scan results and performance, pass `--troubleshoot` to bestfix.
+To use light theme in the exported html report from bestfix, set the environment variable `USE_LIGHT_THEME`.
 
 ```
-python3 bestfix.py -a vuln-spring --troubleshoot -s /mnt/work/HooliCorp/vuln-spring
+export USE_LIGHT_THEME=true
+python3 bestfix.py -a vuln-spring -s /mnt/work/HooliCorp/vuln-spring
+```
+
+#### PDF conversion
+
+Best fix can automatically export the report to pdf format using the [pdfkit](https://pypi.org/project/pdfkit/) library. This requires [wkhtmltopdf](https://wkhtmltopdf.org/downloads.html) to be installed.
+
+```
+
 ```
 
 ## License

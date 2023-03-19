@@ -23,7 +23,7 @@ from rich.panel import Panel
 from rich.progress import Progress
 from rich.syntax import Syntax
 from rich.table import Table
-from rich.terminal_theme import MONOKAI
+from rich.terminal_theme import DEFAULT_TERMINAL_THEME, MONOKAI
 from rich.theme import Theme
 from rich.tree import Tree
 from six import moves
@@ -42,7 +42,7 @@ if CI_MODE:
         log_path=False,
         color_system="256",
         force_terminal=True,
-        width=int(os.getenv("COLUMNS", 270)),
+        width=int(os.getenv("COLUMNS", 250)),
         record=True,
     )
 else:
@@ -56,6 +56,16 @@ else:
     )
 
 MD_LIST_MARKER = "\n- "
+
+pdf_options = {
+    "page-size": "A2",
+    "margin-top": "0.5in",
+    "margin-right": "0.25in",
+    "margin-bottom": "0.5in",
+    "margin-left": "0.25in",
+    "encoding": "UTF-8",
+    "no-outline": None,
+}
 
 
 def _get_code_line(source_dir, app, fname, line, variables=[]):
@@ -1643,9 +1653,6 @@ if __name__ == "__main__":
         os.makedirs(report_dir, exist_ok=True)
     source_dir = args.source_dir
     if not source_dir:
-        console.print(
-            f"WARN: Source directory not specified with -s argument. Assuming current directory!"
-        )
         source_dir = os.getcwd()
         for e in ["GITHUB_WORKSPACE", "WORKSPACE"]:
             if os.getenv(e):
@@ -1666,8 +1673,21 @@ if __name__ == "__main__":
     end_time = time.monotonic_ns()
     total_time_sec = round((end_time - start_time) / 1000000000, 2)
     if args.rformat == "html":
-        console.save_html(report_file, theme=MONOKAI)
+        console.save_html(
+            report_file,
+            theme=DEFAULT_TERMINAL_THEME if os.getenv("USE_LIGHT_THEME") else MONOKAI,
+        )
         console.print(f"HTML report saved to {report_file}")
+        try:
+            import pdfkit
+
+            pdf_file = report_file.replace(".html", ".pdf")
+            pdfkit.from_file(report_file, pdf_file, options=pdf_options)
+            console.print(f"PDF report saved to {pdf_file}")
+        except Exception:
+            console.print(
+                "Please install wkhtmltopdf to enable PDF exports https://wkhtmltopdf.org/downloads.html"
+            )
     elif args.rformat == "svg":
         report_file = report_file.replace(".html", ".svg")
         console.save_svg(report_file, theme=MONOKAI)

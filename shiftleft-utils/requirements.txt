@@ -9,3 +9,4 @@ dask
 dask[array]
 PyGitHub
 packaging
+pdfkit
