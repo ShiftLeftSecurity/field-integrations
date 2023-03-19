@@ -108,10 +108,6 @@ python3 bestfix.py -a vuln-spring -s /mnt/work/HooliCorp/vuln-spring
 
 Best fix can automatically export the report to pdf format using the [pdfkit](https://pypi.org/project/pdfkit/) library. This requires [wkhtmltopdf](https://wkhtmltopdf.org/downloads.html) to be installed.
 
-```
-
-```
-
 ## License
 
 Apache-2.0
