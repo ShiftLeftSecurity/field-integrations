@@ -1,10 +1,10 @@
 # ShiftLeft Utils
 
-Collection of scripts to help integrate ShiftLeft NextGen Analysis with your DevOps workflow.
+Collection of scripts to help integrate Qwiet.AI preZero with your DevOps workflow.
 
 ## Usage
 
-Install python 3.9 or above on the machine or vm running the scripts.
+Install python 3.9 or above on the machine or vm running the scripts. For bestfix pdf reports generation, install [wkhtmltopdf](https://wkhtmltopdf.org/downloads.html).
 
 Clone the repo and install the dependencies.
 
@@ -25,10 +25,10 @@ python -m pip install -r .\requirements.txt --user
 
 On a Mac, use of [pyenv](https://github.com/pyenv/pyenv) is recommended.
 
-Set the ShiftLeft access token as an environment variable SHIFTLEFT_ACCESS_TOKEN.
+Set the Qwiet.AI access token as an environment variable SHIFTLEFT_ACCESS_TOKEN.
 
 ```
-export SHIFTLEFT_ACCESS_TOKEN=long token from shiftleft
+export SHIFTLEFT_ACCESS_TOKEN=long token from Qwiet.AI
 ```
 
 ## Description of scripts
@@ -87,6 +87,12 @@ NOTE: For jvm languages, we may have to fix the file path since the value return
 
 ```bash
 WORKSPACE=<path to src/main/java> python export.py -f sarif -a <app name>
+```
+
+Export findings of an app in raw json format in a specific directory
+
+```bash
+python3 export.py -f raw -a <app name> --reports_dir <directory name>
 ```
 
 ### Best fix

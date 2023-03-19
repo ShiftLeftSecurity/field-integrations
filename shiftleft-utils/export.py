@@ -15,7 +15,7 @@ from rich.console import Console
 from rich.progress import Progress
 
 import config
-from common import extract_org_id, get_all_apps, get_dataflow, get_findings_url, headers
+from common import extract_org_id, get_all_apps, get_findings_url, headers
 
 console = Console(color_system="auto")
 
@@ -59,7 +59,6 @@ def export_csv(app_list, findings, report_file):
             quoting=csv.QUOTE_MINIMAL,
         )
         for app in app_list:
-            app_id = app.get("id")
             app_name = app.get("name")
             tags = app.get("tags")
             app_group = ""
@@ -175,7 +174,7 @@ def get_all_findings(client, org_id, app_name, version):
     while page_available:
         try:
             r = client.get(findings_url, headers=headers, timeout=config.timeout)
-        except Exception as e:
+        except Exception:
             console.print(
                 f"Unable to retrieve findings for {app_name} due to exception after {config.timeout} seconds"
             )
@@ -185,14 +184,11 @@ def get_all_findings(client, org_id, app_name, version):
             raw_response = r.json()
             if raw_response and raw_response.get("response"):
                 response = raw_response.get("response")
-                total_count = response.get("total_count")
                 scan = response.get("scan")
+                counts = response.get("counts")
                 if not scan:
                     page_available = False
                     continue
-                scan_id = scan.get("id")
-                spid = scan.get("internal_id")
-                projectSpId = f'sl/{org_id}/{scan.get("app")}'
                 findings = response.get("findings")
                 if not findings:
                     page_available = False
@@ -211,10 +207,10 @@ def get_all_findings(client, org_id, app_name, version):
             console.print(
                 f"Unable to retrieve findings for {app_name} due to http error {r.status_code}"
             )
-    return findings_list
+    return findings_list, scan, counts
 
 
-def export_report(org_id, app_list, report_file, format):
+def export_report(org_id, app_list, report_file, reports_dir, format):
     if not app_list:
         app_list = get_all_apps(org_id)
     # This might increase memory consumption for large organizations
@@ -247,7 +243,7 @@ def export_report(org_id, app_list, report_file, format):
                 app_id = app.get("id")
                 app_name = app.get("name")
                 progress.update(task, description=f"Processing [bold]{app_name}[/bold]")
-                findings = get_all_findings(client, org_id, app_id, None)
+                findings, scan, counts = get_all_findings(client, org_id, app_id, None)
                 file_category_set = set()
                 if format == "xml" or report_file.endswith(".xml"):
                     app_report_file = report_file.replace(".xml", "-" + app_id + ".xml")
@@ -258,6 +254,24 @@ def export_report(org_id, app_list, report_file, format):
                             progress.console.print(
                                 f"Findings report successfully exported to {app_report_file}"
                             )
+                elif format == "raw":
+                    app_json_file = report_file.replace(".json", "-" + app_id + ".json")
+                    with open(app_json_file, mode="w") as rp:
+                        json.dump(
+                            {
+                                "name": app_name,
+                                "scan": scan,
+                                "findings": findings,
+                                "counts": counts,
+                            },
+                            rp,
+                            ensure_ascii=True,
+                            indent=None,
+                        )
+                        rp.flush()
+                        progress.console.print(
+                            f"Json file successfully exported to {app_json_file}"
+                        )
                 elif format == "sarif":
                     app_sarif_file = report_file.replace(
                         ".sarif", "-" + app_id + ".sarif"
@@ -316,7 +330,6 @@ def export_report(org_id, app_list, report_file, format):
                                     progress.console.print(
                                         f'Get dataflow for {af.get("id")}'
                                     )
-                                    # dataflows = get_dataflow(app_name, af.get("id"))
                                     dataflows = details.get("dataflow", {}).get("list")
                                     if dataflows:
                                         for df in dataflows:
@@ -389,13 +402,14 @@ def build_args():
         help="Report filename",
         default="ngsast-report.csv",
     )
+    parser.add_argument("--reports_dir", dest="reports_dir", help="Reports directory")
     parser.add_argument(
         "-f",
         "--format",
         dest="format",
         help="Report format",
         default="csv",
-        choices=["json", "xml", "csv", "sl", "sarif"],
+        choices=["json", "xml", "csv", "sl", "sarif", "raw"],
     )
     return parser.parse_args()
 
@@ -421,12 +435,15 @@ if __name__ == "__main__":
     if args.app_name:
         app_list.append({"id": args.app_name, "name": args.app_name})
     report_file = args.report_file
+    reports_dir = args.reports_dir
     format = args.format
     # Fix file extensions for xml format
     if format == "xml":
         report_file = report_file.replace(".csv", ".xml")
     if format == "sarif":
         report_file = report_file.replace(".csv", ".sarif")
+    if format == "raw":
+        report_file = report_file.replace(".csv", ".json")
     elif format == "sl":
         if not args.app_name:
             console.print(
@@ -435,6 +452,9 @@ if __name__ == "__main__":
             sys.exit(1)
         if not report_file:
             report_file = "Benchmark_1.2-ShiftLeft.sl"
-    export_report(org_id, app_list, report_file, format)
+    if reports_dir:
+        os.makedirs(reports_dir, exist_ok=True)
+    report_file = os.path.join(reports_dir, report_file)
+    export_report(org_id, app_list, report_file, reports_dir, format)
     end_time = time.monotonic_ns()
     total_time_sec = round((end_time - start_time) / 1000000000, 2)

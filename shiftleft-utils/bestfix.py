@@ -18,7 +18,6 @@ from packaging.version import parse
 from rich import box
 from rich.console import Console
 from rich.markdown import Markdown
-from rich.markup import escape
 from rich.panel import Panel
 from rich.progress import Progress
 from rich.syntax import Syntax
@@ -194,7 +193,7 @@ def get_category_suggestion(
             category_suggestion = f"""This is an informational finding since the sink method `{sink_method}` is safe by default."""
             suppressable_finding = True
         else:
-            category_suggestion = f"""Follow security best practices to configure and use the deserialization library in a safe manner. Depending on the version of the library used, this vulnerability could be difficult to exploit."""
+            category_suggestion = """Follow security best practices to configure and use the deserialization library in a safe manner. Depending on the version of the library used, this vulnerability could be difficult to exploit."""
     elif category in (
         "SSRF",
         "Server-Side Request Forgery",
@@ -207,7 +206,7 @@ def get_category_suggestion(
             category_suggestion = f"""This is an informational finding since the variable `{variable_detected}` could either be a constant or belong to a trusted endpoint."""
             suppressable_finding = True
         elif "httpClient" in ptags_set:
-            category_suggestion = f"""This finding is not attacker reachable since the source parameter is an http client."""
+            category_suggestion = """This finding is not attacker reachable since the source parameter is an http client."""
             suppressable_finding = True
         elif "__POLYMORPHIC__" in sink_method:
             category_suggestion = f"""This is an informational finding since the code could be performing an internal redirection or an API call. Specify `{sink_method}` in your remediation config to suppress this finding."""
@@ -215,15 +214,15 @@ def get_category_suggestion(
         else:
             category_suggestion = f"""Validate and ensure `{variable_detected}` does not contain URLs and other malicious input. For externally injected values, compare `{variable_detected}` against an allowlist of approved URL domains or service IP addresses. Then, specify this validation method name or the source method `{source_method}` in the remediation config file to suppress this finding."""
     elif category == "XML External Entities":
-        category_suggestion = f"""Follow security best practices to configure and use the XML library in a safe manner."""
+        category_suggestion = """Follow security best practices to configure and use the XML library in a safe manner."""
     elif category in ("Cross-Site Scripting", "XSS"):
         if source_method == "^__node^.process.%env":
-            category_suggestion = f"""This is an informational finding since reading an environment variable using `process.env` is safe by default."""
+            category_suggestion = """This is an informational finding since reading an environment variable using `process.env` is safe by default."""
             suppressable_finding = True
         elif variable_detected:
             category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before returning via HTML or API response."""
         else:
-            category_suggestion = f"""Ensure all user input variables are encoded or sanitized before returning via HTML or API response."""
+            category_suggestion = """Ensure all user input variables are encoded or sanitized before returning via HTML or API response."""
     elif category == "LDAP Injection":
         category_suggestion = f"""Ensure the variable `{variable_detected}` are encoded or sanitized before invoking the LDAP method `{sink_method}`."""
     elif category in ("Hardcoded Credentials", "Weak Hash"):
@@ -268,21 +267,21 @@ def get_category_suggestion(
         if variable_detected:
             category_suggestion = f"""This finding is based on best practices. Validate `{variable_detected}` for this context before invoking the sink method `{sink_method}`."""
         else:
-            category_suggestion = f"This finding is based on best practices. Please refer to the description for further information."
+            category_suggestion = "This finding is based on best practices. Please refer to the description for further information."
         suppressable_finding = True
     elif category in ("CRLF Injection", "Header Injection"):
         if variable_detected:
             category_suggestion = f"""Validate and ensure `{variable_detected}` does not contain any malicious input prior to invoking the sink `{sink_method}`."""
         else:
             category_suggestion = (
-                f"Please refer to the description for further information."
+                "Please refer to the description for further information."
             )
     elif category == "Open Redirect":
         if variable_detected:
             category_suggestion = f"""Validate and ensure `{variable_detected}` does not contain any malicious URL or protocol prior to invoking the sink `{sink_method}`. Use an allowlist to verify the URL redirection domains."""
         else:
             category_suggestion = (
-                f"Please refer to the description for further information."
+                "Please refer to the description for further information."
             )
     if "authorized" in ptags_set:
         suppressable_finding = True
@@ -361,7 +360,6 @@ def find_best_oss_fix(
     unreachable_oss_count,
 ):
     data_found = False
-    app_language = scan.get("language", "java")
     table = Table(
         title=f"""Best OSS Fix Suggestions for {app["name"]}""",
         show_lines=True,
@@ -635,7 +633,10 @@ def troubleshoot_app(
                 )
                 if app_language in ("java"):
                     ideas.append(
-                        f"**PERF:** Customize the sensitive data dictionary or consider disabling it (if permitted by AppSec) to improve performance."
+                        "**PERF:** Customize the sensitive data dictionary or consider disabling it (if permitted by AppSec) to improve performance."
+                    )
+                    ideas.append(
+                        """**PERF:** Set these two environment variables to increase the memory available for CPG generation. `export SL_CPG_OPTS="-J-Xms2g -J-Xmx7g"` and `export SHIFTLEFT_JAVA_OPTS="-Xms2g -Xmx7g"`"""
                     )
             if "--wait" in sl_cmd_str:
                 ideas.append(
@@ -709,7 +710,7 @@ def troubleshoot_app(
             )
             if app_language == "java":
                 ideas.append(
-                    "Alternatively, to reduce scan time, pass the argument `--no-cpg` (if permitted by your AppSec team), to generate CPG in the ShiftLeft cloud."
+                    "Alternatively, to reduce scan time, pass the argument `--no-cpg` (if permitted by your AppSec team), to generate CPG in the Qwiet.AI cloud."
                 )
         if memory_total and int(memory_total) < 4096:
             ideas.append(
@@ -770,6 +771,11 @@ def troubleshoot_app(
             sbom_idea = "Ensure the entire source directory and build tools such as maven, gradle or sbt are available in the build step running ShiftLeft."
             if "--oss-project-dir" not in sl_cmd_str:
                 sbom_idea += " Use the argument `--oss-project-dir <source path>` to specify the source directory explicitly."
+            if "build" in sl_cmd_str:
+                sbom_idea += "\nFor some gradle multi-module project, setting the environment variable GRADLE_MULTI_PROJECT_MODE to true might help."
+            elif "target" in sl_cmd_str:
+                sbom_idea += "\nTry running the maven command, `mvn org.cyclonedx:cyclonedx-maven-plugin:2.7.2:makeAggregateBom -DoutputName=bom` before sl analyze to troubleshoot further."
+                sbom_idea += "\nIf additional arguments are found to be required for maven, then set those via the environment variable `MVN_ARGS`"
         if app_language in ("js", "ts", "javascript", "typescript"):
             sbom_idea = "Ensure the lock files such as package-lock.json or yarn.lock or pnpm-lock.yaml are present. If required perform npm or yarn install to generate the lock files prior to invoking ShiftLeft."
         if app_language == "python":
@@ -785,11 +791,11 @@ def troubleshoot_app(
     if suppressable_count or check_methods_count:
         if remediation_used:
             ideas.append(
-                f"""**Remediation:** Review this best fix report and update the existing remediation config to suppress additional findings."""
+                """**Remediation:** Review this best fix report and update the existing remediation config to suppress additional findings."""
             )
         else:
             ideas.append(
-                f"""**Remediation:** Review this best fix report and create a remediation config to suppress additional findings."""
+                """**Remediation:** Review this best fix report and create a remediation config to suppress additional findings."""
             )
     if ideas:
         console.print("\n")
@@ -1057,7 +1063,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                             cleaned_symbol = cleaned_symbol.split("$")[0]
                         if cleaned_symbol not in tracked_list:
                             tracked_list.append(cleaned_symbol)
-            if short_method_name and not "empty" in short_method_name:
+            if short_method_name and "empty" not in short_method_name:
                 if "$" in short_method_name and app_language == "java":
                     short_method_name = short_method_name.replace("lambda$", "")
                     short_method_name = short_method_name.split("$")[0]
@@ -1207,14 +1213,14 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
                     not http_routes
                     and not event_routes
                     and "lambda" not in source_method
-                    and not variable_detected in ("event", "ctx", "request", "headers")
-                    and not source_variable in ("event", "ctx", "request", "headers")
+                    and variable_detected not in ("event", "ctx", "request", "headers")
+                    and source_variable not in ("event", "ctx", "request", "headers")
                     and app_language not in ("python")
                     and not last_location_fname.endswith(".scala")
                 ):
                     taint_suggestion = (
                         (
-                            f"There are no attacker-reachable HTTP routes for this finding."
+                            "There are no attacker-reachable HTTP routes for this finding."
                         )
                         if not suppressable_finding
                         else ""
@@ -1296,11 +1302,11 @@ Include these detected CHECK methods in your remediation config to suppress this
             ignorables_suggestion = ""
             if ignorables_list:
                 if app_language == "csharp":
-                    ignorables_suggestion = f"""To ignore test projects during analysis, pass `-- --ignore-tests` at the end of the `sl analyze` command."""
+                    ignorables_suggestion = """To ignore test projects during analysis, pass `-- --ignore-tests` at the end of the `sl analyze` command."""
                 if app_language in ("js", "javascript", "ts", "typescript"):
-                    ignorables_suggestion = f"""To ignore unit tests, samples and built artefacts during analysis, pass `-- --exclude <path-1>,<path-2>,...` at the end of the `sl analyze` command."""
+                    ignorables_suggestion = """To ignore unit tests, samples and built artefacts during analysis, pass `-- --exclude <path-1>,<path-2>,...` at the end of the `sl analyze` command."""
                 if app_language == "python":
-                    ignorables_suggestion = f"""To ignore specific directory from analysis, pass `-- --ignore-paths [<ignore_path_1>] [<ignore_path_2>]` at the end of the `sl analyze` command."""
+                    ignorables_suggestion = """To ignore specific directory from analysis, pass `-- --ignore-paths [<ignore_path_1>] [<ignore_path_2>]` at the end of the `sl analyze` command."""
             # Fallback
             if not best_fix:
                 if app_language in ("java", "scala", "csharp"):
@@ -1475,28 +1481,26 @@ def get_all_findings_with_scan(client, org_id, app_name, version, ratings):
     while page_available:
         try:
             r = client.get(findings_url, headers=headers, timeout=config.timeout)
-        except httpx.ReadTimeout as e:
+        except httpx.ReadTimeout:
             console.print(
                 f"Unable to retrieve findings for {app_name} due to timeout after {config.timeout} seconds"
             )
+            continue
+        except Exception:
+            console.print(f"Unable to retrieve findings for {app_name}")
             continue
         if r.status_code == 200:
             raw_response = r.json()
             if raw_response and raw_response.get("response"):
                 response = raw_response.get("response")
-                total_count = response.get("total_count")
                 scan = response.get("scan")
                 if not scan:
                     page_available = False
                     continue
-                scan_id = scan.get("id")
-                spid = scan.get("internal_id")
-                projectSpId = f'sl/{org_id}/{scan.get("app")}'
                 findings = response.get("findings")
                 if not findings:
                     page_available = False
                     continue
-                counts = response.get("counts")
                 findings_list += findings
                 if raw_response.get("next_page"):
                     parsed = urllib.parse.urlparse(raw_response.get("next_page"))
@@ -1527,11 +1531,6 @@ def export_report(
         app_list = get_all_apps(org_id)
         if not app_list:
             return
-    work_dir = os.getcwd()
-    for e in ["GITHUB_WORKSPACE", "WORKSPACE"]:
-        if os.getenv(e):
-            work_dir = os.getenv(e)
-            break
     with Progress(
         transient=True,
         redirect_stderr=False,

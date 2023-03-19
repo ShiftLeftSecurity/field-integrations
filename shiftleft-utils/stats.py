@@ -105,6 +105,7 @@ def process_app(
                     "owasp_2021_category",
                     "cwe_category",
                     "reachability",
+                    "ml_assisted",
                 ]
             ]
             critical_count = 0
@@ -121,6 +122,7 @@ def process_app(
             container_low_count = 0
             oss_reachable_count = 0
             oss_unreachable_count = 0
+            ml_assisted_count = 0
             owasp_2021_category_counts = defaultdict(int)
             cwe_category_counts = defaultdict(int)
             reachable_oss_vulns = 0
@@ -131,6 +133,9 @@ def process_app(
             methods_list = set()
             routes_list = set()
             secrets_list = set()
+            owasp_list = set()
+            cwe_list = set()
+            categories_list = set()
             entropy_low = 0
             entropy_high = 0
             # Find the source and sink
@@ -148,6 +153,13 @@ def process_app(
                     secrets_list.update(
                         details.get("secret").replace("\n", "").replace('"', "")
                     )
+                for atag in afinding.get("tags", []):
+                    if atag["key"] == "category":
+                        categories_list.add(atag["value"])
+                    if atag["key"] == "owasp_2021_category":
+                        owasp_list.add(atag["value"])
+                    if atag["key"] == "cwe_category":
+                        cwe_list.add(atag["value"])
                 if details.get("entropy"):
                     try:
                         entropy = float(details.get("entropy"))
@@ -175,7 +187,7 @@ def process_app(
                     ]
                     route_value = mtags[0] if mtags else None
                     if route_value:
-                        routes_list.add(route_value)
+                        routes_list.add(route_value.strip())
                     location = df.get("location", {})
                     if location.get("file_name") == "N/A" or not location.get(
                         "line_number"
@@ -188,7 +200,7 @@ def process_app(
                         and method_name not in sources_list
                         and "{" not in method_name
                     ):
-                        methods_list.add(method_name)
+                        methods_list.add(method_name.strip())
             # Find the counts
             for vc in vuln_counts:
                 if (
@@ -240,6 +252,8 @@ def process_app(
                     owasp_2021_category_counts[vc["value"]] += vc["count"]
                 if vc["key"] == "cwe_category":
                     cwe_category_counts[vc["value"]] += vc["count"]
+                if vc["key"] == "ml_assisted" and vc["value"] == "true":
+                    ml_assisted_count += vc["count"]
             # Convert date time to BigQuery friendly format
             completed_at = ""
             try:
@@ -271,6 +285,7 @@ def process_app(
                 scan.get("id"),
                 scan.get("language"),
                 scan.get("number_of_expressions"),
+                ml_assisted_count,
                 critical_count,
                 high_count,
                 medium_count,
@@ -291,6 +306,9 @@ def process_app(
                 container_low_count,
                 "\\n".join(methods_list),
                 "\\n".join(routes_list),
+                "\\n".join(categories_list),
+                "\\n".join(owasp_list),
+                "\\n".join(cwe_list),
                 token_name,
             ]
     else:
@@ -313,6 +331,7 @@ def write_to_csv(report_file, row):
                 "Total Num of Scans",
                 "Language",
                 "Expressions Count",
+                "ML Assisted Count",
                 "Critical Count",
                 "High Count",
                 "Medium Count",
@@ -333,6 +352,9 @@ def write_to_csv(report_file, row):
                 "Container Low Count",
                 "Methods",
                 "Routes",
+                "Categories",
+                "OWASP 2021 Categories",
+                "CWE IDs",
                 "Token name",
             ]
             reportwriter.writerow(csv_cols)
