@@ -1675,7 +1675,7 @@ if __name__ == "__main__":
     if args.rformat == "html":
         console.save_html(
             report_file,
-            theme=DEFAULT_TERMINAL_THEME if os.getenv("USE_LIGHT_THEME") else MONOKAI,
+            theme=MONOKAI if os.getenv("USE_DARK_THEME") else DEFAULT_TERMINAL_THEME,
         )
         console.print(f"HTML report saved to {report_file}")
         try:
@@ -1690,5 +1690,8 @@ if __name__ == "__main__":
             )
     elif args.rformat == "svg":
         report_file = report_file.replace(".html", ".svg")
-        console.save_svg(report_file, theme=MONOKAI)
+        console.save_svg(
+            report_file,
+            theme=MONOKAI if os.getenv("USE_DARK_THEME") else DEFAULT_TERMINAL_THEME,
+        )
         console.print(f"HTML report saved to {report_file}")

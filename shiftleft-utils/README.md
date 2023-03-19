@@ -97,10 +97,10 @@ Find best fix locations for `vuln-spring` app with the source code under `/mnt/w
 python3 bestfix.py -a vuln-spring -s /mnt/work/HooliCorp/vuln-spring
 ```
 
-To use light theme in the exported html report from bestfix, set the environment variable `USE_LIGHT_THEME`.
+To use dark theme in the exported html report from bestfix, set the environment variable `USE_DARK_THEME`. Light theme is used by default.
 
 ```
-export USE_LIGHT_THEME=true
+export USE_DARK_THEME=true
 python3 bestfix.py -a vuln-spring -s /mnt/work/HooliCorp/vuln-spring
 ```
 
