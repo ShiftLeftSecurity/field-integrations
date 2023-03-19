@@ -200,7 +200,10 @@ def get_category_suggestion(
         "Server-Side Request Forgery",
         "Potential Server-Side Request Forgery",
     ):
-        if variable_detected == variable_detected.upper():
+        if not variable_detected:
+            category_suggestion = ""
+            suppressable_finding = True
+        elif variable_detected == variable_detected.upper():
             category_suggestion = f"""This is an informational finding since the variable `{variable_detected}` could either be a constant or belong to a trusted endpoint."""
             suppressable_finding = True
         elif "httpClient" in ptags_set:
@@ -894,9 +897,14 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
         source_method = details.get("source_method", "")
         sink_method = details.get("sink_method", "")
         # Simplify method names
-        if source_method:
+        if source_method and app_language not in (
+            "js",
+            "javascript",
+            "ts",
+            "typescript",
+        ):
             source_method = source_method.split(":")[0]
-        if sink_method:
+        if sink_method and app_language not in ("js", "javascript", "ts", "typescript"):
             sink_method = sink_method.split(":")[0]
         tags = afinding.get("tags")
         methods_list = []
