@@ -193,6 +193,9 @@ def get_all_findings(client, org_id, app_name, version):
                 if not findings:
                     page_available = False
                     continue
+                if os.getenv("TRIM_DESCRIPTION"):
+                    for f in findings:
+                        f["description"] = ""
                 counts = response.get("counts")
                 findings_list += findings
                 if raw_response.get("next_page"):
@@ -454,7 +457,7 @@ if __name__ == "__main__":
             report_file = "Benchmark_1.2-ShiftLeft.sl"
     if reports_dir:
         os.makedirs(reports_dir, exist_ok=True)
-    report_file = os.path.join(reports_dir, report_file)
+        report_file = os.path.join(reports_dir, report_file)
     export_report(org_id, app_list, report_file, reports_dir, format)
     end_time = time.monotonic_ns()
     total_time_sec = round((end_time - start_time) / 1000000000, 2)
