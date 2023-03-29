@@ -858,6 +858,8 @@ def num_to_emoji(c):
     return str(c)
 
 def print_scan_stats(scan, counts):
+    if not scan or not counts:
+        return
     message = ""
     files_count = 0
     loc_count = 0
@@ -870,7 +872,10 @@ def print_scan_stats(scan, counts):
     source_counts_dict = defaultdict(int)
     sink_counts_dict = defaultdict(int)
     owasp_counts_dict = defaultdict(int)
-    if scan.get("stats", {}).get("data"):
+    stats = scan.get("stats", {})
+    if not stats:
+        return
+    if stats.get("data"):
         data = scan.get("stats", {}).get("data")
         for d in data:
             if d.get("key") == "Code":
