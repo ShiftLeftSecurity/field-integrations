@@ -857,6 +857,7 @@ def num_to_emoji(c):
         return "-"
     return str(c)
 
+
 def print_scan_stats(scan, counts):
     if not scan or not counts:
         return
@@ -872,6 +873,8 @@ def print_scan_stats(scan, counts):
     source_counts_dict = defaultdict(int)
     sink_counts_dict = defaultdict(int)
     owasp_counts_dict = defaultdict(int)
+    owasp_empty = True
+    ratings_empty = True
     stats = scan.get("stats", {})
     if not stats:
         return
@@ -901,8 +904,10 @@ def print_scan_stats(scan, counts):
         if c.get("finding_type") == "vuln":
             if c.get("key") == "cvss_31_severity_rating":
                 ratings_counts_dict[c.get("value")] = c.get("count")
+                ratings_empty = False
             if c.get("key") == "owasp_2021_category":
                 owasp_counts_dict[c.get("value")] = c.get("count")
+                owasp_empty = False
             if c.get("key") == "source_method":
                 source_counts_dict[c.get("value")] = c.get("count")
             if c.get("key") == "sink_method":
@@ -919,7 +924,7 @@ def print_scan_stats(scan, counts):
             if c.get("key") == "cvss_31_severity_rating":
                 container_ratings_counts_dict[c.get("value")] = c.get("count")
     critical_high_count = ratings_counts_dict["critical"] + ratings_counts_dict["high"]
-    message += f"""\nQwiet.AI analyzed the scan #{scan["id"]} for the {scan["language"]} app {scan["app"]} on {scan["started_at"].split("T")[0]}."""
+    message += f"""\nBestfix from Qwiet.AI analyzed scan #{scan["id"]} for the {scan["language"]} app {scan["app"]} on {scan["started_at"].split("T")[0]}."""
     if files_count:
         message += f""" {files_count} files were analyzed during this scan"""
     elif loc_count:
@@ -929,53 +934,57 @@ def print_scan_stats(scan, counts):
             f" resulting in {critical_high_count} critical and high vulnerabilities. "
         )
     else:
-        message += " and no critical or high vulnerabilities identified. "
+        message += ", and no critical or high vulnerabilities were found. "
     if deps_count:
         message += f"{deps_count} open-source dependencies were also identified"
         if oss_reachable_count:
             message += f" in which {oss_reachable_count} vulnerabilities were found."
         else:
             message += "."
-    message += " Use the information in this report to mitigate the vulnerabilities in the open-source and custom code."
-    console.print(message)
-    console.print("\n\n")
-    table = Table(
-        title=f"""OWASP Summary""",
-        show_lines=True,
-        box=box.DOUBLE_EDGE,
-        header_style="bold green",
-        expand=False,
-    )
-    table.add_column("Category")
-    table.add_column("Count", justify="right", style="cyan")
-    # OWASP Table needs a fixed ordering
-    for col in (
-        "a01-broken-access-control",
-        "a02-cryptographic-failures",
-        "a03-injection",
-        "a04-insecure-design",
-        "a05-security-misconfiguration",
-        "a06-vulnerable-and-outdated-components",
-        "a07-identification-and-authentication-failures",
-        "a08-software-and-data-integrity-failures",
-        "a09-security-logging-and-monitoring-failures",
-        "a10-server-side-request-forgery-(ssrf)",
-    ):
-        table.add_row(col, num_to_emoji(owasp_counts_dict[col]))
-    console.print(table)
+    message += " Use the information in this report to mitigate the open-source and custom code vulnerabilities and to improve the scan performance."
     console.print("\n")
-    table = Table(
-        title=f"""CVSS Ratings Summary""",
-        show_lines=True,
-        box=box.DOUBLE_EDGE,
-        header_style="bold green",
-        expand=False,
-    )
-    table.add_column("Rating")
-    table.add_column("Count", justify="right", style="cyan")
-    for col in ("critical", "high", "medium", "low"):
-        table.add_row(col, num_to_emoji(ratings_counts_dict[col]))
-    console.print(table)
+    console.print(Markdown("## Executive Summary"))
+    console.print(message)
+    if not owasp_empty:
+        console.print("\n\n")
+        table = Table(
+            title=f"""OWASP Summary""",
+            show_lines=True,
+            box=box.DOUBLE_EDGE,
+            header_style="bold green",
+            expand=False,
+        )
+        table.add_column("Category")
+        table.add_column("Count", justify="right", style="cyan")
+        # OWASP Table needs a fixed ordering
+        for col in (
+            "a01-broken-access-control",
+            "a02-cryptographic-failures",
+            "a03-injection",
+            "a04-insecure-design",
+            "a05-security-misconfiguration",
+            "a06-vulnerable-and-outdated-components",
+            "a07-identification-and-authentication-failures",
+            "a08-software-and-data-integrity-failures",
+            "a09-security-logging-and-monitoring-failures",
+            "a10-server-side-request-forgery-(ssrf)",
+        ):
+            table.add_row(col, num_to_emoji(owasp_counts_dict[col]))
+        console.print(table)
+    if not ratings_empty:
+        console.print("\n")
+        table = Table(
+            title=f"""CVSS Ratings Summary""",
+            show_lines=True,
+            box=box.DOUBLE_EDGE,
+            header_style="bold green",
+            expand=False,
+        )
+        table.add_column("Rating")
+        table.add_column("Count", justify="right", style="cyan")
+        for col in ("critical", "high", "medium", "low"):
+            table.add_row(col, num_to_emoji(ratings_counts_dict[col]))
+        console.print(table)
 
 
 def find_best_fix(org_id, app, scan, findings, counts, source_dir):
@@ -1555,8 +1564,6 @@ Specify the sink method in your remediation config to suppress this finding.\n
         ###########
     # Executive summary section
     if scan:
-        console.print("\n")
-        console.print(Markdown("## Executive Summary"))
         print_scan_stats(scan, counts)
     # Find the best oss fixes
     find_best_oss_fix(
