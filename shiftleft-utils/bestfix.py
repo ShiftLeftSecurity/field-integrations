@@ -429,6 +429,11 @@ def find_best_oss_fix(
         # For long list of fix versions just show the first half
         if len(fix_versions) > 5:
             fix_versions = fix_versions[0 : math.ceil(len(fix_versions) / 2)]
+        # Flip the fix versions again show we show updates on the top followed by upgrades
+        try:
+            fix_versions = sorted(fix_version, key=parse)
+        except Exception:
+            fix_versions = sorted(fix_version)
         table.add_row(
             package_str,
             reachability.capitalize() if reachability == "reachable" else "",
@@ -852,7 +857,100 @@ def file_locations_tree(
     return tree
 
 
-def find_best_fix(org_id, app, scan, findings, source_dir):
+def print_scan_stats(scan, counts):
+    message = ""
+    files_count = 0
+    loc_count = 0
+    deps_count = 0
+    oss_unreachable_count = 0
+    oss_reachable_count = 0
+    ratings_counts_dict = defaultdict(int)
+    oss_ratings_counts_dict = defaultdict(int)
+    container_ratings_counts_dict = defaultdict(int)
+    source_counts_dict = defaultdict(int)
+    sink_counts_dict = defaultdict(int)
+    owasp_counts_dict = defaultdict(int)
+    if scan.get("stats", {}).get("data"):
+        data = scan.get("stats", {}).get("data")
+        for d in data:
+            if d.get("key") == "Code":
+                code_data = d.get("data")
+                for acd in code_data:
+                    if acd.get("key") == "File":
+                        files_count = acd.get("count")
+                    if acd.get("key") == "Loc":
+                        loc_count = acd.get("count")
+            if d.get("key") == "OSS":
+                oss_data = d.get("data")
+                for osd in oss_data:
+                    if osd.get("key") == "Dependencies":
+                        deps_count = osd.get("count")
+    for c in counts:
+        if c.get("finding_type") == "vuln":
+            if c.get("key") == "cvss_31_severity_rating":
+                ratings_counts_dict[c.get("value")] = c.get("count")
+            if c.get("key") == "owasp_2021_category":
+                owasp_counts_dict[c.get("value")] = c.get("count")
+            if c.get("key") == "source_method":
+                source_counts_dict[c.get("value")] = c.get("count")
+            if c.get("key") == "sink_method":
+                sink_counts_dict[c.get("value")] = c.get("count")
+        if c.get("finding_type") == "oss_vuln":
+            if c.get("key") == "cvss_31_severity_rating":
+                oss_ratings_counts_dict[c.get("value")] = c.get("count")
+            if c.get("key") == "reachability":
+                if c.get("value") == "unreachable":
+                    oss_unreachable_count = c.get("count")
+                if c.get("value") == "reachable":
+                    oss_reachable_count = c.get("count")
+        if c.get("finding_type") == "container":
+            if c.get("key") == "cvss_31_severity_rating":
+                container_ratings_counts_dict[c.get("value")] = c.get("count")
+    if not files_count:
+        return
+    critical_high_count = ratings_counts_dict["critical"] + ratings_counts_dict["high"]
+    message += f"""\nQwiet.AI analyzed the scan #{scan["id"]} for the {scan["language"]} app {scan["app"]} on {scan["started_at"].split("T")[0]}. {files_count} files were analyzed during this scan"""
+    if critical_high_count:
+        message += (
+            f" resulting in {critical_high_count} critical and high vulnerabilities. "
+        )
+    else:
+        message += " and no critical or high vulnerabilities identified. "
+    if deps_count:
+        message += f"{deps_count} open-source dependencies were also identified"
+        if oss_reachable_count:
+            message += f" in which {oss_reachable_count} vulnerabilities were found."
+        else:
+            message += "."
+    console.print(message)
+    console.print("\n\n")
+    table = Table(
+        title=f"""OWASP Report""",
+        show_lines=True,
+        box=box.DOUBLE_EDGE,
+        header_style="bold green",
+        expand=False,
+    )
+    table.add_column("Category")
+    table.add_column("Count", justify="right", style="cyan")
+    # OWASP Table needs a fixed ordering
+    for col in (
+        "a01-broken-access-control",
+        "a02-cryptographic-failures",
+        "a03-injection",
+        "a04-insecure-design",
+        "a05-security-misconfiguration",
+        "a06-vulnerable-and-outdated-components",
+        "a07-identification-and-authentication-failures",
+        "a08-software-and-data-integrity-failures",
+        "a09-security-logging-and-monitoring-failures",
+        "a10-server-side-request-forgery-(ssrf)",
+    ):
+        table.add_row(col, str(owasp_counts_dict[col]))
+    console.print(table)
+
+
+def find_best_fix(org_id, app, scan, findings, counts, source_dir):
     annotated_findings = []
     if not findings:
         return annotated_findings
@@ -1435,6 +1533,13 @@ Specify the sink method in your remediation config to suppress this finding.\n
         unreachable_oss_count,
     )
     if data_found:
+        # Executive summary section
+        if scan:
+            console.print("\n")
+            console.print(Markdown("## Executive Summary"))
+            print_scan_stats(scan, counts)
+            # Describe bestfix triaging
+        # Print Bestfix table
         console.print("\n\n")
         console.print(table)
         cohort_analysis(
@@ -1478,6 +1583,7 @@ def get_all_findings_with_scan(client, org_id, app_name, version, ratings):
         findings_url = f"{findings_url}&finding_tags=cvss_31_severity_rating={rating}"
     page_available = True
     scan = {}
+    counts = []
     while page_available:
         try:
             r = client.get(findings_url, headers=headers, timeout=config.timeout)
@@ -1494,6 +1600,7 @@ def get_all_findings_with_scan(client, org_id, app_name, version, ratings):
             if raw_response and raw_response.get("response"):
                 response = raw_response.get("response")
                 scan = response.get("scan")
+                counts = response.get("counts")
                 if not scan:
                     page_available = False
                     continue
@@ -1514,7 +1621,7 @@ def get_all_findings_with_scan(client, org_id, app_name, version, ratings):
             console.print(
                 f"Unable to retrieve findings for {app_name} due to http error {r.status_code}"
             )
-    return scan, findings_list
+    return scan, findings_list, counts
 
 
 def export_report(
@@ -1552,11 +1659,11 @@ def export_report(
                 if app_name in ("Benchmark"):
                     continue
                 progress.update(task, description=f"Processing [bold]{app_name}[/bold]")
-                scan, findings = get_all_findings_with_scan(
+                scan, findings, counts = get_all_findings_with_scan(
                     client, org_id, app_id, version, ratings
                 )
                 annotated_findings = find_best_fix(
-                    org_id, app, scan, findings, source_dir
+                    org_id, app, scan, findings, counts, source_dir
                 )
                 if troubleshoot:
                     if scan:
