@@ -854,7 +854,7 @@ def file_locations_tree(
 
 def num_to_emoji(c):
     if not c:
-        return ":thumbs_up:"
+        return "-"
     return str(c)
 
 def print_scan_stats(scan, counts):
