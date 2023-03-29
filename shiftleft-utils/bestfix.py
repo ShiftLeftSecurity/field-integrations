@@ -429,11 +429,6 @@ def find_best_oss_fix(
         # For long list of fix versions just show the first half
         if len(fix_versions) > 5:
             fix_versions = fix_versions[0 : math.ceil(len(fix_versions) / 2)]
-        # Flip the fix versions again show we show updates on the top followed by upgrades
-        try:
-            fix_versions = sorted(fix_version, key=parse)
-        except Exception:
-            fix_versions = sorted(fix_version)
         table.add_row(
             package_str,
             reachability.capitalize() if reachability == "reachable" else "",
@@ -857,6 +852,11 @@ def file_locations_tree(
     return tree
 
 
+def num_to_emoji(c):
+    if not c:
+        return ":thumbs_up:"
+    return str(c)
+
 def print_scan_stats(scan, counts):
     message = ""
     files_count = 0
@@ -876,9 +876,16 @@ def print_scan_stats(scan, counts):
             if d.get("key") == "Code":
                 code_data = d.get("data")
                 for acd in code_data:
+                    # Files count can be found directly in count or nested inside data
                     if acd.get("key") == "File":
-                        files_count = acd.get("count")
-                    if acd.get("key") == "Loc":
+                        if acd.get("count"):
+                            files_count = acd.get("count")
+                        if acd.get("data"):
+                            for fd in acd.get("data"):
+                                if fd.get("key") == "Internal":
+                                    files_count = fd.get("count")
+                    # Qwiet engineers cannot make up their mind on the key
+                    if acd.get("key") in ("Loc", "Lines of code") and acd.get("count"):
                         loc_count = acd.get("count")
             if d.get("key") == "OSS":
                 oss_data = d.get("data")
@@ -906,10 +913,12 @@ def print_scan_stats(scan, counts):
         if c.get("finding_type") == "container":
             if c.get("key") == "cvss_31_severity_rating":
                 container_ratings_counts_dict[c.get("value")] = c.get("count")
-    if not files_count:
-        return
     critical_high_count = ratings_counts_dict["critical"] + ratings_counts_dict["high"]
-    message += f"""\nQwiet.AI analyzed the scan #{scan["id"]} for the {scan["language"]} app {scan["app"]} on {scan["started_at"].split("T")[0]}. {files_count} files were analyzed during this scan"""
+    message += f"""\nQwiet.AI analyzed the scan #{scan["id"]} for the {scan["language"]} app {scan["app"]} on {scan["started_at"].split("T")[0]}."""
+    if files_count:
+        message += f""" {files_count} files were analyzed during this scan"""
+    elif loc_count:
+        message += f""" {loc_count} lines of code were analyzed during this scan"""
     if critical_high_count:
         message += (
             f" resulting in {critical_high_count} critical and high vulnerabilities. "
@@ -922,10 +931,11 @@ def print_scan_stats(scan, counts):
             message += f" in which {oss_reachable_count} vulnerabilities were found."
         else:
             message += "."
+    message += " Use the information in this report to mitigate the vulnerabilities in the open-source and custom code."
     console.print(message)
     console.print("\n\n")
     table = Table(
-        title=f"""OWASP Report""",
+        title=f"""OWASP Summary""",
         show_lines=True,
         box=box.DOUBLE_EDGE,
         header_style="bold green",
@@ -946,7 +956,20 @@ def print_scan_stats(scan, counts):
         "a09-security-logging-and-monitoring-failures",
         "a10-server-side-request-forgery-(ssrf)",
     ):
-        table.add_row(col, str(owasp_counts_dict[col]))
+        table.add_row(col, num_to_emoji(owasp_counts_dict[col]))
+    console.print(table)
+    console.print("\n")
+    table = Table(
+        title=f"""CVSS Ratings Summary""",
+        show_lines=True,
+        box=box.DOUBLE_EDGE,
+        header_style="bold green",
+        expand=False,
+    )
+    table.add_column("Rating")
+    table.add_column("Count", justify="right", style="cyan")
+    for col in ("critical", "high", "medium", "low"):
+        table.add_row(col, num_to_emoji(ratings_counts_dict[col]))
     console.print(table)
 
 
@@ -963,6 +986,7 @@ def find_best_fix(org_id, app, scan, findings, counts, source_dir):
         expand=True,
     )
     table.add_column("ID", justify="right", style="cyan")
+    table.add_column("Severity")
     if CI_MODE:
         table.add_column("Category")
     table.add_column(
@@ -1468,6 +1492,7 @@ Specify the sink method in your remediation config to suppress this finding.\n
             if CI_MODE:
                 table.add_row(
                     f"""[link={deep_link}]{afinding.get("id")}[/link]""",
+                    afinding.get("severity"),
                     afinding.get("category"),
                     file_locations_md,
                     Markdown(best_fix),
@@ -1475,6 +1500,7 @@ Specify the sink method in your remediation config to suppress this finding.\n
             else:
                 table.add_row(
                     f"""[link={deep_link}]{afinding.get("id")}[/link]""",
+                    f"""{'[bold red]' if afinding.get("severity") == 'critical' else '[yellow]'}{afinding.get("severity")}""",
                     file_locations_md,
                     Markdown(best_fix),
                 )
@@ -1522,6 +1548,11 @@ Specify the sink method in your remediation config to suppress this finding.\n
             else:
                 unreachable_oss_count += 1
         ###########
+    # Executive summary section
+    if scan:
+        console.print("\n")
+        console.print(Markdown("## Executive Summary"))
+        print_scan_stats(scan, counts)
     # Find the best oss fixes
     find_best_oss_fix(
         org_id,
@@ -1533,12 +1564,6 @@ Specify the sink method in your remediation config to suppress this finding.\n
         unreachable_oss_count,
     )
     if data_found:
-        # Executive summary section
-        if scan:
-            console.print("\n")
-            console.print(Markdown("## Executive Summary"))
-            print_scan_stats(scan, counts)
-            # Describe bestfix triaging
         # Print Bestfix table
         console.print("\n\n")
         console.print(table)
