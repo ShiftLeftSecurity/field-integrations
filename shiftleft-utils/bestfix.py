@@ -852,7 +852,128 @@ def file_locations_tree(
     return tree
 
 
-def find_best_fix(org_id, app, scan, findings, source_dir):
+def num_to_emoji(c):
+    if not c:
+        return "-"
+    return str(c)
+
+def print_scan_stats(scan, counts):
+    message = ""
+    files_count = 0
+    loc_count = 0
+    deps_count = 0
+    oss_unreachable_count = 0
+    oss_reachable_count = 0
+    ratings_counts_dict = defaultdict(int)
+    oss_ratings_counts_dict = defaultdict(int)
+    container_ratings_counts_dict = defaultdict(int)
+    source_counts_dict = defaultdict(int)
+    sink_counts_dict = defaultdict(int)
+    owasp_counts_dict = defaultdict(int)
+    if scan.get("stats", {}).get("data"):
+        data = scan.get("stats", {}).get("data")
+        for d in data:
+            if d.get("key") == "Code":
+                code_data = d.get("data")
+                for acd in code_data:
+                    # Files count can be found directly in count or nested inside data
+                    if acd.get("key") == "File":
+                        if acd.get("count"):
+                            files_count = acd.get("count")
+                        if acd.get("data"):
+                            for fd in acd.get("data"):
+                                if fd.get("key") == "Internal":
+                                    files_count = fd.get("count")
+                    # Qwiet engineers cannot make up their mind on the key
+                    if acd.get("key") in ("Loc", "Lines of code") and acd.get("count"):
+                        loc_count = acd.get("count")
+            if d.get("key") == "OSS":
+                oss_data = d.get("data")
+                for osd in oss_data:
+                    if osd.get("key") == "Dependencies":
+                        deps_count = osd.get("count")
+    for c in counts:
+        if c.get("finding_type") == "vuln":
+            if c.get("key") == "cvss_31_severity_rating":
+                ratings_counts_dict[c.get("value")] = c.get("count")
+            if c.get("key") == "owasp_2021_category":
+                owasp_counts_dict[c.get("value")] = c.get("count")
+            if c.get("key") == "source_method":
+                source_counts_dict[c.get("value")] = c.get("count")
+            if c.get("key") == "sink_method":
+                sink_counts_dict[c.get("value")] = c.get("count")
+        if c.get("finding_type") == "oss_vuln":
+            if c.get("key") == "cvss_31_severity_rating":
+                oss_ratings_counts_dict[c.get("value")] = c.get("count")
+            if c.get("key") == "reachability":
+                if c.get("value") == "unreachable":
+                    oss_unreachable_count = c.get("count")
+                if c.get("value") == "reachable":
+                    oss_reachable_count = c.get("count")
+        if c.get("finding_type") == "container":
+            if c.get("key") == "cvss_31_severity_rating":
+                container_ratings_counts_dict[c.get("value")] = c.get("count")
+    critical_high_count = ratings_counts_dict["critical"] + ratings_counts_dict["high"]
+    message += f"""\nQwiet.AI analyzed the scan #{scan["id"]} for the {scan["language"]} app {scan["app"]} on {scan["started_at"].split("T")[0]}."""
+    if files_count:
+        message += f""" {files_count} files were analyzed during this scan"""
+    elif loc_count:
+        message += f""" {loc_count} lines of code were analyzed during this scan"""
+    if critical_high_count:
+        message += (
+            f" resulting in {critical_high_count} critical and high vulnerabilities. "
+        )
+    else:
+        message += " and no critical or high vulnerabilities identified. "
+    if deps_count:
+        message += f"{deps_count} open-source dependencies were also identified"
+        if oss_reachable_count:
+            message += f" in which {oss_reachable_count} vulnerabilities were found."
+        else:
+            message += "."
+    message += " Use the information in this report to mitigate the vulnerabilities in the open-source and custom code."
+    console.print(message)
+    console.print("\n\n")
+    table = Table(
+        title=f"""OWASP Summary""",
+        show_lines=True,
+        box=box.DOUBLE_EDGE,
+        header_style="bold green",
+        expand=False,
+    )
+    table.add_column("Category")
+    table.add_column("Count", justify="right", style="cyan")
+    # OWASP Table needs a fixed ordering
+    for col in (
+        "a01-broken-access-control",
+        "a02-cryptographic-failures",
+        "a03-injection",
+        "a04-insecure-design",
+        "a05-security-misconfiguration",
+        "a06-vulnerable-and-outdated-components",
+        "a07-identification-and-authentication-failures",
+        "a08-software-and-data-integrity-failures",
+        "a09-security-logging-and-monitoring-failures",
+        "a10-server-side-request-forgery-(ssrf)",
+    ):
+        table.add_row(col, num_to_emoji(owasp_counts_dict[col]))
+    console.print(table)
+    console.print("\n")
+    table = Table(
+        title=f"""CVSS Ratings Summary""",
+        show_lines=True,
+        box=box.DOUBLE_EDGE,
+        header_style="bold green",
+        expand=False,
+    )
+    table.add_column("Rating")
+    table.add_column("Count", justify="right", style="cyan")
+    for col in ("critical", "high", "medium", "low"):
+        table.add_row(col, num_to_emoji(ratings_counts_dict[col]))
+    console.print(table)
+
+
+def find_best_fix(org_id, app, scan, findings, counts, source_dir):
     annotated_findings = []
     if not findings:
         return annotated_findings
@@ -865,6 +986,7 @@ def find_best_fix(org_id, app, scan, findings, source_dir):
         expand=True,
     )
     table.add_column("ID", justify="right", style="cyan")
+    table.add_column("Severity")
     if CI_MODE:
         table.add_column("Category")
     table.add_column(
@@ -1370,6 +1492,7 @@ Specify the sink method in your remediation config to suppress this finding.\n
             if CI_MODE:
                 table.add_row(
                     f"""[link={deep_link}]{afinding.get("id")}[/link]""",
+                    afinding.get("severity"),
                     afinding.get("category"),
                     file_locations_md,
                     Markdown(best_fix),
@@ -1377,6 +1500,7 @@ Specify the sink method in your remediation config to suppress this finding.\n
             else:
                 table.add_row(
                     f"""[link={deep_link}]{afinding.get("id")}[/link]""",
+                    f"""{'[bold red]' if afinding.get("severity") == 'critical' else '[yellow]'}{afinding.get("severity")}""",
                     file_locations_md,
                     Markdown(best_fix),
                 )
@@ -1424,6 +1548,11 @@ Specify the sink method in your remediation config to suppress this finding.\n
             else:
                 unreachable_oss_count += 1
         ###########
+    # Executive summary section
+    if scan:
+        console.print("\n")
+        console.print(Markdown("## Executive Summary"))
+        print_scan_stats(scan, counts)
     # Find the best oss fixes
     find_best_oss_fix(
         org_id,
@@ -1435,6 +1564,7 @@ Specify the sink method in your remediation config to suppress this finding.\n
         unreachable_oss_count,
     )
     if data_found:
+        # Print Bestfix table
         console.print("\n\n")
         console.print(table)
         cohort_analysis(
@@ -1478,6 +1608,7 @@ def get_all_findings_with_scan(client, org_id, app_name, version, ratings):
         findings_url = f"{findings_url}&finding_tags=cvss_31_severity_rating={rating}"
     page_available = True
     scan = {}
+    counts = []
     while page_available:
         try:
             r = client.get(findings_url, headers=headers, timeout=config.timeout)
@@ -1494,6 +1625,7 @@ def get_all_findings_with_scan(client, org_id, app_name, version, ratings):
             if raw_response and raw_response.get("response"):
                 response = raw_response.get("response")
                 scan = response.get("scan")
+                counts = response.get("counts")
                 if not scan:
                     page_available = False
                     continue
@@ -1514,7 +1646,7 @@ def get_all_findings_with_scan(client, org_id, app_name, version, ratings):
             console.print(
                 f"Unable to retrieve findings for {app_name} due to http error {r.status_code}"
             )
-    return scan, findings_list
+    return scan, findings_list, counts
 
 
 def export_report(
@@ -1552,11 +1684,11 @@ def export_report(
                 if app_name in ("Benchmark"):
                     continue
                 progress.update(task, description=f"Processing [bold]{app_name}[/bold]")
-                scan, findings = get_all_findings_with_scan(
+                scan, findings, counts = get_all_findings_with_scan(
                     client, org_id, app_id, version, ratings
                 )
                 annotated_findings = find_best_fix(
-                    org_id, app, scan, findings, source_dir
+                    org_id, app, scan, findings, counts, source_dir
                 )
                 if troubleshoot:
                     if scan:
