@@ -1506,15 +1506,15 @@ Specify the sink method in your remediation config to suppress this finding.\n
             if CI_MODE:
                 table.add_row(
                     f"""[link={deep_link}]{afinding.get("id")}[/link]""",
-                    afinding.get("severity"),
-                    afinding.get("category"),
+                    cvss_31_severity_rating,
+                    category,
                     file_locations_md,
                     Markdown(best_fix),
                 )
             else:
                 table.add_row(
                     f"""[link={deep_link}]{afinding.get("id")}[/link]""",
-                    f"""{'[bold red]' if afinding.get("severity") == 'critical' else '[yellow]'}{afinding.get("severity")}""",
+                    f"""{'[bold red]' if cvss_31_severity_rating == 'critical' else '[yellow]'}{cvss_31_severity_rating}""",
                     file_locations_md,
                     Markdown(best_fix),
                 )
