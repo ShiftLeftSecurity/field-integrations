@@ -171,6 +171,8 @@ def get_all_findings(client, org_id, app_name, version):
     findings_list = []
     findings_url = get_findings_url(org_id, app_name, version, None)
     page_available = True
+    scan = None
+    counts = None
     while page_available:
         try:
             r = client.get(findings_url, headers=headers, timeout=config.timeout)
