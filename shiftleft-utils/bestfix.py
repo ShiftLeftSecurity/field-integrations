@@ -3,6 +3,7 @@
 import argparse
 import csv
 import io
+import logging
 import linecache
 import math
 import os
@@ -30,6 +31,10 @@ from six import moves
 import config
 import gh as GitHubLib
 from common import extract_org_id, get_all_apps, get_scan_run, headers
+
+LOG = logging.getLogger(__name__)
+for _ in ("httpx",):
+    logging.getLogger(_).disabled = True
 
 CI_MODE = os.getenv("CI") in ("true", "1") or os.getenv("AGENT_OS") is not None
 
@@ -450,6 +455,7 @@ def troubleshoot_app(
     summary = run_info.get("summary", {})
     environment = summary.get("environment", {})
     sl_cmd = environment.get("cmd", [])
+    tmp_data = environment.get("tmp", {})
     sl_cmd_str = ""
     build_machine = environment.get("machine", [])
     lang_args_used = False
@@ -542,6 +548,7 @@ def troubleshoot_app(
         if "ubuntu 18.04" in os_release:
             if app_language in (
                 "python",
+                "pythonsrc",
                 "terraform_hcl",
                 "terraform",
                 "aws",
@@ -555,10 +562,15 @@ def troubleshoot_app(
                 ideas.append(
                     "**OS:** Build machine is using `Ubuntu 18.04`. To improve performance, upgrade to `Ubuntu 20.04` or higher."
                 )
+        elif "ubuntu 20.04" in os_release:
+            if app_language in ("javasrc", "javascriptsrc", "pythonsrc", "csharp"):
+                ideas.append(
+                    "**OS:** Build machine is using `Ubuntu 20.04` which is not recommended for this language. Upgrade to `Ubuntu 22.04` or higher."
+                )
         if "alpine" in os_release:
             if app_language in (
-                "csharp",
                 "python",
+                "pythonsrc",
                 "terraform_hcl",
                 "terraform",
                 "aws",
@@ -566,7 +578,7 @@ def troubleshoot_app(
                 "kubernetes",
             ):
                 ideas.append(
-                    "**OS:** Build machine appears to be using `Alpine Linux` which is not supported for this language. Consider switching to a supported flavour of linux such as Ubuntu or Debian."
+                    "**OS:** Build machine appears to be using `Alpine Linux` which is not recommended for this language. Consider switching to a supported flavour of linux such as Ubuntu or Debian."
                 )
     sizes = summary.get("sizes")
     size_based_reco = False
@@ -609,14 +621,14 @@ def troubleshoot_app(
         scan_duration_ms = summary.get("scan_duration_ms", 0)
         if scan_duration_ms > 3 * 60 * 1000:
             size_suggestion = ""
-            if binsize and app_language == "java":
-                size_suggestion = "Try scanning the jar file containing only the custom code instead of a uber jar or a war file.\nFor apps containing many libraries, please contact ShiftLeft support for further optimizations ideas."
+            if int(binsize) > 50000 and app_language == "java":
+                size_suggestion = "Try scanning the jar file containing only the custom code instead of a uber jar or a war file.\nFor apps containing many libraries, please contact Qwiet.AI support for further optimizations ideas."
             if files:
                 if app_language in ("js", "ts", "javascript", "typescript"):
                     if "--exclude" not in sl_cmd_str:
                         size_suggestion = "Pass the argument `-- --exclude <path-1>,<path-2>,...` to exclude specified directories during code analysis."
                     else:
-                        size_suggestion = "Ensure the application is not built prior to invoking ShiftLeft."
+                        size_suggestion = "Ensure the application is not built prior to invoking Qwiet.AI."
                 if app_language == "python":
                     size_suggestion = "Pass the argument `-- --ignore-paths [<ignore_path_1>] [<ignore_path_2>]` to ignore specified paths during code analysis."
                 if app_language == "csharp":
@@ -631,7 +643,7 @@ def troubleshoot_app(
                 ideas.append(
                     f"**PERF:** Scan time was over {math.floor(scan_duration_ms / (60 * 1000))} mins.\n{size_suggestion}"
                 )
-                if app_language in ("java"):
+                if app_language in ("java", "javasrc"):
                     ideas.append(
                         "**PERF:** Customize the sensitive data dictionary or consider disabling it (if permitted by AppSec) to improve performance."
                     )
@@ -667,7 +679,7 @@ def troubleshoot_app(
                 and not multiple_dep_projects_used
             ):
                 ideas.append(
-                    "Ensure the solution is restored or built successfully prior to invoking ShiftLeft."
+                    "Ensure the solution is restored or built successfully prior to invoking Qwiet.AI."
                 )
                 if ".sln" not in sl_cmd_str:
                     ideas.append(
@@ -676,7 +688,7 @@ def troubleshoot_app(
             if app_language == "python" and len(findings) < 5:
                 if not verbose_used:
                     ideas.append(
-                        "Ensure the project dependencies are installed with `pip install` command prior to invoking ShiftLeft."
+                        "Ensure the project dependencies are installed with `pip install` command prior to invoking Qwiet.AI."
                     )
                 ideas.append(
                     "To include additional python module search paths in the analysis, pass `-- --extra-sys-paths [<path>]`."
@@ -684,7 +696,7 @@ def troubleshoot_app(
                 ideas.append(
                     "For monorepos, scan the individual apps or microservices separately using multiple invocation of `sl analyze` command. Pass `--tag app.group=groupname` to the `sl analyze` command to group the individual apps in the UI."
                 )
-            if app_language == "java":
+            if app_language == "java" and int(binsize) < 15000:
                 ideas.append(
                     "Pass the .war file or a uber jar to get better results for Java applications."
                 )
@@ -694,11 +706,11 @@ def troubleshoot_app(
             if app_language in ("js", "ts", "javascript", "typescript"):
                 if "ui" in app_name:
                     ideas.append(
-                        "**UI:** Ensure only applications and not UI toolkits are scanned with ShiftLeft."
+                        "**UI:** Ensure only applications and not UI toolkits are scanned with Qwiet.AI."
                     )
     if (
         build_machine
-        and app_language in ("java", "csharp", "python", "go")
+        and app_language in ("java", "javasrc", "csharp", "python", "pythonsrc", "go")
         and not size_based_reco
         and perf_based_reco
     ):
@@ -717,7 +729,31 @@ def troubleshoot_app(
                 f"**CI:** Ensure the build machine has a minimum of 4096 MB RAM to reduce CPG generation time. Found only {memory_total} MB."
             )
     methods = summary.get("methods")
+    namespaces = methods.get("namespaces", {})
+    unannotated = methods.get("unannotated", {})
+    filtered_namespaces = set()
+    filtered_unannotated = set()
     library_reco = False
+    if unannotated and low_findings_count and app_language in ("java", "javasrc"):
+        # There are annotations but still low findings count. Check if we might be missing something
+        for uk, uv in unannotated.items():
+            for key_framework in (
+                "google.",
+                "aws",
+                "azure",
+                "sql",
+                "cloud",
+                "framework",
+            ):
+                if key_framework in uk:
+                    filtered_namespaces.add(uk)
+                    filtered_unannotated.update(uv)
+        if filtered_namespaces:
+            if len(filtered_namespaces) > 4:
+                filtered_namespaces = filtered_namespaces[:4]
+            ideas.append(
+                f"""**SUPPORT:** This app might be using libraries that are not supported yet. Please contact Qwiet.AI support to manually review this app.\nSome namespaces to review: {", ".join(filtered_namespaces)}"""
+            )
     if methods and not size_based_reco:
         ios = methods.get("ios", 0)
         sinks = methods.get("sinks", 0)
@@ -727,12 +763,12 @@ def troubleshoot_app(
             if not sources and sinks:
                 library_reco = True
                 ideas.append(
-                    "**APP:** This repo could be a library. Ensure only applications are scanned with ShiftLeft."
+                    "**APP:** This repo could be a library. Ensure only applications are scanned with Qwiet.AI."
                 )
             if ("lib" in app_name or "common" in app_name) and not sinks:
                 library_reco = True
                 ideas.append(
-                    "**APP:** This repo is a library. Ensure only applications are scanned with ShiftLeft."
+                    "**APP:** This repo is a library. Ensure only applications are scanned with Qwiet.AI."
                 )
         if (
             not ios
@@ -745,18 +781,18 @@ def troubleshoot_app(
             if not multiple_dep_projects_used:
                 if not library_reco and metadata_artifact:
                     ideas.append(
-                        "**SUPPORT:** This app might be using libraries that are not supported yet. Please contact ShiftLeft support to manually review this app."
+                        "**SUPPORT:** This app might be using libraries that are not supported yet. Please contact Qwiet.AI support to manually review this app."
                     )
                 elif "lib" not in app_name and metadata_artifact:
                     ideas.append(
-                        "**SUPPORT:** Alternatively, this app might be using private dependencies or third-party libraries that are not supported yet. Please contact ShiftLeft support to manually review this app."
+                        "**SUPPORT:** Alternatively, this app might be using private dependencies or third-party libraries that are not supported yet. Please contact Qwiet.AI support to manually review this app."
                     )
         if total and int(total) < 20:
             ideas.append(f"This is a small app with only {total} methods.")
     token = summary.get("token")
     if token and token.get("name", "") == "Personal Access":
         ideas.append(
-            f"""**TOKEN:** Use a CI integration token to scan apps with ShiftLeft. Currently scanned with `{token.get("owner")}'s` personal access token."""
+            f"""**TOKEN:** Use a CI integration token to scan apps with Qwiet.AI. Currently scanned with `{token.get("owner")}'s` personal access token."""
         )
     if not sca_sbom_found and app_language not in (
         "terraform_hcl",
@@ -767,8 +803,8 @@ def troubleshoot_app(
         "unknown",
     ):
         sbom_idea = ""
-        if app_language == "java":
-            sbom_idea = "Ensure the entire source directory and build tools such as maven, gradle or sbt are available in the build step running ShiftLeft."
+        if app_language == ("java", "javasrc"):
+            sbom_idea = "Ensure the entire source directory and build tools such as maven, gradle or sbt are available in the build step running Qwiet.AI."
             if "--oss-project-dir" not in sl_cmd_str:
                 sbom_idea += " Use the argument `--oss-project-dir <source path>` to specify the source directory explicitly."
             if "build" in sl_cmd_str:
@@ -776,14 +812,14 @@ def troubleshoot_app(
             elif "target" in sl_cmd_str:
                 sbom_idea += "\nTry running the maven command, `mvn org.cyclonedx:cyclonedx-maven-plugin:2.7.2:makeAggregateBom -DoutputName=bom` before sl analyze to troubleshoot further."
                 sbom_idea += "\nIf additional arguments are found to be required for maven, then set those via the environment variable `MVN_ARGS`"
-        if app_language in ("js", "ts", "javascript", "typescript"):
-            sbom_idea = "Ensure the lock files such as package-lock.json or yarn.lock or pnpm-lock.yaml are present. If required perform npm or yarn install to generate the lock files prior to invoking ShiftLeft."
-        if app_language == "python":
-            sbom_idea = "Ensure the lock files such as requirements.txt or Pipfile.lock or Poetry.lock are present. If required run `pip freeze > requirements.txt` to generate a requirements file prior to invoking ShiftLeft."
+        if app_language in ("js", "ts", "javascript", "typescript", "javascriptsrc"):
+            sbom_idea = "Ensure the lock files such as package-lock.json or yarn.lock or pnpm-lock.yaml are present. If required perform npm or yarn install to generate the lock files prior to invoking Qwiet.AI."
+        if app_language in ("python", "pythonsrc"):
+            sbom_idea = "Ensure the lock files such as requirements.txt or Pipfile.lock or Poetry.lock are present. If required run `pip freeze > requirements.txt` to generate a requirements file prior to invoking Qwiet.AI."
         if app_language == "go":
             sbom_idea = "Ensure the package manifest files such as go.mod or go.sum or Gopkg.lock are present in the repo."
         if app_language == "csharp":
-            sbom_idea = "Ensure the solution is restored or built successfully prior to invoking ShiftLeft."
+            sbom_idea = "Ensure the solution is restored or built successfully prior to invoking Qwiet.AI."
         if sbom_idea:
             ideas.append(
                 f"""**iSCA:** Software Bill-of-Materials (SBoM) was not generated correctly for this project.\n{sbom_idea}"""
@@ -1200,7 +1236,7 @@ def find_best_fix(org_id, app, scan, findings, counts, source_dir):
                         if cleaned_symbol not in tracked_list:
                             tracked_list.append(cleaned_symbol)
             if short_method_name and "empty" not in short_method_name:
-                if "$" in short_method_name and app_language == "java":
+                if "$" in short_method_name and app_language in ("java", "javasrc"):
                     short_method_name = short_method_name.replace("lambda$", "")
                     short_method_name = short_method_name.split("$")[0]
                 # For JavaScript/TypeScript short method name is mostly anonymous
@@ -1445,7 +1481,7 @@ Include these detected CHECK methods in your remediation config to suppress this
                     ignorables_suggestion = """To ignore specific directory from analysis, pass `-- --ignore-paths [<ignore_path_1>] [<ignore_path_2>]` at the end of the `sl analyze` command."""
             # Fallback
             if not best_fix:
-                if app_language in ("java", "scala", "csharp"):
+                if app_language in ("java", "javasrc", "scala", "csharp"):
                     best_fix = "No fix suggestion available for this finding."
                 else:
                     best_fix = f"""{"This is likely a security best practices type finding." if app_language in ("js", "python") else "This is an informational finding."}
@@ -1724,9 +1760,9 @@ def export_report(
 
 def build_args():
     """
-    Constructs command line arguments for the export script
+    Constructs command line arguments for the bestfix script
     """
-    parser = argparse.ArgumentParser(description="ShiftLeft NG SAST export script")
+    parser = argparse.ArgumentParser(description="Qwiet.AI preZero bestfix")
     parser.add_argument(
         "-a",
         "--app",
