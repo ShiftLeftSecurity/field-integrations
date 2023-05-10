@@ -453,6 +453,7 @@ def troubleshoot_app(
     run_info = get_scan_run(client, org_id, scan, app_name)
     app_language = scan.get("language", "java")
     summary = run_info.get("summary", {})
+
     environment = summary.get("environment", {})
     sl_cmd = environment.get("cmd", [])
     tmp_data = environment.get("tmp", {})
@@ -729,31 +730,32 @@ def troubleshoot_app(
                 f"**CI:** Ensure the build machine has a minimum of 4096 MB RAM to reduce CPG generation time. Found only {memory_total} MB."
             )
     methods = summary.get("methods")
-    namespaces = methods.get("namespaces", {})
-    unannotated = methods.get("unannotated", {})
-    filtered_namespaces = set()
-    filtered_unannotated = set()
-    library_reco = False
-    if unannotated and low_findings_count and app_language in ("java", "javasrc"):
-        # There are annotations but still low findings count. Check if we might be missing something
-        for uk, uv in unannotated.items():
-            for key_framework in (
-                "google.",
-                "aws",
-                "azure",
-                "sql",
-                "cloud",
-                "framework",
-            ):
-                if key_framework in uk:
-                    filtered_namespaces.add(uk)
-                    filtered_unannotated.update(uv)
-        if filtered_namespaces:
-            if len(filtered_namespaces) > 4:
-                filtered_namespaces = filtered_namespaces[:4]
-            ideas.append(
-                f"""**SUPPORT:** This app might be using libraries that are not supported yet. Please contact Qwiet.AI support to manually review this app.\nSome namespaces to review: {", ".join(filtered_namespaces)}"""
-            )
+    if methods:
+        namespaces = methods.get("namespaces", {})
+        unannotated = methods.get("unannotated", {})
+        filtered_namespaces = set()
+        filtered_unannotated = set()
+        library_reco = False
+        if unannotated and low_findings_count and app_language in ("java", "javasrc"):
+            # There are annotations but still low findings count. Check if we might be missing something
+            for uk, uv in unannotated.items():
+                for key_framework in (
+                    "google.",
+                    "aws",
+                    "azure",
+                    "sql",
+                    "cloud",
+                    "framework",
+                ):
+                    if key_framework in uk:
+                        filtered_namespaces.add(uk)
+                        filtered_unannotated.update(uv)
+            if filtered_namespaces:
+                if len(filtered_namespaces) > 4:
+                    filtered_namespaces = filtered_namespaces[:4]
+                ideas.append(
+                    f"""**SUPPORT:** This app might be using libraries that are not supported yet. Please contact Qwiet.AI support to manually review this app.\nSome namespaces to review: {", ".join(filtered_namespaces)}"""
+                )
     if methods and not size_based_reco:
         ios = methods.get("ios", 0)
         sinks = methods.get("sinks", 0)
