@@ -598,6 +598,7 @@ def troubleshoot_app(
                 "metadata_file_name"
             ):
                 remediation_used = True
+    low_findings_count = False
     if sizes:
         files = sizes.get("files", 0)
         lines = sizes.get("lines", 0)
