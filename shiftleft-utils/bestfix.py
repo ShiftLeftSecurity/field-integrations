@@ -1025,9 +1025,97 @@ def print_scan_stats(scan, counts):
             table.add_row(col, num_to_emoji(ratings_counts_dict[col]))
         console.print(table)
 
+# Code introduced to print a tabluar severity + Category count report : Elango
+def print_category_report(org_id, app, scan, findings, counts, source_dir):
+    table = Table(
+        title=f"""SAST/SCA/SecurityIssues with Severity & Category Count Report for {app["name"]}""",
+        show_lines=True,
+        box=box.DOUBLE_EDGE,
+        header_style="bold green",
+        expand=False,
+    )    
+    table.add_column("Severity", style="cyan")
+    table.add_column("Category")
+    table.add_column("Total Count" , justify="center")
+    table.add_column("Open Count", justify="center", style="red")
+    table.add_column("Fixed Count",justify="center", style="green")
+    table.add_column("Ignored Count",justify="center", style="purple")
+    table.add_column("3rd Party Count", justify="center", style="blue")
+
+    nestedDictionary = {}
+
+    for afinding in findings:
+        category = afinding.get("category")
+        status = afinding.get("status")
+        ids = afinding.get("id")
+        type = afinding.get("type") 
+        if not category:
+            category = "OSS Vuln"
+        
+        # if type == "oss_vuln":
+        #     continue
+
+        if status:
+            if status.lower() == "none":
+                status = "open"
+        else:
+            status = "open"
+        tags = afinding.get("tags")
+        if tags:
+            for tag in tags:
+                if tag.get("key") == "cvss_31_severity_rating":
+                    cvss_31_severity_rating = tag.get("value")
+        if cvss_31_severity_rating == "critical":
+            cvss_31_severity_rating = "01" + ":" + cvss_31_severity_rating
+        elif cvss_31_severity_rating == "high":
+            cvss_31_severity_rating = "02" + ":" + cvss_31_severity_rating
+        elif cvss_31_severity_rating == "medium":
+            cvss_31_severity_rating = "03" + ":" + cvss_31_severity_rating   
+        else:
+            cvss_31_severity_rating = "04" + ":" + "low"   
+
+        catSev = cvss_31_severity_rating + ":" + category 
+        if not ( catSev in nestedDictionary.keys()):
+            nestedDictionary[catSev] = {}
+            nestedDictionary[catSev][status] = 1
+        else:
+            if not (status in nestedDictionary[catSev].keys()):
+                nestedDictionary[catSev][status] = 1
+            else:
+                nestedDictionary[catSev][status] = nestedDictionary[catSev][status] + 1
+
+    for eachRow in sorted(nestedDictionary):
+        splitCategoryDict = nestedDictionary[eachRow]
+        splitCategory = eachRow.split(":")
+        openCount = fixedCount = ignoredCount = partyCount = 0
+
+        if "open" in splitCategoryDict.keys():
+            openCount = splitCategoryDict["open"]
+        if "fixed" in splitCategoryDict.keys():
+            fixedCount = splitCategoryDict["fixed"]
+        if "ignore" in splitCategoryDict.keys():
+            ignoredCount = splitCategoryDict["ignore"]
+        if "3rdparty" in splitCategoryDict.keys():
+            partyCount = splitCategoryDict["3rdparty"]     
+        totalCount =    int(openCount) +  int(fixedCount) + int(ignoredCount) + int(partyCount)
+        if int(openCount) == 0:
+            openCount = " "
+        if int(fixedCount) == 0:
+            fixedCount = " "        
+        if int(ignoredCount) == 0:
+            ignoredCount = " "    
+        if int(partyCount) == 0:
+            partyCount = " "   
+
+        table.add_row( f'{splitCategory[1]}', f'{splitCategory[2]}', f'{totalCount}', f'{openCount}', f'{fixedCount}', f'{ignoredCount}', f'{partyCount}')
+    console.print(table)
+        
+
+
 
 def find_best_fix(org_id, app, scan, findings, counts, source_dir):
     annotated_findings = []
+
     if not findings:
         return annotated_findings
     data_found = False
@@ -1604,6 +1692,7 @@ Specify the sink method in your remediation config to suppress this finding.\n
     # Executive summary section
     if scan:
         print_scan_stats(scan, counts)
+        print_category_report(org_id, app, scan, findings, counts, source_dir)
     # Find the best oss fixes
     find_best_oss_fix(
         org_id,
@@ -1654,7 +1743,7 @@ def get_all_findings_with_scan(client, org_id, app_name, version, ratings):
     """Method to retrieve all findings"""
     findings_list = []
     version_suffix = f"&version={version}" if version else ""
-    findings_url = f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=oss_vuln&type=vuln&include_dataflows=true{version_suffix}"
+    findings_url = f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=oss_vuln&type=security_issue&type=vuln&include_dataflows=true{version_suffix}"
     for rating in ratings:
         findings_url = f"{findings_url}&finding_tags=cvss_31_severity_rating={rating}"
     page_available = True
@@ -1738,6 +1827,7 @@ def export_report(
                 scan, findings, counts = get_all_findings_with_scan(
                     client, org_id, app_id, version, ratings
                 )
+
                 annotated_findings = find_best_fix(
                     org_id, app, scan, findings, counts, source_dir
                 )
@@ -1867,10 +1957,10 @@ if __name__ == "__main__":
             report_file,
             theme=MONOKAI if os.getenv("USE_DARK_THEME") else DEFAULT_TERMINAL_THEME,
         )
+    
         console.print(f"HTML report saved to {report_file}")
         try:
             import pdfkit
-
             pdf_file = report_file.replace(".html", ".pdf")
             pdfkit.from_file(report_file, pdf_file, options=pdf_options)
             console.print(f"PDF report saved to {pdf_file}")
