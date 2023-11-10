@@ -1027,27 +1027,23 @@ def print_scan_stats(scan, counts):
 
 # Code introduced to print a tabluar severity + Category count report : Elango
 def print_category_report(org_id, app, scan, findings, counts, source_dir):
-    if not findings:
-        return table_report
-    data_found = False
     table = Table(
-        title=f"""Severity + Category Report for {app["name"]}""",
+        title=f"""SAST/SCA/SecurityIssues with Severity & Category Count Report for {app["name"]}""",
         show_lines=True,
         box=box.DOUBLE_EDGE,
         header_style="bold green",
-        expand=True,
+        expand=False,
     )    
-    table.add_column("Severity", justify="right", style="cyan")
+    table.add_column("Severity", style="cyan")
     table.add_column("Category")
-    table.add_column("Total Count")
-    table.add_column("Open Count", justify="right", style="cyan")
-    table.add_column("Fixed Count", justify="right", style="cyan")
-    table.add_column("Ignored Count", justify="right", style="cyan")
-    table.add_column("3rd Party Count", justify="right", style="cyan")
+    table.add_column("Total Count" , justify="center")
+    table.add_column("Open Count", justify="center", style="red")
+    table.add_column("Fixed Count",justify="center", style="green")
+    table.add_column("Ignored Count",justify="center", style="purple")
+    table.add_column("3rd Party Count", justify="center", style="blue")
 
     nestedDictionary = {}
 
-    counts = 0
     for afinding in findings:
         category = afinding.get("category")
         status = afinding.get("status")
@@ -1056,9 +1052,9 @@ def print_category_report(org_id, app, scan, findings, counts, source_dir):
         if not category:
             category = "OSS Vuln"
         
-        if type == "oss_vuln":
-            continue
-        counts += 1        
+        # if type == "oss_vuln":
+        #     continue
+
         if status:
             if status.lower() == "none":
                 status = "open"
@@ -1078,8 +1074,6 @@ def print_category_report(org_id, app, scan, findings, counts, source_dir):
         else:
             cvss_31_severity_rating = "04" + ":" + "low"   
 
-        #console.print(f'{counts}) {ids} category is {category} |||| Status is {status}')
-
         catSev = cvss_31_severity_rating + ":" + category 
         if not ( catSev in nestedDictionary.keys()):
             nestedDictionary[catSev] = {}
@@ -1093,10 +1087,8 @@ def print_category_report(org_id, app, scan, findings, counts, source_dir):
     for eachRow in sorted(nestedDictionary):
         splitCategoryDict = nestedDictionary[eachRow]
         splitCategory = eachRow.split(":")
-        openCount = 0
-        fixedCount = 0
-        ignoredCount = 0
-        partyCount = 0
+        openCount = fixedCount = ignoredCount = partyCount = 0
+
         if "open" in splitCategoryDict.keys():
             openCount = splitCategoryDict["open"]
         if "fixed" in splitCategoryDict.keys():
@@ -1123,6 +1115,7 @@ def print_category_report(org_id, app, scan, findings, counts, source_dir):
 
 def find_best_fix(org_id, app, scan, findings, counts, source_dir):
     annotated_findings = []
+
     if not findings:
         return annotated_findings
     data_found = False
@@ -1750,7 +1743,7 @@ def get_all_findings_with_scan(client, org_id, app_name, version, ratings):
     """Method to retrieve all findings"""
     findings_list = []
     version_suffix = f"&version={version}" if version else ""
-    findings_url = f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=oss_vuln&type=vuln&include_dataflows=true{version_suffix}"
+    findings_url = f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=oss_vuln&type=security_issue&type=vuln&include_dataflows=true{version_suffix}"
     for rating in ratings:
         findings_url = f"{findings_url}&finding_tags=cvss_31_severity_rating={rating}"
     page_available = True
@@ -1957,7 +1950,6 @@ if __name__ == "__main__":
         else ["critical", "high"],
         args.troubleshoot,
     )
-
     end_time = time.monotonic_ns()
     total_time_sec = round((end_time - start_time) / 1000000000, 2)
     if args.rformat == "html":
@@ -1969,13 +1961,9 @@ if __name__ == "__main__":
         console.print(f"HTML report saved to {report_file}")
         try:
             import pdfkit
-
             pdf_file = report_file.replace(".html", ".pdf")
-
             pdfkit.from_file(report_file, pdf_file, options=pdf_options)
-
             console.print(f"PDF report saved to {pdf_file}")
-
         except Exception:
             console.print(
                 "Please install wkhtmltopdf to enable PDF exports https://wkhtmltopdf.org/downloads.html"
