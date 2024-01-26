@@ -76,6 +76,20 @@ def get_all_apps(org_id):
         )
     return None
 
+def get_all_teams(org_id):
+    """Return all the teams for the given organization"""
+    list_teams_url = f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/rbac/teams"
+    r = requests.get(list_teams_url, headers=headers)
+    if r.ok:
+        raw_response = r.json()
+        if raw_response and raw_response.get("response"):
+            teams_list = raw_response.get("response")
+            return teams_list
+    else:
+        print(
+            f"Unable to retrieve teams list for the organization {org_id} due to {r.status_code} error"
+        )
+    return None
 
 def get_all_findings(org_id, app_name, version):
     """Method to retrieve all findings"""
