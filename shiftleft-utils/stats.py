@@ -24,6 +24,8 @@ from common import (
     get_findings_url,
     get_scan_run,
     get_all_teams,
+    get_team_members,
+    get_all_users,
     headers,
 )
 
@@ -38,7 +40,7 @@ def to_arr(counts_dict):
 
 
 def process_app(
-    progress, task, org_id, report_file, app, detailed, branch, include_run_info, include_app_apps, teams_list
+    progress, task, org_id, report_file, app, detailed, branch, include_run_info, include_app_apps, teams_list, user_dict,
 ):
     start = time.time()
     app_id = app.get("id")
@@ -297,15 +299,22 @@ def process_app(
                 scanLang = ""
                 scanExp = ""
             appTeam = ""
+            teamAdmins = ""
             for eachTeam in teams_list:
                 if eachTeam.get("projects"):
                     if appName in eachTeam.get("projects"):
                         appTeam = eachTeam.get("team_name")
+                        teamMembers = get_team_members(org_id, eachTeam.get("team_id")).get("members")
+                        for eachMember in teamMembers:
+                            memberRoleinTeam = eachMember.get("team_role_aliases") 
+                            if "TEAM_MANAGER" in memberRoleinTeam or "TEAM_ADMIN" in memberRoleinTeam:
+                                teamAdmins = str(user_dict[eachMember.get('user_id_v2')]) + ", " + teamAdmins 
 
             return [
                 appName,
                 app_group,
                 appTeam,
+                teamAdmins.rstrip(', '),
                 isActive,
                 app_branch,
                 appVersion,
@@ -354,6 +363,7 @@ def write_to_csv(report_file, row):
                 "App",
                 "App Group",
                 "Team Name",
+                "Team Admins",
                 "ActiveApp",
                 "Branch",
                 "Version",
@@ -403,6 +413,12 @@ def collect_stats_parallel(org_id, report_file, detailed, branch, include_run_in
     """Method to collect stats for all apps to a csv"""
     apps_list = get_all_apps(org_id)
     teams_list = get_all_teams(org_id)
+    users_list = get_all_users(org_id)
+
+    user_dict = {}
+    for eachUser in users_list:
+        user_dict[eachUser.get("id_v2")] = eachUser.get("email")
+
     if not apps_list:
         console.print("No apps were found in this organization")
         return
@@ -438,6 +454,7 @@ def collect_stats_parallel(org_id, report_file, detailed, branch, include_run_in
                     include_run_info,
                     include_all_apps,
                     teams_list,
+                    user_dict,
                 )
                 rows.append(row)
             rows = dask.compute(*rows)
