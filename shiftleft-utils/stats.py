@@ -305,10 +305,11 @@ def process_app(
                     if appName in eachTeam.get("projects"):
                         appTeam = eachTeam.get("team_name")
                         teamMembers = get_team_members(org_id, eachTeam.get("team_id")).get("members")
-                        for eachMember in teamMembers:
-                            memberRoleinTeam = eachMember.get("team_role_aliases") 
-                            if "TEAM_MANAGER" in memberRoleinTeam or "TEAM_ADMIN" in memberRoleinTeam:
-                                teamAdmins = str(user_dict[eachMember.get('user_id_v2')]) + ", " + teamAdmins 
+                        if teamMembers:
+                            for eachMember in teamMembers:
+                                memberRoleinTeam = eachMember.get("team_role_aliases") 
+                                if "TEAM_MANAGER" in memberRoleinTeam or "TEAM_ADMIN" in memberRoleinTeam:
+                                    teamAdmins = str(user_dict[eachMember.get('user_id_v2')]) + ", " + teamAdmins 
 
             return [
                 appName,
