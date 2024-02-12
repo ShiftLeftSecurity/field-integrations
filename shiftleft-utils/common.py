@@ -76,6 +76,50 @@ def get_all_apps(org_id):
         )
     return None
 
+def get_all_users(org_id):
+    """Return all the teams for the given organization"""
+    list_users_url = f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/rbac/users"
+    r = requests.get(list_users_url, headers=headers)
+    if r.ok:
+        raw_response = r.json()
+        if raw_response and raw_response.get("response"):
+            teams_list = raw_response.get("response")
+            return teams_list
+    else:
+        print(
+            f"Unable to retrieve users list for the organization {org_id} due to {r.status_code} error"
+        )
+    return None
+
+def get_all_teams(org_id):
+    """Return all the teams for the given organization"""
+    list_teams_url = f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/rbac/teams"
+    r = requests.get(list_teams_url, headers=headers)
+    if r.ok:
+        raw_response = r.json()
+        if raw_response and raw_response.get("response"):
+            teams_list = raw_response.get("response")
+            return teams_list
+    else:
+        print(
+            f"Unable to retrieve teams list for the organization {org_id} due to {r.status_code} error"
+        )
+    return None
+
+def get_team_members(org_id, team_id):
+    """Return all the teams for the given organization"""
+    list_team_members_url = f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/rbac/teams/{team_id}"
+    r = requests.get(list_team_members_url, headers=headers)
+    if r.ok:
+        raw_response = r.json()
+        if raw_response and raw_response.get("response"):
+            teams_list = raw_response.get("response")
+            return teams_list
+    else:
+        print(
+            f"Unable to retrieve team members list for the organization {team_id} due to {r.status_code} error"
+        )
+    return None
 
 def get_all_findings(org_id, app_name, version):
     """Method to retrieve all findings"""
