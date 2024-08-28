@@ -72,6 +72,7 @@ def export_csv(app_list, findings, report_file):
             cvss_31_severity_rating = ""
             cvss_score = ""
             reachability = ""
+            locs = ""
             files_loc_list = set()
             # Find the source, sink and other tags
             for afinding in findings:
@@ -79,6 +80,7 @@ def export_csv(app_list, findings, report_file):
                 source_method = details.get("source_method", "")
                 sink_method = details.get("sink_method", "")
                 tags = afinding.get("tags")
+                locs = details.get("source_user_location", "")
                 if tags:
                     for tag in tags:
                         if tag.get("key") == "cvss_31_severity_rating":
@@ -141,29 +143,28 @@ def export_csv(app_list, findings, report_file):
                         ]
                     )
                 elif afinding.get("type") in ("vuln"):
-                    for loc in files_loc_list:
-                        reportwriter.writerow(
-                            [
-                                app_name,
-                                app_group,
-                                afinding.get("id"),
-                                afinding.get("type"),
-                                afinding.get("category"),
-                                afinding.get("owasp_category"),
-                                afinding.get("severity"),
-                                source_method,
-                                sink_method,
-                                loc,
-                                afinding.get("version_first_seen"),
-                                afinding.get("scan_first_seen"),
-                                afinding.get("internal_id"),
-                                cvss_31_severity_rating,
-                                cvss_score,
-                                "reachable"
-                                if afinding.get("related_findings", [])
-                                else "N/A",
-                            ]
-                        )
+                    reportwriter.writerow(
+                        [
+                            app_name,
+                            app_group,
+                            afinding.get("id"),
+                            afinding.get("type"),
+                            afinding.get("category"),
+                            afinding.get("owasp_category"),
+                            afinding.get("severity"),
+                            source_method,
+                            sink_method,
+                            locs,
+                            afinding.get("version_first_seen"),
+                            afinding.get("scan_first_seen"),
+                            afinding.get("internal_id"),
+                            cvss_31_severity_rating,
+                            cvss_score,
+                            "reachable"
+                            if afinding.get("related_findings", [])
+                            else "N/A",
+                        ]
+                    )
 
 
 def get_all_findings(client, org_id, app_name, version):
