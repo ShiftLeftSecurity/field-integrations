@@ -15,7 +15,7 @@ from rich.console import Console
 from rich.progress import Progress
 
 import config
-from common import extract_org_id, get_all_apps, get_findings_url, headers
+from common import extract_org_id, get_all_apps, get_findings_url, get_secrets_findings_url, headers
 
 console = Console(color_system="auto")
 
@@ -38,16 +38,16 @@ def export_csv(app_list, findings, report_file):
                     "Type",
                     "Category",
                     "OWASP Category",
-                    "Severity",
-                    "Source Method",
-                    "Sink Method",
-                    "Source File",
-                    "Version First Seen",
+                    #"Severity",
+                    #"Source Method",
+                    #"Sink Method",
+                    "Title",
+                    "Commit ID",
                     "Scan First Seen",
-                    "Internal ID",
-                    "CVSS 3.1 Rating",
+                    "File/Line#",
+                    "CVSS 3.1 Severity",
                     "CVSS Score",
-                    "Reachability",
+                    #"Reachability",
                 ]
             )
     with open(report_file, "a", newline="") as csvfile:
@@ -60,13 +60,18 @@ def export_csv(app_list, findings, report_file):
         )
         for app in app_list:
             app_name = app.get("name")
+            app_id = app.get("id")
+            if "secrets" in app_id.lower():
+                print(f"skipping {app_id}")
+                continue
             tags = app.get("tags")
             app_group = ""
             if tags:
                 for tag in tags:
                     if tag.get("key") == "group":
-                        app_group = tag.get("value")
-                        break
+                        app_group = tag.get("value") + " | " + app_group
+                        #break
+            app_group = app_group[:-3]
             source_method = ""
             sink_method = ""
             cvss_31_severity_rating = ""
@@ -74,6 +79,7 @@ def export_csv(app_list, findings, report_file):
             reachability = ""
             locs = ""
             files_loc_list = set()
+            commitID = ""
             # Find the source, sink and other tags
             for afinding in findings:
                 details = afinding.get("details", {})
@@ -91,6 +97,10 @@ def export_csv(app_list, findings, report_file):
                             reachability = tag.get("value")
                 if details.get("file_locations"):
                     files_loc_list.update(details.get("file_locations"))
+                if details.get("repoContext"):
+                    repoContext = details.get("repoContext")
+                    commitID = repoContext.get("commit_id")
+
                 # For old scans, details block might be empty.
                 # We go old school and iterate all dataflows
                 if not source_method or not sink_method or not files_loc_list:
@@ -130,16 +140,17 @@ def export_csv(app_list, findings, report_file):
                             afinding.get("type"),
                             afinding.get("category"),
                             afinding.get("owasp_category"),
-                            afinding.get("severity"),
-                            "",
-                            "",
+                            #afinding.get("severity"),
+                            #"",
+                            #"",
                             afinding.get("title"),
-                            afinding.get("version_first_seen"),
+                            #afinding.get("version_first_seen"),
+                            commitID,
                             afinding.get("scan_first_seen"),
                             afinding.get("internal_id"),
                             cvss_31_severity_rating,
                             cvss_score,
-                            reachability,
+                            #reachability,
                         ]
                     )
                 elif afinding.get("type") in ("vuln"):
@@ -170,7 +181,8 @@ def export_csv(app_list, findings, report_file):
 def get_all_findings(client, org_id, app_name, version):
     """Method to retrieve all findings"""
     findings_list = []
-    findings_url = get_findings_url(org_id, app_name, version, None)
+    #findings_url = get_findings_url(org_id, app_name, version, None)
+    findings_url = get_secrets_findings_url(org_id, app_name, version, None)
     page_available = True
     scan = None
     counts = None
@@ -393,7 +405,7 @@ def build_args():
     """
     Constructs command line arguments for the export script
     """
-    parser = argparse.ArgumentParser(description="Qwiet preZero SAST export script")
+    parser = argparse.ArgumentParser(description="Qwiet Secrets export script")
     parser.add_argument(
         "-a",
         "--app",
