@@ -1811,6 +1811,13 @@ def build_args():
         help="Report for all CVSS 3.1 ratings. Default is critical and high only.",
         default=False,
     )
+    parser.add_argument(
+        "--no-logo",
+        action="store_true",
+        dest="no_logo",
+        help="Do not display the Qwiet AI logo",
+        default=False,
+    )
     return parser.parse_args()
 
 
@@ -1828,9 +1835,12 @@ if __name__ == "__main__":
         )
         sys.exit(1)
 
-    console.print(config.ngsast_logo)
     start_time = time.monotonic_ns()
     args = build_args()
+
+    if not args.no_logo:
+        console.print(config.ngsast_logo)
+
     app_list = []
     report_file = args.report_file
     # Use the app name in the default file name
