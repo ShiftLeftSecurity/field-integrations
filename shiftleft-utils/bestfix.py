@@ -980,8 +980,7 @@ def get_stats_counts(scan, counts):
     }
 
 def get_message(scan, stats_counts):
-    message = ""
-    message += f"""Bestfix from Qwiet.AI analyzed scan #{scan["id"]} for the {scan["language"]} app {scan["app"]} on {scan["started_at"].split("T")[0]}."""
+    message = f"""Bestfix from Qwiet.AI analyzed scan #{scan["id"]} for the {scan["language"]} app {scan["app"]} on {scan["started_at"].split("T")[0]}."""
 
     if stats_counts != None:
         if "files_count" in stats_counts:
