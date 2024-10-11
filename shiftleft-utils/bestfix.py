@@ -625,13 +625,13 @@ def troubleshoot_app(
         if scan_duration_ms > 3 * 60 * 1000:
             size_suggestion = ""
             if int(binsize) > 50000 and app_language == "java":
-                size_suggestion = "Try scanning the jar file containing only the custom code instead of a uber jar or a war file.\nFor apps containing many libraries, please contact Qwiet.AI support for further optimizations ideas."
+                size_suggestion = "Try scanning the jar file containing only the custom code instead of a uber jar or a war file.\nFor apps containing many libraries, please contact Qwiet AI support for further optimizations ideas."
             if files:
                 if app_language in ("js", "ts", "javascript", "typescript"):
                     if "--exclude" not in sl_cmd_str:
                         size_suggestion = "Pass the argument `-- --exclude <path-1>,<path-2>,...` to exclude specified directories during code analysis."
                     else:
-                        size_suggestion = "Ensure the application is not built prior to invoking Qwiet.AI."
+                        size_suggestion = "Ensure the application is not built prior to invoking Qwiet AI."
                 if app_language == "python":
                     size_suggestion = "Pass the argument `-- --ignore-paths [<ignore_path_1>] [<ignore_path_2>]` to ignore specified paths during code analysis."
                 if app_language == "csharp":
@@ -682,7 +682,7 @@ def troubleshoot_app(
                 and not multiple_dep_projects_used
             ):
                 ideas.append(
-                    "Ensure the solution is restored or built successfully prior to invoking Qwiet.AI."
+                    "Ensure the solution is restored or built successfully prior to invoking Qwiet AI."
                 )
                 if ".sln" not in sl_cmd_str:
                     ideas.append(
@@ -691,7 +691,7 @@ def troubleshoot_app(
             if app_language == "python" and len(findings) < 5:
                 if not verbose_used:
                     ideas.append(
-                        "Ensure the project dependencies are installed with `pip install` command prior to invoking Qwiet.AI."
+                        "Ensure the project dependencies are installed with `pip install` command prior to invoking Qwiet AI."
                     )
                 ideas.append(
                     "To include additional python module search paths in the analysis, pass `-- --extra-sys-paths [<path>]`."
@@ -709,7 +709,7 @@ def troubleshoot_app(
             if app_language in ("js", "ts", "javascript", "typescript"):
                 if "ui" in app_name:
                     ideas.append(
-                        "**UI:** Ensure only applications and not UI toolkits are scanned with Qwiet.AI."
+                        "**UI:** Ensure only applications and not UI toolkits are scanned with Qwiet AI."
                     )
     if (
         build_machine
@@ -725,7 +725,7 @@ def troubleshoot_app(
             )
             if app_language == "java":
                 ideas.append(
-                    "Alternatively, to reduce scan time, pass the argument `--no-cpg` (if permitted by your AppSec team), to generate CPG in the Qwiet.AI cloud."
+                    "Alternatively, to reduce scan time, pass the argument `--no-cpg` (if permitted by your AppSec team), to generate CPG in the Qwiet AI cloud."
                 )
         if memory_total and int(memory_total) < 4096:
             ideas.append(
@@ -756,7 +756,7 @@ def troubleshoot_app(
                 if len(filtered_namespaces) > 4:
                     filtered_namespaces = filtered_namespaces[:4]
                 ideas.append(
-                    f"""**SUPPORT:** This app might be using libraries that are not supported yet. Please contact Qwiet.AI support to manually review this app.\nSome namespaces to review: {", ".join(filtered_namespaces)}"""
+                    f"""**SUPPORT:** This app might be using libraries that are not supported yet. Please contact Qwiet AI support to manually review this app.\nSome namespaces to review: {", ".join(filtered_namespaces)}"""
                 )
     if methods and not size_based_reco:
         ios = methods.get("ios", 0)
@@ -767,12 +767,12 @@ def troubleshoot_app(
             if not sources and sinks:
                 library_reco = True
                 ideas.append(
-                    "**APP:** This repo could be a library. Ensure only applications are scanned with Qwiet.AI."
+                    "**APP:** This repo could be a library. Ensure only applications are scanned with Qwiet AI."
                 )
             if ("lib" in app_name or "common" in app_name) and not sinks:
                 library_reco = True
                 ideas.append(
-                    "**APP:** This repo is a library. Ensure only applications are scanned with Qwiet.AI."
+                    "**APP:** This repo is a library. Ensure only applications are scanned with Qwiet AI."
                 )
         if (
             not ios
@@ -785,18 +785,18 @@ def troubleshoot_app(
             if not multiple_dep_projects_used:
                 if not library_reco and metadata_artifact:
                     ideas.append(
-                        "**SUPPORT:** This app might be using libraries that are not supported yet. Please contact Qwiet.AI support to manually review this app."
+                        "**SUPPORT:** This app might be using libraries that are not supported yet. Please contact Qwiet AI support to manually review this app."
                     )
                 elif "lib" not in app_name and metadata_artifact:
                     ideas.append(
-                        "**SUPPORT:** Alternatively, this app might be using private dependencies or third-party libraries that are not supported yet. Please contact Qwiet.AI support to manually review this app."
+                        "**SUPPORT:** Alternatively, this app might be using private dependencies or third-party libraries that are not supported yet. Please contact Qwiet AI support to manually review this app."
                     )
         if total and int(total) < 20:
             ideas.append(f"This is a small app with only {total} methods.")
     token = summary.get("token")
     if token and token.get("name", "") == "Personal Access":
         ideas.append(
-            f"""**TOKEN:** Use a CI integration token to scan apps with Qwiet.AI. Currently scanned with `{token.get("owner")}'s` personal access token."""
+            f"""**TOKEN:** Use a CI integration token to scan apps with Qwiet AI. Currently scanned with `{token.get("owner")}'s` personal access token."""
         )
     if not sca_sbom_found and app_language not in (
         "terraform_hcl",
@@ -808,7 +808,7 @@ def troubleshoot_app(
     ):
         sbom_idea = ""
         if app_language == ("java", "javasrc"):
-            sbom_idea = "Ensure the entire source directory and build tools such as maven, gradle or sbt are available in the build step running Qwiet.AI."
+            sbom_idea = "Ensure the entire source directory and build tools such as maven, gradle or sbt are available in the build step running Qwiet AI."
             if "--oss-project-dir" not in sl_cmd_str:
                 sbom_idea += " Use the argument `--oss-project-dir <source path>` to specify the source directory explicitly."
             if "build" in sl_cmd_str:
@@ -817,13 +817,13 @@ def troubleshoot_app(
                 sbom_idea += "\nTry running the maven command, `mvn org.cyclonedx:cyclonedx-maven-plugin:2.7.2:makeAggregateBom -DoutputName=bom` before sl analyze to troubleshoot further."
                 sbom_idea += "\nIf additional arguments are found to be required for maven, then set those via the environment variable `MVN_ARGS`"
         if app_language in ("js", "ts", "javascript", "typescript", "javascriptsrc"):
-            sbom_idea = "Ensure the lock files such as package-lock.json or yarn.lock or pnpm-lock.yaml are present. If required perform npm or yarn install to generate the lock files prior to invoking Qwiet.AI."
+            sbom_idea = "Ensure the lock files such as package-lock.json or yarn.lock or pnpm-lock.yaml are present. If required perform npm or yarn install to generate the lock files prior to invoking Qwiet AI."
         if app_language in ("python", "pythonsrc"):
-            sbom_idea = "Ensure the lock files such as requirements.txt or Pipfile.lock or Poetry.lock are present. If required run `pip freeze > requirements.txt` to generate a requirements file prior to invoking Qwiet.AI."
+            sbom_idea = "Ensure the lock files such as requirements.txt or Pipfile.lock or Poetry.lock are present. If required run `pip freeze > requirements.txt` to generate a requirements file prior to invoking Qwiet AI."
         if app_language == "go":
             sbom_idea = "Ensure the package manifest files such as go.mod or go.sum or Gopkg.lock are present in the repo."
         if app_language == "csharp":
-            sbom_idea = "Ensure the solution is restored or built successfully prior to invoking Qwiet.AI."
+            sbom_idea = "Ensure the solution is restored or built successfully prior to invoking Qwiet AI."
         if sbom_idea:
             ideas.append(
                 f"""**iSCA:** Software Bill-of-Materials (SBoM) was not generated correctly for this project.\n{sbom_idea}"""
@@ -980,7 +980,7 @@ def get_stats_counts(scan, counts):
     }
 
 def get_message(scan, stats_counts):
-    message = f"""Bestfix from Qwiet.AI analyzed scan #{scan["id"]} for the {scan["language"]} app {scan["app"]} on {scan["started_at"].split("T")[0]}."""
+    message = f"""Bestfix from Qwiet AI analyzed scan #{scan["id"]} for the {scan["language"]} app {scan["app"]} on {scan["started_at"].split("T")[0]}."""
 
     if stats_counts != None:
         if "files_count" in stats_counts:
@@ -1815,7 +1815,7 @@ def build_args():
     """
     Constructs command line arguments for the bestfix script
     """
-    parser = argparse.ArgumentParser(description="Qwiet.AI preZero bestfix")
+    parser = argparse.ArgumentParser(description="Qwiet AI preZero bestfix")
     parser.add_argument(
         "-a",
         "--app",
