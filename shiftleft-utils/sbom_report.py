@@ -114,7 +114,6 @@ if __name__ == "__main__":
 
     sca_json = get_sca_packages(org_id, args.app_name)
     if not sca_json:
-        console.print("Got NONE from get_sca_packages")
         sys.exit(1)
 
     with open(args.report_file, "w") as json_file:
