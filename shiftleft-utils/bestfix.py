@@ -3,6 +3,7 @@
 import argparse
 import csv
 import io
+import json
 import logging
 import linecache
 import math
@@ -896,11 +897,7 @@ def num_to_emoji(c):
         return "-"
     return str(c)
 
-
-def print_scan_stats(scan, counts):
-    if not scan or not counts:
-        return
-    message = ""
+def get_stats_counts(scan, counts):
     files_count = 0
     loc_count = 0
     deps_count = 0
@@ -914,9 +911,11 @@ def print_scan_stats(scan, counts):
     owasp_counts_dict = defaultdict(int)
     owasp_empty = True
     ratings_empty = True
+
     stats = scan.get("stats", {})
     if not stats:
-        return
+        return None
+
     if stats.get("data"):
         data = scan.get("stats", {}).get("data")
         for d in data:
@@ -963,28 +962,59 @@ def print_scan_stats(scan, counts):
             if c.get("key") == "cvss_31_severity_rating":
                 container_ratings_counts_dict[c.get("value")] = c.get("count")
     critical_high_count = ratings_counts_dict["critical"] + ratings_counts_dict["high"]
-    message += f"""\nBestfix from Qwiet.AI analyzed scan #{scan["id"]} for the {scan["language"]} app {scan["app"]} on {scan["started_at"].split("T")[0]}."""
-    if files_count:
-        message += f""" {files_count} files were analyzed during this scan"""
-    elif loc_count:
-        message += f""" {loc_count} lines of code were analyzed during this scan"""
-    if critical_high_count:
-        message += (
-            f" resulting in {critical_high_count} critical and high vulnerabilities. "
-        )
-    else:
-        message += ", and no critical or high vulnerabilities were found. "
-    if deps_count:
-        message += f"{deps_count} open-source dependencies were also identified"
-        if oss_reachable_count:
-            message += f" in which {oss_reachable_count} vulnerabilities were found."
+
+    return {
+        "files_count": files_count,
+        "loc_count": loc_count,
+        "deps_count": deps_count,
+        "oss_unreachable_count": oss_unreachable_count,
+        "oss_reachable_count": oss_reachable_count,
+        "ratings_counts_dict": ratings_counts_dict,
+        "oss_ratings_counts_dict": oss_ratings_counts_dict,
+        "container_ratings_counts_dict": container_ratings_counts_dict,
+        "source_counts_dict": source_counts_dict,
+        "sink_counts_dict": sink_counts_dict,
+        "owasp_counts_dict": owasp_counts_dict,
+        "owasp_empty": owasp_empty,
+        "ratings_empty": ratings_empty,
+    }
+
+def get_message(scan, stats_counts):
+    message = ""
+    message += f"""Bestfix from Qwiet.AI analyzed scan #{scan["id"]} for the {scan["language"]} app {scan["app"]} on {scan["started_at"].split("T")[0]}."""
+
+    if stats_counts != None:
+        if "files_count" in stats_counts:
+            message += f""" {stats_counts['files_count']} files were analyzed during this scan"""
+        elif "loc_count" in stats_counts:
+            message += f""" {stats_counts['loc_count']} lines of code were analyzed during this scan"""
+        if "critical_high_count" in stats_counts:
+            message += (
+                f" resulting in {stats_counts['critical_high_count']} critical and high vulnerabilities. "
+            )
         else:
-            message += "."
-    message += " Use the information in this report to mitigate the open-source and custom code vulnerabilities and to improve the scan performance."
+            message += ", and no critical or high vulnerabilities were found. "
+        if "deps_count" in stats_counts:
+            message += f"{stats_counts['deps_count']} open-source dependencies were also identified"
+            if "oss_reachable_count" in stats_counts:
+                message += f" in which {stats_counts['oss_reachable_count']} vulnerabilities were found."
+            else:
+                message += "."
+        message += " Use the information in this report to mitigate the open-source and custom code vulnerabilities and to improve the scan performance."
+
+    return message
+
+def print_scan_stats(scan, counts):
+    if not scan or not counts:
+        return
+    stats_counts = get_stats_counts(scan, counts)
+    if not stats_counts:
+        return
+    message = get_message(scan, stats_counts)
     console.print("\n")
     console.print(Markdown("## Executive Summary"))
-    console.print(message)
-    if not owasp_empty:
+    console.print("\n" + message)
+    if not "owasp_empty" in stats_counts:
         console.print("\n\n")
         table = Table(
             title=f"""OWASP Summary""",
@@ -1008,9 +1038,9 @@ def print_scan_stats(scan, counts):
             "a09-security-logging-and-monitoring-failures",
             "a10-server-side-request-forgery-(ssrf)",
         ):
-            table.add_row(col, num_to_emoji(owasp_counts_dict[col]))
+            table.add_row(col, num_to_emoji(stats_counts["owasp_counts_dict"][col]))
         console.print(table)
-    if not ratings_empty:
+    if not "ratings_empty" in stats_counts:
         console.print("\n")
         table = Table(
             title=f"""CVSS Ratings Summary""",
@@ -1022,7 +1052,7 @@ def print_scan_stats(scan, counts):
         table.add_column("Rating")
         table.add_column("Count", justify="right", style="cyan")
         for col in ("critical", "high", "medium", "low"):
-            table.add_row(col, num_to_emoji(ratings_counts_dict[col]))
+            table.add_row(col, num_to_emoji(stats_counts["ratings_counts_dict"][col]))
         console.print(table)
 
 
@@ -1649,6 +1679,25 @@ def export_csv(app, annotated_findings, report_file):
                 writer.writerow(finding)
             console.print(f"CSV exported to {report_file}")
 
+def export_json(app, scan, annotated_findings, counts, report_file):
+    message = ""
+    stats_counts = get_stats_counts(scan, counts)
+    if stats_counts is not None:
+        message = get_message(scan, stats_counts)
+
+    if message != "":
+        with open(report_file, "w") as json_file:
+            json.dump(
+                {
+                    "app": app,
+                    "scan": scan,
+                    "summary": message,
+                    "findings": annotated_findings,
+                },
+                json_file,
+                indent=4,
+            )
+            console.print(f"JSON exported to {report_file}")
 
 def get_all_findings_with_scan(client, org_id, app_name, version, ratings):
     """Method to retrieve all findings"""
@@ -1758,6 +1807,8 @@ def export_report(
                         )
                 if rformat == "csv":
                     export_csv([app], annotated_findings, report_file)
+                if rformat == "json":
+                    export_json([app], scan, annotated_findings, counts, report_file)
                 progress.advance(task)
 
 
@@ -1795,7 +1846,7 @@ def build_args():
         dest="rformat",
         help="Report format",
         default="html",
-        choices=["html", "svg"],
+        choices=["html", "svg", "csv", "json"],
     )
     parser.add_argument(
         "--troubleshoot",
