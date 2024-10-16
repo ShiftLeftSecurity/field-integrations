@@ -61,7 +61,7 @@ def get_sca_packages(org_id, app_id):
         console.print(
             f"Retrieved {packages_count} SCA packages for {app_id}"
         )
-        raw_response.pop("has_more")
+        raw_response.pop("has_more", None)
         return raw_response
     else:
         console.print(
