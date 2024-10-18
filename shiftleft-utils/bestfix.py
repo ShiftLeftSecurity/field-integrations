@@ -365,18 +365,38 @@ def find_best_oss_fix(
     reachable_oss_count,
     unreachable_oss_count,
 ):
-    data_found = False
+    rows = get_best_oss_fix(package_cves, reachable_oss_count)
+
     table = Table(
         title=f"""Best OSS Fix Suggestions for {app["name"]}""",
         show_lines=True,
         box=box.DOUBLE_EDGE,
         header_style="bold magenta",
     )
+
     table.add_column("Package")
     table.add_column("Reachable")
     table.add_column("Version", justify="right", max_width=40)
     table.add_column("CVE", max_width=40)
     table.add_column("Fix Version(s)", justify="right", max_width=40, style="cyan")
+
+
+    if len(rows) > 0:
+        for r in rows:
+            table.add_row(
+                r["package"],
+                r["reachability"],
+                r["version"],
+                "\n".join(r["cve_ids"]),
+                "\n".join(r["fix_versions"]),
+            )
+
+        console.print("\n\n")
+        console.print(table)
+
+def get_best_oss_fix(package_cves, reachable_oss_count):
+    rows = []
+
     for purl, cves in package_cves.items():
         fix_version = set()
         cveids = set()
@@ -391,8 +411,6 @@ def find_best_oss_fix(
             group = tmpA[1]
         for cveobj in cves:
             reachability = cveobj.get("reachability")
-            if not data_found:
-                data_found = True
             cve_id = cveobj.get("cve")
             if not cve_id:
                 cve_id = cveobj.get("oss_internal_id")
@@ -435,17 +453,20 @@ def find_best_oss_fix(
         # For long list of fix versions just show the first half
         if len(fix_versions) > 5:
             fix_versions = fix_versions[0 : math.ceil(len(fix_versions) / 2)]
-        table.add_row(
-            package_str,
-            reachability.capitalize() if reachability == "reachable" else "",
-            pversion,
-            "\n".join(cveids),
-            "\n".join(fix_versions),
-        )
-    if data_found:
-        console.print("\n\n")
-        console.print(table)
 
+        rows.append(
+            {
+                "package": package_str,
+                "reachability": reachability.capitalize()
+                if reachability == "reachable"
+                else "",
+                "version": pversion,
+                "cve_ids": cveids,
+                "fix_versions": fix_versions,
+            }
+        )
+
+    return rows
 
 def get_ideas(
     client, org_id, app_name, scan, findings, source_dir, annotated_findings, app_language
@@ -1056,37 +1077,16 @@ def print_scan_stats(scan, counts):
             table.add_row(col, num_to_emoji(stats_counts["ratings_counts_dict"][col]))
         console.print(table)
 
-
-def find_best_fix(org_id, app, scan, findings, counts, source_dir):
-    annotated_findings = []
-    if not findings:
-        return annotated_findings
-    data_found = False
-    table = Table(
-        title=f"""Best Fix Suggestions for {app["name"]}""",
-        show_lines=True,
-        box=box.DOUBLE_EDGE,
-        header_style="bold green",
-        expand=True,
-    )
-    table.add_column("ID", justify="right", style="cyan")
-    table.add_column("Severity")
-    if CI_MODE:
-        table.add_column("Category")
-    table.add_column(
-        "Remediated Flow",
-        overflow="fold",
-        max_width=160 if "win32" in sys.platform and not CI_MODE else 120,
-    )
-    # table.add_column("Code Snippet", overflow="fold", min_width=10)
-    table.add_column("Comment", overflow="fold")
+def process_findings(app, app_language, scan, findings):
     source_cohorts = defaultdict(dict)
     sink_cohorts = defaultdict(dict)
     source_sink_cohorts = defaultdict(dict)
     package_cves = defaultdict(list)
-    app_language = scan.get("language", "java")
     reachable_oss_count = 0
     unreachable_oss_count = 0
+    annotated_findings = []
+    table_rows = {}
+
     for afinding in findings:
         # Skip ignored and fixed findings
         if afinding.get("status") in ("ignore", "ignored", "fixed"):
@@ -1573,21 +1573,19 @@ Specify the sink method in your remediation config to suppress this finding.\n
                     tracked_list,
                     full_path_prefix,
                 )
-            if CI_MODE:
-                table.add_row(
-                    f"""[link={deep_link}]{afinding.get("id")}[/link]""",
-                    cvss_31_severity_rating,
-                    category,
-                    file_locations_md,
-                    Markdown(best_fix),
-                )
-            else:
-                table.add_row(
-                    f"""[link={deep_link}]{afinding.get("id")}[/link]""",
-                    f"""{'[bold red]' if cvss_31_severity_rating == 'critical' else '[yellow]'}{cvss_31_severity_rating}""",
-                    file_locations_md,
-                    Markdown(best_fix),
-                )
+            
+            afinding_id = afinding.get("id")
+
+            table_rows[afinding_id] = (
+                {
+                    "link": f"""[link={deep_link}]{afinding.get("id")}[/link]""",
+                    "cvss_31_severity_rating": cvss_31_severity_rating,
+                    "category": category,
+                    "file_locations_md": file_locations_md,
+                    "best_fix_markdown": Markdown(best_fix),
+                }
+            )
+
             annotated_findings.append(
                 {
                     "id": afinding.get("id"),
@@ -1632,6 +1630,55 @@ Specify the sink method in your remediation config to suppress this finding.\n
             else:
                 unreachable_oss_count += 1
         ###########
+
+    return source_cohorts, sink_cohorts, source_sink_cohorts, package_cves, reachable_oss_count, unreachable_oss_count, annotated_findings, table_rows
+
+def find_best_fix(org_id, app, scan, findings, counts, source_dir, source_cohorts, sink_cohorts, source_sink_cohorts, package_cves, reachable_oss_count, unreachable_oss_count, annotated_findings, table_rows):
+    if not findings:
+        return annotated_findings
+    data_found = False
+    table = Table(
+        title=f"""Best Fix Suggestions for {app["name"]}""",
+        show_lines=True,
+        box=box.DOUBLE_EDGE,
+        header_style="bold green",
+        expand=True,
+    )
+    table.add_column("ID", justify="right", style="cyan")
+    table.add_column("Severity")
+    if CI_MODE:
+        table.add_column("Category")
+    table.add_column(
+        "Remediated Flow",
+        overflow="fold",
+        max_width=160 if "win32" in sys.platform and not CI_MODE else 120,
+    )
+    # table.add_column("Code Snippet", overflow="fold", min_width=10)
+    table.add_column("Comment", overflow="fold")
+
+    for afinding in findings:
+            afinding_id = afinding.get("id")
+
+            if afinding_id in table_rows:
+                if data_found == False:
+                    data_found = True
+
+                if CI_MODE:
+                    table.add_row(
+                        table_rows[afinding_id]["link"],
+                        table_rows[afinding_id]["cvss_31_severity_rating"],
+                        table_rows[afinding_id]["category"],
+                        table_rows[afinding_id]["file_locations_md"],
+                        table_rows[afinding_id]["best_fix_markdown"],
+                    )
+                else:
+                    table.add_row(
+                        table_rows[afinding_id]["link"],
+                        f"""{'[bold red]' if table_rows[afinding_id]["cvss_31_severity_rating"] == 'critical' else '[yellow]'}{table_rows[afinding_id]["cvss_31_severity_rating"]}""",
+                        table_rows[afinding_id]["file_locations_md"],
+                        table_rows[afinding_id]["best_fix_markdown"],
+                    )
+
     # Executive summary section
     if scan:
         print_scan_stats(scan, counts)
@@ -1680,7 +1727,7 @@ def export_csv(app, annotated_findings, report_file):
                 writer.writerow(finding)
             console.print(f"CSV exported to {report_file}")
 
-def export_json(app, scan, annotated_findings, counts, report_file, ideas, perf_based_reco):
+def export_json(app, scan, annotated_findings, oss_findings, counts, report_file, ideas, perf_based_reco):
     message = ""
     stats_counts = get_stats_counts(scan, counts)
     if stats_counts is not None:
@@ -1693,6 +1740,7 @@ def export_json(app, scan, annotated_findings, counts, report_file, ideas, perf_
                 "scan": scan,
                 "summary": message,
                 "findings": annotated_findings,
+                "oss_findings": oss_findings,
                 "scan_improvements": ideas,
                 "performance_based_recommendations": perf_based_reco,
             },
@@ -1789,16 +1837,23 @@ def export_report(
                 scan, findings, counts = get_all_findings_with_scan(
                     client, org_id, app_id, version, ratings
                 )
+
+                if scan:
+                    app_language = scan.get("language")
+
+                source_cohorts, sink_cohorts, source_sink_cohorts, package_cves, reachable_oss_count, unreachable_oss_count, annotated_findings, table_rows = process_findings(app, app_language, scan, findings)
+
                 annotated_findings = find_best_fix(
-                    org_id, app, scan, findings, counts, source_dir
+                    org_id, app, scan, findings, counts, source_dir, source_cohorts, sink_cohorts, source_sink_cohorts, package_cves, reachable_oss_count, unreachable_oss_count, annotated_findings, table_rows
                 )
+
+                oss_findings = get_best_oss_fix(package_cves, reachable_oss_count)
 
                 ideas = []
                 perf_based_reco = False
 
                 if troubleshoot:
                     if scan:
-                        app_language = scan.get("language")
                         ideas, perf_based_reco = get_ideas(client, org_id, app_name, scan, findings, source_dir, annotated_findings, app_language)
                         troubleshoot_app(app_name, scan.get('internal_id'), app_language, ideas, perf_based_reco)
                     else:
@@ -1808,7 +1863,7 @@ def export_report(
                 if rformat == "csv":
                     export_csv([app], annotated_findings, report_file)
                 if rformat == "json":
-                    export_json([app], scan, annotated_findings, counts, report_file, ideas, perf_based_reco)
+                    export_json([app], scan, annotated_findings, oss_findings, counts, report_file, ideas, perf_based_reco)
                 progress.advance(task)
 
 
