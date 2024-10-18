@@ -1714,7 +1714,7 @@ def find_best_fix(org_id, app, scan, findings, counts, source_dir, source_cohort
     return annotated_findings
 
 
-def export_csv(app, annotated_findings, report_file):
+def export_csv(annotated_findings, report_file):
     if annotated_findings:
         fieldnames = annotated_findings[0].keys()
         if not os.path.exists(report_file):
@@ -1733,21 +1733,41 @@ def export_json(app, scan, annotated_findings, oss_findings, counts, report_file
     if stats_counts is not None:
         message = get_message(scan, stats_counts)
 
-    with open(report_file, "w") as json_file:
-        json.dump(
-            {
-                "app": app,
-                "scan": scan,
-                "summary": message,
-                "findings": annotated_findings,
-                "oss_findings": oss_findings,
-                "scan_improvements": ideas,
-                "performance_based_recommendations": perf_based_reco,
-            },
-            json_file,
-            indent=4,
-        )
-        console.print(f"JSON exported to {report_file}")
+    if not os.path.exists(report_file):
+        with open(report_file, "w") as json_file:
+            json.dump(
+                [{
+                    "app_id": app["id"],
+                    "app_name": app["name"],
+                    "scan": scan,
+                    "summary": message,
+                    "findings": annotated_findings,
+                    "oss_findings": oss_findings,
+                    "scan_improvements": ideas,
+                    "performance_based_recommendations": perf_based_reco,
+                }],
+                json_file,
+                indent=4,
+            )
+    else:
+        with open(report_file, "r") as json_file:
+            data = json.load(json_file)
+            data.append(
+                {
+                    "app_id": app["id"],
+                    "app_name": app["name"],
+                    "scan": scan,
+                    "summary": message,
+                    "findings": annotated_findings,
+                    "oss_findings": oss_findings,
+                    "scan_improvements": ideas,
+                    "performance_based_recommendations": perf_based_reco,
+                }
+            )
+        with open(report_file, "w") as json_file:
+            json.dump(data, json_file, indent=4)
+    
+    console.print(f"JSON exported to {report_file}")
 
 def get_all_findings_with_scan(client, org_id, app_name, version, ratings):
     """Method to retrieve all findings"""
@@ -1861,9 +1881,9 @@ def export_report(
                             f"\nNo scan information found for {app_name}. Please review your build pipeline logs for troubleshooting."
                         )
                 if rformat == "csv":
-                    export_csv([app], annotated_findings, report_file)
+                    export_csv(annotated_findings, report_file)
                 if rformat == "json":
-                    export_json([app], scan, annotated_findings, oss_findings, counts, report_file, ideas, perf_based_reco)
+                    export_json(app, scan, annotated_findings, oss_findings, counts, report_file, ideas, perf_based_reco)
                 progress.advance(task)
 
 
