@@ -447,12 +447,12 @@ def find_best_oss_fix(
         console.print(table)
 
 
-def troubleshoot_app(
-    client, org_id, app_name, scan, findings, source_dir, annotated_findings
+def get_ideas(
+    client, org_id, app_name, scan, findings, source_dir, annotated_findings, app_language
 ):
     ideas = []
+    perf_based_reco = False
     run_info = get_scan_run(client, org_id, scan, app_name)
-    app_language = scan.get("language", "java")
     summary = run_info.get("summary", {})
 
     environment = summary.get("environment", {})
@@ -584,7 +584,6 @@ def troubleshoot_app(
                 )
     sizes = summary.get("sizes")
     size_based_reco = False
-    perf_based_reco = False
     uploadRequest = summary.get("upload-request", {})
     metadata_artifact = uploadRequest.get("metadata_artifact", [])
     container_sbom_found = False
@@ -837,6 +836,9 @@ def troubleshoot_app(
             ideas.append(
                 """**Remediation:** Review this best fix report and create a remediation config to suppress additional findings."""
             )
+    return ideas, perf_based_reco
+
+def troubleshoot_app(app_name, internal_id, app_language, ideas, perf_based_reco):
     if ideas:
         console.print("\n")
         console.print(
@@ -847,7 +849,7 @@ def troubleshoot_app(
             )
         )
         if perf_based_reco:
-            console.print(f"Internal id for this scan: {scan.get('internal_id')}\n")
+            console.print(f"Internal id for this scan: {internal_id}\n")
 
 
 def file_locations_tree(
@@ -1678,25 +1680,26 @@ def export_csv(app, annotated_findings, report_file):
                 writer.writerow(finding)
             console.print(f"CSV exported to {report_file}")
 
-def export_json(app, scan, annotated_findings, counts, report_file):
+def export_json(app, scan, annotated_findings, counts, report_file, ideas, perf_based_reco):
     message = ""
     stats_counts = get_stats_counts(scan, counts)
     if stats_counts is not None:
         message = get_message(scan, stats_counts)
 
-    if message != "":
-        with open(report_file, "w") as json_file:
-            json.dump(
-                {
-                    "app": app,
-                    "scan": scan,
-                    "summary": message,
-                    "findings": annotated_findings,
-                },
-                json_file,
-                indent=4,
-            )
-            console.print(f"JSON exported to {report_file}")
+    with open(report_file, "w") as json_file:
+        json.dump(
+            {
+                "app": app,
+                "scan": scan,
+                "summary": message,
+                "findings": annotated_findings,
+                "scan_improvements": ideas,
+                "performance_based_recommendations": perf_based_reco,
+            },
+            json_file,
+            indent=4,
+        )
+        console.print(f"JSON exported to {report_file}")
 
 def get_all_findings_with_scan(client, org_id, app_name, version, ratings):
     """Method to retrieve all findings"""
@@ -1789,17 +1792,15 @@ def export_report(
                 annotated_findings = find_best_fix(
                     org_id, app, scan, findings, counts, source_dir
                 )
+
+                ideas = []
+                perf_based_reco = False
+
                 if troubleshoot:
                     if scan:
-                        troubleshoot_app(
-                            client,
-                            org_id,
-                            app_name,
-                            scan,
-                            findings,
-                            source_dir,
-                            annotated_findings,
-                        )
+                        app_language = scan.get("language")
+                        ideas, perf_based_reco = get_ideas(client, org_id, app_name, scan, findings, source_dir, annotated_findings, app_language)
+                        troubleshoot_app(app_name, scan.get('internal_id'), app_language, ideas, perf_based_reco)
                     else:
                         console.print(
                             f"\nNo scan information found for {app_name}. Please review your build pipeline logs for troubleshooting."
@@ -1807,7 +1808,7 @@ def export_report(
                 if rformat == "csv":
                     export_csv([app], annotated_findings, report_file)
                 if rformat == "json":
-                    export_json([app], scan, annotated_findings, counts, report_file)
+                    export_json([app], scan, annotated_findings, counts, report_file, ideas, perf_based_reco)
                 progress.advance(task)
 
 
