@@ -1573,6 +1573,16 @@ Specify the sink method in your remediation config to suppress this finding.\n
                     tracked_list,
                     full_path_prefix,
                 )
+
+            file_locations = {
+                "internal_id" : afinding.get("internal_id"),
+                "category": afinding.get("category"),
+                "files_loc_list": files_loc_list,
+                "files_method_list": files_method_list,
+                "http_routes": http_routes,
+                "tracked_list": tracked_list,
+                "full_path_prefix": full_path_prefix,
+            }
             
             afinding_id = afinding.get("id")
 
@@ -1609,6 +1619,7 @@ Specify the sink method in your remediation config to suppress this finding.\n
                     "code_snippet": code_snippet.replace("\n", "\\n"),
                     "best_fix": best_fix.replace("\n", "\\n"),
                     "suppressable_finding": suppressable_finding,
+                    "file_locations": file_locations,
                 }
             )
         ###########
