@@ -1806,7 +1806,7 @@ def get_all_findings_with_scan(client, org_id, app_name, version, ratings):
             if raw_response and raw_response.get("response"):
                 response = raw_response.get("response")
                 scan = response.get("scan")
-                counts = response.get("counts")
+                counts = response.get("counts") or []
                 if not scan:
                     page_available = False
                     continue
