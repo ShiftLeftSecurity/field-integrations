@@ -252,6 +252,9 @@ def export_report(org_id, app_list, report_file, format):
                                                 "BenchmarkTest", ""
                                             )
                                             break
+                        if not filename.isnumeric():
+                            progress.console.print(f"finding ID {af.get("id")} is in the benchmark harness")
+                            continue
                         if not filename:
                             progress.console.print(
                                 f"Unable to extract filename from file_locations or title {title}. Skipping ..."
