@@ -23,6 +23,9 @@ from common import (
     get_findings_counts_url,
     get_findings_url,
     get_scan_run,
+    get_all_teams,
+    get_team_members,
+    get_all_users,
     headers,
 )
 
@@ -37,11 +40,12 @@ def to_arr(counts_dict):
 
 
 def process_app(
-    progress, task, org_id, report_file, app, detailed, branch, include_run_info
+    progress, task, org_id, report_file, app, detailed, branch, include_run_info, include_app_apps, teams_list, user_dict,
 ):
     start = time.time()
     app_id = app.get("id")
     app_name = app.get("name")
+    isActive = True
     # Stats only considers the first page for performance so the detailed report is based only on the latest 250 findings
     # The various counts, however, are based on the full list of findings so are correct
     findings_url = (
@@ -64,10 +68,12 @@ def process_app(
             scan = response.get("scan")
             # Scan will be None if there are any issues/errors
             if not scan:
+                isActive = False
                 console.print(
                     f"""\nINFO: No scans found for {app_name} {branch if branch else ""}"""
                 )
-                return []
+                if not include_app_apps:
+                    return []
             run_info = {}
             token_name = ""
             if include_run_info:
@@ -81,15 +87,18 @@ def process_app(
                         )
             tags = app.get("tags")
             app_group = ""
-            app_branch = scan.get("tags", {}).get("branch", "")
+            app_branch = ""
+            if isActive:
+                app_branch = scan.get("tags", {}).get("branch", "")
             if tags:
                 for tag in tags:
                     if tag.get("key") == "group":
                         app_group = tag.get("value")
                         break
-            # Other unused properties such as findings or counts
-            spid = scan.get("internal_id")
-            projectSpId = f'sl/{org_id}/{scan.get("app")}'
+            if isActive:
+                # Other unused properties such as findings or counts
+                spid = scan.get("internal_id")
+                projectSpId = f'sl/{org_id}/{scan.get("app")}'
             counts = response.get("counts", [])
             findings = response.get("findings", [])
             vuln_counts = [
@@ -256,35 +265,64 @@ def process_app(
                     ml_assisted_count += vc["count"]
             # Convert date time to BigQuery friendly format
             completed_at = ""
-            try:
-                ctime = scan.get("completed_at", "")
-                completed_at_dt = datetime.strptime(
-                    ctime,
-                    "%Y-%m-%dT%H:%M:%S.%fZ %Z"
-                    if "UTC" in ctime
-                    else "%Y-%m-%dT%H:%M:%S.%fZ",
-                )
-                completed_at = completed_at_dt.strftime("%Y-%m-%d %H:%M:%S.%f")
-            except Exception as e:
-                completed_at = (
-                    scan.get("completed_at", "")
-                    .replace(" UTC", "")
-                    .replace("Z", "")
-                    .replace("T", " ")
-                )
+            if isActive:
+                try:
+                    ctime = scan.get("completed_at", "")
+                    completed_at_dt = datetime.strptime(
+                        ctime,
+                        "%Y-%m-%dT%H:%M:%S.%fZ %Z"
+                        if "UTC" in ctime
+                        else "%Y-%m-%dT%H:%M:%S.%fZ",
+                    )
+                    completed_at = completed_at_dt.strftime("%Y-%m-%d %H:%M:%S.%f")
+                except Exception as e:
+                    completed_at = (
+                        scan.get("completed_at", "")
+                        .replace(" UTC", "")
+                        .replace("Z", "")
+                        .replace("T", " ")
+                    )
             progress.update(
                 task,
                 description=f"""Processed [bold]{app.get("name")}[/bold] in {math.ceil(time.time() - start)} seconds""",
             )
+            if isActive:
+                appName = scan.get("app")
+                appVersion = scan.get("version")
+                scanID = scan.get("id")
+                scanLang = scan.get("language")
+                scanExp = scan.get("number_of_expressions")
+            else:
+                appName = app_name
+                appVersion = ""
+                scanID = ""
+                scanLang = ""
+                scanExp = ""
+            appTeam = ""
+            teamAdmins = ""
+            for eachTeam in teams_list:
+                if eachTeam.get("projects"):
+                    if appName in eachTeam.get("projects"):
+                        appTeam = eachTeam.get("team_name")
+                        teamMembers = get_team_members(org_id, eachTeam.get("team_id")).get("members")
+                        if teamMembers:
+                            for eachMember in teamMembers:
+                                memberRoleinTeam = eachMember.get("team_role_aliases") 
+                                if "TEAM_MANAGER" in memberRoleinTeam or "TEAM_ADMIN" in memberRoleinTeam:
+                                    teamAdmins = str(user_dict[eachMember.get('user_id_v2')]) + ", " + teamAdmins 
+
             return [
-                scan.get("app"),
+                appName,
                 app_group,
+                appTeam,
+                teamAdmins.rstrip(', '),
+                isActive,
                 app_branch,
-                scan.get("version"),
+                appVersion,
                 completed_at,
-                scan.get("id"),
-                scan.get("language"),
-                scan.get("number_of_expressions"),
+                scanID,
+                scanLang,
+                scanExp,
                 ml_assisted_count,
                 critical_count,
                 high_count,
@@ -325,6 +363,9 @@ def write_to_csv(report_file, row):
             csv_cols = [
                 "App",
                 "App Group",
+                "Team Name",
+                "Team Admins",
+                "ActiveApp",
                 "Branch",
                 "Version",
                 "Last Scan",
@@ -369,9 +410,16 @@ def write_to_csv(report_file, row):
             reportwriter.writerow(row)
 
 
-def collect_stats_parallel(org_id, report_file, detailed, branch, include_run_info):
+def collect_stats_parallel(org_id, report_file, detailed, branch, include_run_info, include_all_apps):
     """Method to collect stats for all apps to a csv"""
     apps_list = get_all_apps(org_id)
+    teams_list = get_all_teams(org_id)
+    users_list = get_all_users(org_id)
+
+    user_dict = {}
+    for eachUser in users_list:
+        user_dict[eachUser.get("id_v2")] = eachUser.get("email")
+
     if not apps_list:
         console.print("No apps were found in this organization")
         return
@@ -405,6 +453,9 @@ def collect_stats_parallel(org_id, report_file, detailed, branch, include_run_in
                     detailed,
                     branch,
                     include_run_info,
+                    include_all_apps,
+                    teams_list,
+                    user_dict,
                 )
                 rows.append(row)
             rows = dask.compute(*rows)
@@ -446,6 +497,13 @@ def build_args():
         help="Run info includes runtime information, tokens and scan statistics",
         default=False,
     )
+    parser.add_argument(
+        "--include-all-apps",
+        action="store_true",
+        dest="include_app_apps",
+        help="Run info includes data for all apps including app placeholders",
+        default=False,
+    )
     return parser.parse_args()
 
 
@@ -466,7 +524,7 @@ def main():
     args = build_args()
     report_file = args.report_file
     collect_stats_parallel(
-        org_id, report_file, args.detailed, args.branch, args.include_run_info
+        org_id, report_file, args.detailed, args.branch, args.include_run_info, args.include_app_apps
     )
 
 

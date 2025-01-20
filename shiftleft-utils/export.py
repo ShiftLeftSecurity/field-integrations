@@ -402,6 +402,8 @@ def build_args():
         dest="app_name",
         help="App name",
         default=config.SHIFTLEFT_APP,
+        action='append', 
+        nargs='+',
     )
     parser.add_argument(
         "-o",
@@ -441,7 +443,8 @@ if __name__ == "__main__":
     args = build_args()
     app_list = []
     if args.app_name:
-        app_list.append({"id": args.app_name, "name": args.app_name})
+        for eachApp in args.app_name:
+            app_list.append({"id": eachApp[0], "name": eachApp[0]})
     report_file = args.report_file
     reports_dir = args.reports_dir
     format = args.format
