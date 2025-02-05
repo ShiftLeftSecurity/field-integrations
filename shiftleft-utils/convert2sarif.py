@@ -299,12 +299,17 @@ def extract_from_file(
                         codeflows.append(location)
                     elif vuln_type == "oss_vuln":
                         location_tag = [t for t in tags if t.get("key") == "location"]
-                        if location_tag:
+                        if len(location_tag) == 0:
+                            location = {
+                                "filename": "NA",
+                                "line_number": "NA"
+                            }
+                        else:
                             sbom_location = location_tag[0].get("value").split('#')
-                        location = {
-                            "filename": sbom_location[0],
-                            "line_number": sbom_location[1]
-                        }
+                            location = {
+                                "filename": sbom_location[0],
+                                "line_number": sbom_location[1]
+                            }
                     elif file_locations:
                         for floc in file_locations:
                             flocArr = floc.split(":")
