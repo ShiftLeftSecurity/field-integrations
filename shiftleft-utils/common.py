@@ -60,6 +60,25 @@ def get_findings_url(org_id, app_name, version, branch=None):
     branch_suffix = f"&tags=branch={branch}" if branch else ""
     return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=oss_vuln&type=package&type=container&type=secret&type=vuln&type=extscan&include_dataflows=true{version_suffix}{branch_suffix}"
 
+def get_sast_findings_url(org_id, app_name, version, branch=None):
+    version_suffix = f"&version={version}" if version else ""
+    branch_suffix = f"&tags=branch={branch}" if branch else ""
+    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=vuln&include_dataflows=true{version_suffix}{branch_suffix}"
+
+def get_sca_findings_url(org_id, app_name, version, branch=None):
+    version_suffix = f"&version={version}" if version else ""
+    branch_suffix = f"&tags=branch={branch}" if branch else ""
+    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=oss_vuln&include_dataflows=true{version_suffix}{branch_suffix}"
+
+def get_secrets_findings_url(org_id, app_name, version, branch=None):
+    version_suffix = f"&version={version}" if version else ""
+    branch_suffix = f"&tags=branch={branch}" if branch else ""
+    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=secret&include_dataflows=true{version_suffix}{branch_suffix}"
+
+def get_container_findings_url(org_id, app_name, version, branch=None):
+    version_suffix = f"&version={version}" if version else ""
+    branch_suffix = f"&tags=branch={branch}" if branch else ""
+    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=container&include_dataflows=true{version_suffix}{branch_suffix}"
 
 def get_all_apps(org_id):
     """Return all the apps for the given organization"""

@@ -15,7 +15,7 @@ from rich.console import Console
 from rich.progress import Progress
 
 import config
-from common import extract_org_id, get_all_apps, get_findings_url, headers
+from common import extract_org_id, get_all_apps, get_findings_url, get_sast_findings_url, get_sca_findings_url, get_secrets_findings_url, get_container_findings_url, headers
 
 console = Console(color_system="auto")
 
@@ -166,10 +166,19 @@ def export_csv(app_list, findings, report_file):
                         )
 
 
-def get_all_findings(client, org_id, app_name, version):
+def get_all_findings(client, org_id, app_name, kind, version):
     """Method to retrieve all findings"""
     findings_list = []
-    findings_url = get_findings_url(org_id, app_name, version, None)
+    if kind == "sast":
+       findings_url = get_sast_findings_url(org_id, app_name, version, None) 
+    elif kind == "sca":
+       findings_url = get_sca_findings_url(org_id, app_name, version, None)
+    elif kind == "secret":
+       findings_url = get_secrets_findings_url(org_id, app_name, version, None)       
+    elif kind == "container":
+       findings_url = get_container_findings_url(org_id, app_name, version, None)         
+    else:
+        findings_url = get_findings_url(org_id, app_name, version, None)
     page_available = True
     scan = None
     counts = None
@@ -215,7 +224,7 @@ def get_all_findings(client, org_id, app_name, version):
     return findings_list, scan, counts
 
 
-def export_report(org_id, app_list, report_file, reports_dir, format):
+def export_report(org_id, app_list, report_file, reports_dir, format, kind):
     if not app_list:
         app_list = get_all_apps(org_id)
     # This might increase memory consumption for large organizations
@@ -248,7 +257,7 @@ def export_report(org_id, app_list, report_file, reports_dir, format):
                 app_id = app.get("id")
                 app_name = app.get("name")
                 progress.update(task, description=f"Processing [bold]{app_name}[/bold]")
-                findings, scan, counts = get_all_findings(client, org_id, app_id, None)
+                findings, scan, counts = get_all_findings(client, org_id, app_id, kind, None)
                 file_category_set = set()
                 if format == "xml" or report_file.endswith(".xml"):
                     app_report_file = report_file.replace(".xml", "-" + app_id + ".xml")
@@ -419,6 +428,14 @@ def build_args():
         default="csv",
         choices=["json", "xml", "csv", "sl", "sarif", "raw"],
     )
+    parser.add_argument(
+        "-k",
+        "--kind",
+        dest="kind",
+        help="Report Vulnerability kind (SAST/SCA/Secret/Container)",
+        default="sast",
+        choices=["sast", "sca", "secret", "container", "all"],
+    )    
     return parser.parse_args()
 
 
@@ -445,6 +462,7 @@ if __name__ == "__main__":
     report_file = args.report_file
     reports_dir = args.reports_dir
     format = args.format
+    kind = args.kind 
     # Fix file extensions for xml format
     if format == "xml":
         report_file = report_file.replace(".csv", ".xml")
@@ -463,6 +481,6 @@ if __name__ == "__main__":
     if reports_dir:
         os.makedirs(reports_dir, exist_ok=True)
         report_file = os.path.join(reports_dir, report_file)
-    export_report(org_id, app_list, report_file, reports_dir, format)
+    export_report(org_id, app_list, report_file, reports_dir, format, kind)
     end_time = time.monotonic_ns()
     total_time_sec = round((end_time - start_time) / 1000000000, 2)
