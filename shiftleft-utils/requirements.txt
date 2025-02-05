@@ -10,3 +10,7 @@ dask[array]
 PyGitHub
 packaging
 pdfkit
+sarif-om
+jschema_to_python
+six
+
