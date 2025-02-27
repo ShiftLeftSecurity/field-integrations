@@ -9,7 +9,7 @@ import time
 import urllib.parse
 
 import httpx
-import joern2sarif.lib.convert as convertLib
+import convert2sarif as convertLib
 from json2xml import json2xml
 from rich.console import Console
 from rich.progress import Progress
@@ -352,7 +352,7 @@ def export_report(org_id, app_list, report_file, reports_dir, format):
                                                 )
                                                 break
                             if not filename.isnumeric():
-                                progress.console.print(f"finding ID {af.get("id")} is in the benchmark harness")
+                                progress.console.print(f"finding ID {af.get('id')} is in the benchmark harness")
                                 continue
                             if not filename:
                                 progress.console.print(
