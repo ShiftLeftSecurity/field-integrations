@@ -25,7 +25,7 @@ def parse_arguments():
         "--organization", "-o", required=True, help="Azure DevOps organization URL"
     )
     parser.add_argument(
-        "--project", "-p", required=True, help="Azure DevOps project name"
+        "--project", "-p", help="Azure DevOps project name (not required if --organization-wide is used)"
     )
     parser.add_argument(
         "--repository", "-r", help="Repository name (if not specified, all repositories will be checked)"
@@ -37,8 +37,18 @@ def parse_arguments():
         "--output", choices=["text", "csv", "json"], default="text",
         help="Output format (default: text)"
     )
+    parser.add_argument(
+        "--organization-wide", action="store_true",
+        help="Analyze all projects in the organization (overrides --project and --repository)"
+    )
     
-    return parser.parse_args()
+    args = parser.parse_args()
+    
+    # Validate arguments
+    if not args.organization_wide and not args.project:
+        parser.error("Either --project or --organization-wide must be specified")
+    
+    return args
 
 
 def get_connection(organization_url: str) -> Connection:
@@ -99,14 +109,16 @@ def get_unique_authors(commits: List[Any]) -> Set[str]:
 
 def output_results(authors: Set[str], format_type: str, days: int):
     """Output the results in the specified format."""
+    authors_n = len(authors)
+    
     if format_type == "text":
-        authors_n = len(authors)
-        if authors_n <1:
+        if authors_n < 1:
             print(f"Found {authors_n} unique authors in the last {days} days.")
         else:
             print(f"Found {authors_n} unique authors in the last {days} days:")
             for author in sorted(authors):
                 print(f"- {author}")
+        print(f"\nTotal unique authors: {authors_n}")
     
     elif format_type == "csv":
         print("Name,Email")
@@ -114,6 +126,7 @@ def output_results(authors: Set[str], format_type: str, days: int):
             name, email = author.split(" <")
             email = email.rstrip(">")
             print(f'"{name}","{email}"')
+        print(f"\nTotal unique authors: {authors_n}")
     
     elif format_type == "json":
         import json
@@ -123,6 +136,17 @@ def output_results(authors: Set[str], format_type: str, days: int):
             email = email.rstrip(">")
             authors_list.append({"name": name, "email": email})
         print(json.dumps(authors_list, indent=2))
+        print(f"\nTotal unique authors: {authors_n}")
+
+
+def get_projects(connection: Connection) -> List[Any]:
+    """Get all projects in an organization."""
+    core_client = connection.clients.get_core_client()
+    try:
+        return core_client.get_projects()
+    except AzureDevOpsServiceError as e:
+        print(f"Error getting projects: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def main():
@@ -135,27 +159,45 @@ def main():
     # Connect to Azure DevOps
     connection = get_connection(args.organization)
     
-    # Get repositories
-    if args.repository:
-        # For a specific repository, we need to find it by name
-        git_client = connection.clients.get_git_client()
-        try:
-            repositories = [git_client.get_repository(args.repository, args.project)]
-        except AzureDevOpsServiceError as e:
-            print(f"Error: Repository '{args.repository}' not found: {e}", file=sys.stderr)
-            sys.exit(1)
-    else:
-        repositories = get_repositories(connection, args.project)
-    
     all_authors = set()
     
-    # Process each repository
-    for repo in repositories:
-        print(f"Processing repository: {repo.name}", file=sys.stderr)
-        commits = get_commits_since_date(connection, args.project, repo.id, since_date)
-        authors = get_unique_authors(commits)
-        all_authors.update(authors)
-        print(f"Found {len(authors)} authors in {repo.name}", file=sys.stderr)
+    if args.organization_wide:
+        # Get all projects in the organization
+        projects = get_projects(connection)
+        print(f"Found {len(projects)} projects in organization", file=sys.stderr)
+        
+        # Process each project
+        for project in projects:
+            print(f"\nProcessing project: {project.name}", file=sys.stderr)
+            repositories = get_repositories(connection, project.id)
+            
+            # Process each repository in the project
+            for repo in repositories:
+                print(f"Processing repository: {repo.name}", file=sys.stderr)
+                commits = get_commits_since_date(connection, project.id, repo.id, since_date)
+                authors = get_unique_authors(commits)
+                all_authors.update(authors)
+                print(f"Found {len(authors)} authors in {repo.name}", file=sys.stderr)
+    else:
+        # Get repositories for specific project
+        if args.repository:
+            # For a specific repository, we need to find it by name
+            git_client = connection.clients.get_git_client()
+            try:
+                repositories = [git_client.get_repository(args.repository, args.project)]
+            except AzureDevOpsServiceError as e:
+                print(f"Error: Repository '{args.repository}' not found: {e}", file=sys.stderr)
+                sys.exit(1)
+        else:
+            repositories = get_repositories(connection, args.project)
+        
+        # Process each repository
+        for repo in repositories:
+            print(f"Processing repository: {repo.name}", file=sys.stderr)
+            commits = get_commits_since_date(connection, args.project, repo.id, since_date)
+            authors = get_unique_authors(commits)
+            all_authors.update(authors)
+            print(f"Found {len(authors)} authors in {repo.name}", file=sys.stderr)
     
     # Output the results
     output_results(all_authors, args.output, args.days)
