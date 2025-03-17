@@ -200,6 +200,7 @@ def main():
             print(f"Found {len(authors)} authors in {repo.name}", file=sys.stderr)
     
     # Output the results
+    print("\nResults:", file=sys.stderr)
     output_results(all_authors, args.output, args.days)
 
 
