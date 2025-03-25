@@ -86,38 +86,38 @@ def get_findings_counts_url(org_id, app_name, version, branch=None):
 def get_findings_url(org_id, app_name, version, branch=None):
     version_suffix = f"&version={version}" if version else ""
     branch_suffix = f"&tags=branch={branch}" if branch else ""
-    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=oss_vuln&type=package&type=container&type=secret&type=vuln&type=extscan{version_suffix}{branch_suffix}"
+    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=oss_vuln&type=package&type=container&type=secret&type=vuln&type=extscan&include_dataflows=false{version_suffix}{branch_suffix}"
 
 def get_findings_url_nodataflow(org_id, app_name, version, branch=None):
     version_suffix = f"&version={version}" if version else ""
     branch_suffix = f"&tags=branch={branch}" if branch else ""
-    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=oss_vuln&type=package&type=container&type=secret&type=vuln&type=extscan{version_suffix}{branch_suffix}"
+    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=oss_vuln&type=package&type=container&type=secret&type=vuln&type=extscan&include_dataflows=false{version_suffix}{branch_suffix}"
 
 
 def get_sast_findings_url(org_id, app_name, version, branch=None):
     version_suffix = f"&version={version}" if version else ""
     branch_suffix = f"&tags=branch={branch}" if branch else ""
-    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=vuln{version_suffix}{branch_suffix}"
+    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=vuln&include_dataflows=false{version_suffix}{branch_suffix}"
 
 def get_sast_findings_url_nodataflow(org_id, app_name, version, branch=None):
     version_suffix = f"&version={version}" if version else ""
     branch_suffix = f"&tags=branch={branch}" if branch else ""
-    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=vuln{version_suffix}"
+    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=vuln&include_dataflows=false{version_suffix}"
 
 def get_sca_findings_url(org_id, app_name, version, branch=None):
     version_suffix = f"&version={version}" if version else ""
     branch_suffix = f"&tags=branch={branch}" if branch else ""
-    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=oss_vuln{version_suffix}{branch_suffix}"
+    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=oss_vuln&include_dataflows=false{version_suffix}{branch_suffix}"
 
 def get_secrets_findings_url(org_id, app_name, version, branch=None):
     version_suffix = f"&version={version}" if version else ""
     branch_suffix = f"&tags=branch={branch}" if branch else ""
-    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=secret{version_suffix}{branch_suffix}"
+    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=secret&include_dataflows=false{version_suffix}{branch_suffix}"
 
 def get_container_findings_url(org_id, app_name, version, branch=None):
     version_suffix = f"&version={version}" if version else ""
     branch_suffix = f"&tags=branch={branch}" if branch else ""
-    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=container{version_suffix}{branch_suffix}"
+    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=container&include_dataflows=false{version_suffix}{branch_suffix}"
 
 def get_scan_branches(org_id, app_name):
     """Return all the scan branches for the given application"""
