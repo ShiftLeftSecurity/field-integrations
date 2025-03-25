@@ -15,7 +15,7 @@ from rich.console import Console
 from rich.progress import Progress
 
 import config
-from common import extract_org_id, get_all_apps, get_findings_url, get_sast_findings_url, get_sast_findings_url_nodataflow, get_sca_findings_url, get_secrets_findings_url, get_container_findings_url, get_app_details, get_team_name, get_scan_branches, headers
+from common import extract_org_id, get_all_apps, get_findings_url, get_findings_url_nodataflow, get_sast_findings_url, get_sast_findings_url_nodataflow, get_sca_findings_url, get_secrets_findings_url, get_container_findings_url, get_app_details, get_team_name, get_scan_branches, headers
 
 console = Console(color_system="auto")
 
@@ -196,7 +196,7 @@ def get_all_findings(client, org_id, app_name, kind, version, branch):
     elif kind == "container":
        findings_url = get_container_findings_url(org_id, app_name, version, branch)
     else:
-        findings_url = get_findings_url(org_id, app_name, version, branch)
+        findings_url = get_findings_url_nodataflow(org_id, app_name, version, branch)
     print(findings_url)
     page_available = True
     scan = None
