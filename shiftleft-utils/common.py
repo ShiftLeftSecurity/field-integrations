@@ -48,6 +48,34 @@ headers = {
     "Accept-Encoding": "gzip",
 }
 
+def get_team_name(org_id, team_id):
+    """Return TEAM name from the Team ID"""
+    team_url = f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/rbac/teams/{team_id}"
+    r = requests.get(team_url, headers=headers)
+    if r.ok:
+        raw_response = r.json()
+        if raw_response and raw_response.get("response"):
+            team_response = raw_response.get("response")
+            return team_response.get("team_name")
+    else:
+        print(
+            f"Unable to retrieve team name for team ID {team_id} due to {r.status_code} error"
+        )
+    return None
+def get_app_details(org_id, app_id):
+    """Return app details name from the Team ID"""
+    app_url = f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_id}"
+    r = requests.get(app_url, headers=headers)
+    if r.ok:
+        raw_response = r.json()
+        if raw_response and raw_response.get("response"):
+            app_response = raw_response.get("response")
+            return app_response
+    else:
+        print(
+            f"Unable to retrieve team name for team ID {team_id} due to {r.status_code} error"
+        )
+    return None
 
 def get_findings_counts_url(org_id, app_name, version, branch=None):
     version_suffix = f"&version={version}" if version else ""
@@ -65,6 +93,10 @@ def get_sast_findings_url(org_id, app_name, version, branch=None):
     branch_suffix = f"&tags=branch={branch}" if branch else ""
     return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=vuln&include_dataflows=true{version_suffix}{branch_suffix}"
 
+def get_sast_findings_url_nodataflow(org_id, app_name, version, branch=None):
+    version_suffix = f"&version={version}" if version else ""
+    branch_suffix = f"&tags=branch={branch}" if branch else ""
+    return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=vuln{version_suffix}"
 def get_sca_findings_url(org_id, app_name, version, branch=None):
     version_suffix = f"&version={version}" if version else ""
     branch_suffix = f"&tags=branch={branch}" if branch else ""
@@ -79,6 +111,20 @@ def get_container_findings_url(org_id, app_name, version, branch=None):
     version_suffix = f"&version={version}" if version else ""
     branch_suffix = f"&tags=branch={branch}" if branch else ""
     return f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/findings?per_page=249&type=container&include_dataflows=true{version_suffix}{branch_suffix}"
+def get_scan_branches(org_id, app_name):
+    """Return all the scan branches for the given application"""
+    scan_branches_url = f"https://{config.SHIFTLEFT_API_HOST}/api/v4/orgs/{org_id}/apps/{app_name}/scanbranches"
+    r = requests.get(scan_branches_url, headers=headers)
+    if r.ok:
+        raw_response = r.json()
+        if raw_response and raw_response.get("response"):
+            apps_list = raw_response.get("response")
+            return apps_list
+    else:
+        print(
+            f"Unable to retrieve scan branches for the application {app_name} due to {r.status_code} error"
+        )
+    return None    
 
 def get_all_apps(org_id):
     """Return all the apps for the given organization"""

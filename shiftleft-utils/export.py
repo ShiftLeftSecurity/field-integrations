@@ -15,12 +15,12 @@ from rich.console import Console
 from rich.progress import Progress
 
 import config
-from common import extract_org_id, get_all_apps, get_findings_url, get_sast_findings_url, get_sca_findings_url, get_secrets_findings_url, get_container_findings_url, headers
+from common import extract_org_id, get_all_apps, get_findings_url, get_sast_findings_url, get_sast_findings_url_nodataflow, get_sca_findings_url, get_secrets_findings_url, get_container_findings_url, get_app_details, get_team_name, get_scan_branches, headers
 
 console = Console(color_system="auto")
 
 
-def export_csv(app_list, findings, report_file):
+def export_csv(org_id, app_list, findings, scan, report_file):
     if not os.path.exists(report_file):
         with open(report_file, "w", newline="") as csvfile:
             reportwriter = csv.writer(
@@ -34,6 +34,8 @@ def export_csv(app_list, findings, report_file):
                 [
                     "App",
                     "App Group",
+                    "Team",
+                    "Last Scan's Branch",
                     "Finding ID",
                     "Type",
                     "Category",
@@ -58,10 +60,21 @@ def export_csv(app_list, findings, report_file):
             quotechar='"',
             quoting=csv.QUOTE_MINIMAL,
         )
+        if scan:
+            scan_tags = scan.get("tags")
+            branch_info = ""
+            if scan_tags:
+                if scan_tags.get("branch"):
+                    branch_info = scan_tags.get("branch")
         for app in app_list:
             app_name = app.get("name")
-            tags = app.get("tags")
+            app_obj = get_app_details(org_id, app_name)
+            tags = app_obj.get("tags")
+            team_id = app_obj.get("team_id")
             app_group = ""
+            app_team = ""
+            if team_id:
+                app_team = get_team_name(org_id, team_id)
             if tags:
                 for tag in tags:
                     if tag.get("key") == "group":
@@ -124,6 +137,8 @@ def export_csv(app_list, findings, report_file):
                         [
                             app_name,
                             app_group,
+                            app_team,
+                            branch_info,
                             afinding.get("id"),
                             afinding.get("type"),
                             afinding.get("category"),
@@ -146,6 +161,8 @@ def export_csv(app_list, findings, report_file):
                             [
                                 app_name,
                                 app_group,
+                                app_team,
+                                branch_info,
                                 afinding.get("id"),
                                 afinding.get("type"),
                                 afinding.get("category"),
@@ -164,21 +181,23 @@ def export_csv(app_list, findings, report_file):
                                 else "N/A",
                             ]
                         )
+                        break
 
 
-def get_all_findings(client, org_id, app_name, kind, version):
+def get_all_findings(client, org_id, app_name, kind, version, branch):
     """Method to retrieve all findings"""
     findings_list = []
     if kind == "sast":
-       findings_url = get_sast_findings_url(org_id, app_name, version, None) 
+       findings_url = get_sast_findings_url(org_id, app_name, version, branch)
     elif kind == "sca":
-       findings_url = get_sca_findings_url(org_id, app_name, version, None)
+       findings_url = get_sca_findings_url(org_id, app_name, version, branch)
     elif kind == "secret":
-       findings_url = get_secrets_findings_url(org_id, app_name, version, None)       
+       findings_url = get_secrets_findings_url(org_id, app_name, version, branch)
     elif kind == "container":
-       findings_url = get_container_findings_url(org_id, app_name, version, None)         
+       findings_url = get_container_findings_url(org_id, app_name, version, branch)
     else:
-        findings_url = get_findings_url(org_id, app_name, version, None)
+        findings_url = get_findings_url(org_id, app_name, version, branch)
+    print(findings_url)
     page_available = True
     scan = None
     counts = None
@@ -187,10 +206,21 @@ def get_all_findings(client, org_id, app_name, kind, version):
             r = client.get(findings_url, headers=headers, timeout=config.timeout)
         except Exception:
             console.print(
-                f"Unable to retrieve findings for {app_name} due to exception after {config.timeout} seconds"
+                f"Unable to retrieve findings for {app_name} due to exception after {config.timeout} seconds. Retrying withour dataflow"
             )
             page_available = False
             continue
+        if r.status_code == 500:
+            findings_url = get_sast_findings_url_nodataflow(org_id, app_name, version, branch) 
+            print(f"Revised {findings_url}")
+            try:
+                r = client.get(findings_url, headers=headers, timeout=config.timeout)
+            except Exception:
+                console.print(
+                   f"Unable to retrieve findings for {app_name} due to exception after {config.timeout} seconds"
+                )
+                page_available = False
+                continue   
         if r.status_code == 200:
             raw_response = r.json()
             if raw_response and raw_response.get("response"):
@@ -256,144 +286,148 @@ def export_report(org_id, app_list, report_file, reports_dir, format, kind):
             for app in app_list:
                 app_id = app.get("id")
                 app_name = app.get("name")
-                progress.update(task, description=f"Processing [bold]{app_name}[/bold]")
-                findings, scan, counts = get_all_findings(client, org_id, app_id, kind, None)
-                file_category_set = set()
-                if format == "xml" or report_file.endswith(".xml"):
-                    app_report_file = report_file.replace(".xml", "-" + app_id + ".xml")
-                    with open(app_report_file, mode="w") as rp:
-                        xml_data = json2xml.Json2xml(findings).to_xml()
-                        if xml_data:
-                            rp.write(xml_data)
-                            progress.console.print(
-                                f"Findings report successfully exported to {app_report_file}"
-                            )
-                elif format == "raw":
-                    app_json_file = report_file.replace(".json", "-" + app_id + ".json")
-                    with open(app_json_file, mode="w") as rp:
-                        json.dump(
-                            {
-                                "name": app_name,
-                                "scan": scan,
-                                "findings": findings,
-                                "counts": counts,
-                            },
-                            rp,
-                            ensure_ascii=True,
-                            indent=None,
-                        )
-                        rp.flush()
-                        progress.console.print(
-                            f"Json file successfully exported to {app_json_file}"
-                        )
-                elif format == "sarif":
-                    app_sarif_file = report_file.replace(
-                        ".sarif", "-" + app_id + ".sarif"
-                    )
-                    app_json_file = app_sarif_file.replace(".sarif", ".json")
-                    with open(app_json_file, mode="w") as rp:
-                        json.dump(
-                            {app_name: findings},
-                            rp,
-                            ensure_ascii=True,
-                            indent=None,
-                        )
-                        rp.flush()
-                    convertLib.convert_file(
-                        "ng-sast",
-                        os.getenv("TOOL_ARGS", ""),
-                        work_dir,
-                        app_json_file,
-                        app_sarif_file,
-                        None,
-                    )
-                    progress.console.print(
-                        f"SARIF file successfully exported to {app_sarif_file}"
-                    )
-                    os.remove(app_json_file)
-                elif format == "sl":
-                    with open(report_file, mode="w") as rp:
-                        for af in findings:
-                            details = af.get("details")
-                            title = af.get("title")
-                            # filename could be found either in file_locations or fileName
-                            filename = ""
-                            if details and details.get("file_locations"):
-                                file_locations = details.get("file_locations")
-                                if len(file_locations):
-                                    filename = (
-                                        file_locations[0].split(":")[0].split("/")[-1]
-                                    )
-                                    filename = filename.replace(".java", "")
-                            # If there is no file_locations try to extract the name from the title
-                            if not filename and "BenchmarkTest" in title:
-                                filename = (
-                                    title.split(" in ")[-1]
-                                    .replace("`", "")
-                                    .split(".")[0]
-                                )
-                            if filename.startswith("BenchmarkTest"):
-                                filename = filename.replace("BenchmarkTest", "")
-                            else:
-                                # Try to get the filename from source_method in details
-                                source_method = details.get("source_method")
-                                if source_method and "BenchmarkTest" in source_method:
-                                    filename = source_method.split(":")[0].split(".")[4]
-                                    filename = filename.replace("BenchmarkTest", "")
-                                else:
+                if "element" not in app.get("id"):
+                    app_scan_branches = get_scan_branches(org_id, app_id)
+                    for each_branch in app_scan_branches:
+                        scan_branch = each_branch.get("branch_name")
+                        progress.update(task, description=f"Processing [bold]{app_name}[/bold]: Branch [bold]{scan_branch}[/bold]")
+                        findings, scan, counts = get_all_findings(client, org_id, app_id, kind, None, scan_branch)
+                        file_category_set = set()
+                        if format == "xml" or report_file.endswith(".xml"):
+                            app_report_file = report_file.replace(".xml", "-" + app_id + ".xml")
+                            with open(app_report_file, mode="w") as rp:
+                                xml_data = json2xml.Json2xml(findings).to_xml()
+                                if xml_data:
+                                    rp.write(xml_data)
                                     progress.console.print(
-                                        f'Get dataflow for {af.get("id")}'
+                                        f"Findings report successfully exported to {app_report_file}"
                                     )
-                                    dataflows = details.get("dataflow", {}).get("list")
-                                    if dataflows:
-                                        for df in dataflows:
-                                            location = df.get("location")
-                                            if location.get(
-                                                "class_name"
-                                            ) and "BenchmarkTest" in location.get(
-                                                "class_name"
-                                            ):
-                                                filename = location.get(
-                                                    "class_name"
-                                                ).split(".")[-1]
-                                                filename = filename.replace(
-                                                    "BenchmarkTest", ""
-                                                )
-                                                break
-                            if not filename.isnumeric():
-                                progress.console.print(f"finding ID {af.get('id')} is in the benchmark harness")
-                                continue
-                            if not filename:
-                                progress.console.print(
-                                    f"Unable to extract filename from file_locations or title {title}. Skipping ..."
+                        elif format == "raw":
+                            app_json_file = report_file.replace(".json", "-" + app_id + ".json")
+                            with open(app_json_file, mode="w") as rp:
+                                json.dump(
+                                    {
+                                        "name": app_name,
+                                        "scan": scan,
+                                        "findings": findings,
+                                        "counts": counts,
+                                    },
+                                    rp,
+                                    ensure_ascii=True,
+                                    indent=None,
                                 )
-                                continue
-                            cwes = (
-                                int(pair["value"])
-                                for pair in af["tags"]
-                                if pair["key"] == "cwe_category"
+                                rp.flush()
+                                progress.console.print(
+                                    f"Json file successfully exported to {app_json_file}"
+                                )
+                        elif format == "sarif":
+                            app_sarif_file = report_file.replace(
+                                ".sarif", "-" + app_id + ".sarif"
                             )
-                            categories = (
-                                config.sl_owasp_category[cwe]
-                                for cwe in cwes
-                                if cwe in config.sl_owasp_category
+                            app_json_file = app_sarif_file.replace(".sarif", ".json")
+                            with open(app_json_file, mode="w") as rp:
+                                json.dump(
+                                    {app_name: findings},
+                                    rp,
+                                    ensure_ascii=True,
+                                    indent=None,
+                                )
+                                rp.flush()
+                            convertLib.convert_file(
+                                "ng-sast",
+                                os.getenv("TOOL_ARGS", ""),
+                                work_dir,
+                                app_json_file,
+                                app_sarif_file,
+                                None,
                             )
-                            try:
-                                category = next(categories)
-                                file_category = f"{filename},{category}"
-                                if file_category not in file_category_set:
-                                    rp.write(file_category + "\n")
-                                    file_category_set.add(file_category)
-                            except StopIteration:
-                                pass
-                        progress.console.print(
-                            f"Findings report successfully exported to {report_file}"
-                        )
-                elif format == "csv":
-                    export_csv([app], findings, report_file)
-                else:
-                    findings_dict[app_name] = findings
-                progress.advance(task)
+                            progress.console.print(
+                                f"SARIF file successfully exported to {app_sarif_file}"
+                            )
+                            os.remove(app_json_file)
+                        elif format == "sl":
+                            with open(report_file, mode="w") as rp:
+                                for af in findings:
+                                    details = af.get("details")
+                                    title = af.get("title")
+                            # filename could be found either in file_locations or fileName
+                                    filename = ""
+                                    if details and details.get("file_locations"):
+                                        file_locations = details.get("file_locations")
+                                        if len(file_locations):
+                                            filename = (
+                                                file_locations[0].split(":")[0].split("/")[-1]
+                                            )
+                                            filename = filename.replace(".java", "")
+                            # If there is no file_locations try to extract the name from the title
+                                    if not filename and "BenchmarkTest" in title:
+                                        filename = (
+                                            title.split(" in ")[-1]
+                                            .replace("`", "")
+                                            .split(".")[0]
+                                        )
+                                    if filename.startswith("BenchmarkTest"):
+                                        filename = filename.replace("BenchmarkTest", "")
+                                    else:
+                                # Try to get the filename from source_method in details
+                                        source_method = details.get("source_method")
+                                        if source_method and "BenchmarkTest" in source_method:
+                                            filename = source_method.split(":")[0].split(".")[4]
+                                            filename = filename.replace("BenchmarkTest", "")
+                                        else:
+                                            progress.console.print(
+                                                f'Get dataflow for {af.get("id")}'
+                                            )
+                                            dataflows = details.get("dataflow", {}).get("list")
+                                            if dataflows:
+                                                for df in dataflows:
+                                                    location = df.get("location")
+                                                    if location.get(
+                                                        "class_name"
+                                                    ) and "BenchmarkTest" in location.get(
+                                                        "class_name"
+                                                    ):
+                                                        filename = location.get(
+                                                            "class_name"
+                                                        ).split(".")[-1]
+                                                        filename = filename.replace(
+                                                            "BenchmarkTest", ""
+                                                        )
+                                                        break
+                                    if not filename.isnumeric():
+                                        progress.console.print(f"finding ID {af.get('id')} is in the benchmark harness")
+                                        continue
+                                    if not filename:
+                                        progress.console.print(
+                                            f"Unable to extract filename from file_locations or title {title}. Skipping ..."
+                                        )
+                                        continue
+                                    cwes = (
+                                        int(pair["value"])
+                                        for pair in af["tags"]
+                                        if pair["key"] == "cwe_category"
+                                    )
+                                    categories = (
+                                        config.sl_owasp_category[cwe]
+                                        for cwe in cwes
+                                        if cwe in config.sl_owasp_category
+                                    )
+                                    try:
+                                        category = next(categories)
+                                        file_category = f"{filename},{category}"
+                                        if file_category not in file_category_set:
+                                            rp.write(file_category + "\n")
+                                            file_category_set.add(file_category)
+                                    except StopIteration:
+                                        pass
+                                progress.console.print(
+                                    f"Findings report successfully exported to {report_file}"
+                                )
+                        elif format == "csv":
+                            export_csv(org_id, [app], findings, scan, report_file)
+                        else:
+                            findings_dict[app_name] = findings
+                        progress.advance(task)
     if format == "json":
         with open(report_file, mode="w") as rp:
             json.dump(findings_dict, rp, ensure_ascii=True, indent=config.json_indent)
@@ -453,7 +487,7 @@ if __name__ == "__main__":
         )
         sys.exit(1)
 
-    console.print(config.ngsast_logo)
+    #console.print(config.ngsast_logo)
     start_time = time.monotonic_ns()
     args = build_args()
     app_list = []
