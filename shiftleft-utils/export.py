@@ -140,7 +140,7 @@ def export_csv(app_list, findings, report_file):
                             reachability,
                         ]
                     )
-                elif afinding.get("type") in ("vuln"):
+                elif afinding.get("type") in ("vuln", "security_issue"):
                     for loc in files_loc_list:
                         reportwriter.writerow(
                             [

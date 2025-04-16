@@ -276,7 +276,7 @@ def extract_from_file(
                     location = {}
                     codeflows = []
                     vuln_type = vuln.get("type")
-                    if vuln_type not in ("extscan", "vuln", "secret", "oss_vuln"):
+                    if vuln_type not in ("extscan", "vuln", "secret", "oss_vuln", "security_issue"):
                         continue
                     details = vuln.get("details", {})
                     file_locations = details.get("file_locations", [])
