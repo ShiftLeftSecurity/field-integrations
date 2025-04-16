@@ -95,7 +95,7 @@ def process_app(
             vuln_counts = [
                 c
                 for c in counts
-                if c["finding_type"] in ["vuln", "secret", "oss_vuln", "container"]
+                if c["finding_type"] in ["vuln", "secret", "oss_vuln", "container", "security_issue"]
                 and c["key"]
                 in [
                     "severity",
